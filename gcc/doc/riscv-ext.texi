@@ -402,6 +402,10 @@
 @tab 1.0
 @tab Vector data independent execution latency extension
 
+@item @samp{zvmma}
+@tab 1.0
+@tab Vector matrix-multiply accumulate (IME) extension
+
 @item @samp{zvl1024b}
 @tab 1.0
 @tab Minimum vector length standard extensions

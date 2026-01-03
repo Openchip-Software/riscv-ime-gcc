@@ -106,6 +106,9 @@ int riscv_zvk_subext
 TargetVariable
 int riscv_zvl_subext
 
+TargetVariable
+int riscv_zvmma_subext
+
 Mask(RVE) Var(riscv_base_subext)
 
 Mask(RVI) Var(riscv_base_subext)
@@ -297,6 +300,8 @@ Mask(ZVKSG) Var(riscv_zvk_subext)
 Mask(ZVKSH) Var(riscv_zvk_subext)
 
 Mask(ZVKT) Var(riscv_zvk_subext)
+
+Mask(ZVMMA) Var(riscv_zvmma_subext)
 
 Mask(ZVL1024B) Var(riscv_zvl_subext)
 
