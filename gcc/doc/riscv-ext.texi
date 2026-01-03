@@ -402,6 +402,278 @@
 @tab 1.0
 @tab Vector data independent execution latency extension
 
+@item @samp{zvmma}
+@tab 1.0
+@tab Vector matrix-multiply accumulate (IME) extension
+
+@item @samp{zvvfmm}
+@tab 1.0
+@tab Vector floating-point matrix multiply-accumulate extension
+
+@item @samp{zvvmm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate extension
+
+@item @samp{zvvmtls}
+@tab 1.0
+@tab Vector matrix tile load/store extension
+
+@item @samp{zvvmttls}
+@tab 1.0
+@tab Vector matrix transposing tile load/store extension
+
+@item @samp{zvvi4i8mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int4 inputs/Int8 output
+
+@item @samp{zvvi4i16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int4 inputs/Int16 output
+
+@item @samp{zvvi4i32mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int4 inputs/Int32 output
+
+@item @samp{zvvi8mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int8 inputs/Int8 output
+
+@item @samp{zvvi8i16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int8 inputs/Int16 output
+
+@item @samp{zvvi8i32mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int8 inputs/Int32 output
+
+@item @samp{zvvi8i64mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int8 inputs/Int64 output
+
+@item @samp{zvvi16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int16 inputs/Int16 output
+
+@item @samp{zvvi16i32mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int16 inputs/Int32 output
+
+@item @samp{zvvi16i64mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int16 inputs/Int64 output
+
+@item @samp{zvvi32mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int32 inputs/Int32 output
+
+@item @samp{zvvi32i64mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int32 inputs/Int64 output
+
+@item @samp{zvvi64mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate, Int64 inputs/Int64 output
+
+@item @samp{zvvofp4ofp8mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP4 inputs/OFP8 accumulator
+
+@item @samp{zvvofp4fp16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP4 inputs/FP16 accumulator
+
+@item @samp{zvvofp4bf16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP4 inputs/BF16 accumulator
+
+@item @samp{zvvofp4fp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP4 inputs/FP32 accumulator
+
+@item @samp{zvvofp8mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP8 inputs/OFP8 accumulator
+
+@item @samp{zvvofp8fp16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP8 inputs/FP16 accumulator
+
+@item @samp{zvvofp8bf16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP8 inputs/BF16 accumulator
+
+@item @samp{zvvofp8fp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP8 inputs/FP32 accumulator
+
+@item @samp{zvvofp8fp64mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, OFP8 inputs/FP64 accumulator
+
+@item @samp{zvvfp16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, FP16 inputs/FP16 accumulator
+
+@item @samp{zvvfp16fp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, FP16 inputs/FP32 accumulator
+
+@item @samp{zvvfp16fp64mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, FP16 inputs/FP64 accumulator
+
+@item @samp{zvvbf16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, BF16 inputs/BF16 accumulator
+
+@item @samp{zvvbf16fp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, BF16 inputs/FP32 accumulator
+
+@item @samp{zvvbf16fp64mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, BF16 inputs/FP64 accumulator
+
+@item @samp{zvvfp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, FP32 inputs/FP32 accumulator
+
+@item @samp{zvvfp32fp64mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, FP32 inputs/FP64 accumulator
+
+@item @samp{zvvfp64mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate, FP64 inputs/FP64 accumulator
+
+@item @samp{zvvxofp4ofp8mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/OFP8 accumulator
+
+@item @samp{zvvxofp4fp16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/FP16 accumulator
+
+@item @samp{zvvxofp4bf16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/BF16 accumulator
+
+@item @samp{zvvxofp4fp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/FP32 accumulator
+
+@item @samp{zvvxofp8mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/OFP8 accumulator
+
+@item @samp{zvvxofp8fp16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/FP16 accumulator
+
+@item @samp{zvvxofp8bf16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/BF16 accumulator
+
+@item @samp{zvvxofp8fp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/FP32 accumulator
+
+@item @samp{zvvxofp8fp64mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/FP64 accumulator
+
+@item @samp{zvvxi4fp16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT4 inputs/FP16 accumulator
+
+@item @samp{zvvxi4bf16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT4 inputs/BF16 accumulator
+
+@item @samp{zvvxi4fp32mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT4 inputs/FP32 accumulator
+
+@item @samp{zvvxi8fp16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT8 inputs/FP16 accumulator
+
+@item @samp{zvvxi8bf16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT8 inputs/BF16 accumulator
+
+@item @samp{zvvxi8fp32mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT8 inputs/FP32 accumulator
+
+@item @samp{zvvxi8fp64mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT8 inputs/FP64 accumulator
+
+@item @samp{zvvxnofp4ofp8mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/OFP8 accumulator
+
+@item @samp{zvvxnofp4fp16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/FP16 accumulator
+
+@item @samp{zvvxnofp4bf16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/BF16 accumulator
+
+@item @samp{zvvxnofp4fp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/FP32 accumulator
+
+@item @samp{zvvxnofp8mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/OFP8 accumulator
+
+@item @samp{zvvxnofp8fp16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/FP16 accumulator
+
+@item @samp{zvvxnofp8bf16mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/BF16 accumulator
+
+@item @samp{zvvxnofp8fp32mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/FP32 accumulator
+
+@item @samp{zvvxnofp8fp64mm}
+@tab 1.0
+@tab Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/FP64 accumulator
+
+@item @samp{zvvxni4fp16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT4 inputs/FP16 accumulator
+
+@item @samp{zvvxni4bf16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT4 inputs/BF16 accumulator
+
+@item @samp{zvvxni4fp32mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT4 inputs/FP32 accumulator
+
+@item @samp{zvvxni8fp16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT8 inputs/FP16 accumulator
+
+@item @samp{zvvxni8bf16mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT8 inputs/BF16 accumulator
+
+@item @samp{zvvxni8fp32mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT8 inputs/FP32 accumulator
+
+@item @samp{zvvxni8fp64mm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT8 inputs/FP64 accumulator
+
 @item @samp{zvl1024b}
 @tab 1.0
 @tab Minimum vector length standard extensions
