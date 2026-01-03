@@ -1378,6 +1378,19 @@ DEFINE_RISCV_EXT(
   /* EXTRA_EXTENSION_FLAGS */ 0)
 
 DEFINE_RISCV_EXT(
+  /* NAME */ zvmma,
+  /* UPPERCASE_NAME */ ZVMMA,
+  /* FULL_NAME */ "Vector matrix-multiply accumulate (IME) extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvl64"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmma,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
   /* NAME */ zvl1024b,
   /* UPPERCASE_NAME */ ZVL1024B,
   /* FULL_NAME */ "Minimum vector length standard extensions",
