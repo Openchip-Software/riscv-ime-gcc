@@ -107,6 +107,12 @@
        (eq_attr "type" "vsm4k,vsm4r,vsm3me,vsm3c"))
   "vxu_ooo_issue,vxu_ooo_alu")
 
+;; Vector IME matrix multiply-accumulate.
+(define_insn_reservation "vec_mmacc" 4
+  (and (eq_attr "tune" "generic_ooo,generic")
+       (eq_attr "type" "vmmacc"))
+  "vxu_ooo_issue,vxu_ooo_alu")
+
 ;; Vector permute.
 (define_insn_reservation "vec_perm" 3
   (and (eq_attr "tune" "generic_ooo,generic")

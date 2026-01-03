@@ -106,6 +106,18 @@ int riscv_zvk_subext
 TargetVariable
 int riscv_zvl_subext
 
+TargetVariable
+int riscv_zvmma_subext
+
+TargetVariable
+int riscv_zvmmf_subext
+
+TargetVariable
+int riscv_zvmmi_subext
+
+TargetVariable
+int riscv_zvmmx_subext
+
 Mask(RVE) Var(riscv_base_subext)
 
 Mask(RVI) Var(riscv_base_subext)
@@ -297,6 +309,142 @@ Mask(ZVKSG) Var(riscv_zvk_subext)
 Mask(ZVKSH) Var(riscv_zvk_subext)
 
 Mask(ZVKT) Var(riscv_zvk_subext)
+
+Mask(ZVMMA) Var(riscv_zvmma_subext)
+
+Mask(ZVVFMM) Var(riscv_zvmma_subext)
+
+Mask(ZVVMM) Var(riscv_zvmma_subext)
+
+Mask(ZVVMTLS) Var(riscv_zvmma_subext)
+
+Mask(ZVVMTTLS) Var(riscv_zvmma_subext)
+
+Mask(ZVVI4I8MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI4I16MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI4I32MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI8MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI8I16MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI8I32MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI8I64MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI16MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI16I32MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI16I64MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI32MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI32I64MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVI64MM) Var(riscv_zvmmi_subext)
+
+Mask(ZVVOFP4OFP8MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVOFP4FP16MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVOFP4BF16MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVOFP4FP32MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVOFP8MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVOFP8FP16MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVOFP8BF16MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVOFP8FP32MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVOFP8FP64MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVFP16MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVFP16FP32MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVFP16FP64MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVBF16MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVBF16FP32MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVBF16FP64MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVFP32MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVFP32FP64MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVFP64MM) Var(riscv_zvmmf_subext)
+
+Mask(ZVVXOFP4OFP8MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXOFP4FP16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXOFP4BF16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXOFP4FP32MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXOFP8MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXOFP8FP16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXOFP8BF16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXOFP8FP32MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXOFP8FP64MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXI4FP16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXI4BF16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXI4FP32MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXI8FP16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXI8BF16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXI8FP32MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXI8FP64MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP4OFP8MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP4FP16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP4BF16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP4FP32MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP8MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP8FP16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP8BF16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP8FP32MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNOFP8FP64MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNI4FP16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNI4BF16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNI4FP32MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNI8FP16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNI8BF16MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNI8FP32MM) Var(riscv_zvmmx_subext)
+
+Mask(ZVVXNI8FP64MM) Var(riscv_zvmmx_subext)
 
 Mask(ZVL1024B) Var(riscv_zvl_subext)
 

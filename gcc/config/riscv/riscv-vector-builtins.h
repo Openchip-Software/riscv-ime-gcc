@@ -137,6 +137,73 @@ enum required_ext
   XANDESVSINTLOAD_EXT,	/* XANDESVSINTLOAD extension */
   XANDESVPACKFPH_EXT,	/* XANDESVPACKFPH extension */
   XANDESVDOT_EXT,	/* XANDESVDOT extension */
+  ZVVMM_EXT,		/* Zvvmm extension */
+  ZVVFMM_EXT,		/* Zvvfmm extension */
+  ZVVMTLS_EXT,		/* Zvvmtls extension */
+  ZVVMTTLS_EXT,		/* Zvvmttls extension */
+  ZVVI4I8MM_EXT,		/* Zvvi4i8mm extension */
+  ZVVI4I16MM_EXT,		/* Zvvi4i16mm extension */
+  ZVVI4I32MM_EXT,		/* Zvvi4i32mm extension */
+  ZVVI8MM_EXT,		/* Zvvi8mm extension */
+  ZVVI8I16MM_EXT,		/* Zvvi8i16mm extension */
+  ZVVI8I32MM_EXT,		/* Zvvi8i32mm extension */
+  ZVVI8I64MM_EXT,		/* Zvvi8i64mm extension */
+  ZVVI16MM_EXT,		/* Zvvi16mm extension */
+  ZVVI16I32MM_EXT,		/* Zvvi16i32mm extension */
+  ZVVI16I64MM_EXT,		/* Zvvi16i64mm extension */
+  ZVVI32MM_EXT,		/* Zvvi32mm extension */
+  ZVVI32I64MM_EXT,		/* Zvvi32i64mm extension */
+  ZVVI64MM_EXT,		/* Zvvi64mm extension */
+  ZVVOFP4OFP8MM_EXT,		/* Zvvofp4ofp8mm extension */
+  ZVVOFP4FP16MM_EXT,		/* Zvvofp4fp16mm extension */
+  ZVVOFP4BF16MM_EXT,		/* Zvvofp4bf16mm extension */
+  ZVVOFP4FP32MM_EXT,		/* Zvvofp4fp32mm extension */
+  ZVVOFP8MM_EXT,		/* Zvvofp8mm extension */
+  ZVVOFP8FP16MM_EXT,		/* Zvvofp8fp16mm extension */
+  ZVVOFP8BF16MM_EXT,		/* Zvvofp8bf16mm extension */
+  ZVVOFP8FP32MM_EXT,		/* Zvvofp8fp32mm extension */
+  ZVVOFP8FP64MM_EXT,		/* Zvvofp8fp64mm extension */
+  ZVVFP16MM_EXT,		/* Zvvfp16mm extension */
+  ZVVFP16FP32MM_EXT,		/* Zvvfp16fp32mm extension */
+  ZVVFP16FP64MM_EXT,		/* Zvvfp16fp64mm extension */
+  ZVVBF16MM_EXT,		/* Zvvbf16mm extension */
+  ZVVBF16FP32MM_EXT,		/* Zvvbf16fp32mm extension */
+  ZVVBF16FP64MM_EXT,		/* Zvvbf16fp64mm extension */
+  ZVVFP32MM_EXT,		/* Zvvfp32mm extension */
+  ZVVFP32FP64MM_EXT,		/* Zvvfp32fp64mm extension */
+  ZVVFP64MM_EXT,		/* Zvvfp64mm extension */
+  ZVVXOFP4OFP8MM_EXT,		/* Zvvxofp4ofp8mm extension */
+  ZVVXOFP4FP16MM_EXT,		/* Zvvxofp4fp16mm extension */
+  ZVVXOFP4BF16MM_EXT,		/* Zvvxofp4bf16mm extension */
+  ZVVXOFP4FP32MM_EXT,		/* Zvvxofp4fp32mm extension */
+  ZVVXOFP8MM_EXT,		/* Zvvxofp8mm extension */
+  ZVVXOFP8FP16MM_EXT,		/* Zvvxofp8fp16mm extension */
+  ZVVXOFP8BF16MM_EXT,		/* Zvvxofp8bf16mm extension */
+  ZVVXOFP8FP32MM_EXT,		/* Zvvxofp8fp32mm extension */
+  ZVVXOFP8FP64MM_EXT,		/* Zvvxofp8fp64mm extension */
+  ZVVXI4FP16MM_EXT,		/* Zvvxi4fp16mm extension */
+  ZVVXI4BF16MM_EXT,		/* Zvvxi4bf16mm extension */
+  ZVVXI4FP32MM_EXT,		/* Zvvxi4fp32mm extension */
+  ZVVXI8FP16MM_EXT,		/* Zvvxi8fp16mm extension */
+  ZVVXI8BF16MM_EXT,		/* Zvvxi8bf16mm extension */
+  ZVVXI8FP32MM_EXT,		/* Zvvxi8fp32mm extension */
+  ZVVXI8FP64MM_EXT,		/* Zvvxi8fp64mm extension */
+  ZVVXNOFP4OFP8MM_EXT,		/* Zvvxnofp4ofp8mm extension */
+  ZVVXNOFP4FP16MM_EXT,		/* Zvvxnofp4fp16mm extension */
+  ZVVXNOFP4BF16MM_EXT,		/* Zvvxnofp4bf16mm extension */
+  ZVVXNOFP4FP32MM_EXT,		/* Zvvxnofp4fp32mm extension */
+  ZVVXNOFP8MM_EXT,		/* Zvvxnofp8mm extension */
+  ZVVXNOFP8FP16MM_EXT,		/* Zvvxnofp8fp16mm extension */
+  ZVVXNOFP8BF16MM_EXT,		/* Zvvxnofp8bf16mm extension */
+  ZVVXNOFP8FP32MM_EXT,		/* Zvvxnofp8fp32mm extension */
+  ZVVXNOFP8FP64MM_EXT,		/* Zvvxnofp8fp64mm extension */
+  ZVVXNI4FP16MM_EXT,		/* Zvvxni4fp16mm extension */
+  ZVVXNI4BF16MM_EXT,		/* Zvvxni4bf16mm extension */
+  ZVVXNI4FP32MM_EXT,		/* Zvvxni4fp32mm extension */
+  ZVVXNI8FP16MM_EXT,		/* Zvvxni8fp16mm extension */
+  ZVVXNI8BF16MM_EXT,		/* Zvvxni8bf16mm extension */
+  ZVVXNI8FP32MM_EXT,		/* Zvvxni8fp32mm extension */
+  ZVVXNI8FP64MM_EXT,		/* Zvvxni8fp64mm extension */
   /* Please update required_ext_to_isa_name and required_extensions_specified
      when adding or removing enum values.  */
 };
@@ -167,6 +234,73 @@ enum rvv_builtin_partition
   RVV_PARTITION_XANDESVSINTLOAD,
   RVV_PARTITION_XANDESVPACKFPH,
   RVV_PARTITION_XANDESVDOT,
+  RVV_PARTITION_ZVVMM,
+  RVV_PARTITION_ZVVFMM,
+  RVV_PARTITION_ZVVMTLS,
+  RVV_PARTITION_ZVVMTTLS,
+  RVV_PARTITION_ZVVI4I8MM,
+  RVV_PARTITION_ZVVI4I16MM,
+  RVV_PARTITION_ZVVI4I32MM,
+  RVV_PARTITION_ZVVI8MM,
+  RVV_PARTITION_ZVVI8I16MM,
+  RVV_PARTITION_ZVVI8I32MM,
+  RVV_PARTITION_ZVVI8I64MM,
+  RVV_PARTITION_ZVVI16MM,
+  RVV_PARTITION_ZVVI16I32MM,
+  RVV_PARTITION_ZVVI16I64MM,
+  RVV_PARTITION_ZVVI32MM,
+  RVV_PARTITION_ZVVI32I64MM,
+  RVV_PARTITION_ZVVI64MM,
+  RVV_PARTITION_ZVVOFP4OFP8MM,
+  RVV_PARTITION_ZVVOFP4FP16MM,
+  RVV_PARTITION_ZVVOFP4BF16MM,
+  RVV_PARTITION_ZVVOFP4FP32MM,
+  RVV_PARTITION_ZVVOFP8MM,
+  RVV_PARTITION_ZVVOFP8FP16MM,
+  RVV_PARTITION_ZVVOFP8BF16MM,
+  RVV_PARTITION_ZVVOFP8FP32MM,
+  RVV_PARTITION_ZVVOFP8FP64MM,
+  RVV_PARTITION_ZVVFP16MM,
+  RVV_PARTITION_ZVVFP16FP32MM,
+  RVV_PARTITION_ZVVFP16FP64MM,
+  RVV_PARTITION_ZVVBF16MM,
+  RVV_PARTITION_ZVVBF16FP32MM,
+  RVV_PARTITION_ZVVBF16FP64MM,
+  RVV_PARTITION_ZVVFP32MM,
+  RVV_PARTITION_ZVVFP32FP64MM,
+  RVV_PARTITION_ZVVFP64MM,
+  RVV_PARTITION_ZVVXOFP4OFP8MM,
+  RVV_PARTITION_ZVVXOFP4FP16MM,
+  RVV_PARTITION_ZVVXOFP4BF16MM,
+  RVV_PARTITION_ZVVXOFP4FP32MM,
+  RVV_PARTITION_ZVVXOFP8MM,
+  RVV_PARTITION_ZVVXOFP8FP16MM,
+  RVV_PARTITION_ZVVXOFP8BF16MM,
+  RVV_PARTITION_ZVVXOFP8FP32MM,
+  RVV_PARTITION_ZVVXOFP8FP64MM,
+  RVV_PARTITION_ZVVXI4FP16MM,
+  RVV_PARTITION_ZVVXI4BF16MM,
+  RVV_PARTITION_ZVVXI4FP32MM,
+  RVV_PARTITION_ZVVXI8FP16MM,
+  RVV_PARTITION_ZVVXI8BF16MM,
+  RVV_PARTITION_ZVVXI8FP32MM,
+  RVV_PARTITION_ZVVXI8FP64MM,
+  RVV_PARTITION_ZVVXNOFP4OFP8MM,
+  RVV_PARTITION_ZVVXNOFP4FP16MM,
+  RVV_PARTITION_ZVVXNOFP4BF16MM,
+  RVV_PARTITION_ZVVXNOFP4FP32MM,
+  RVV_PARTITION_ZVVXNOFP8MM,
+  RVV_PARTITION_ZVVXNOFP8FP16MM,
+  RVV_PARTITION_ZVVXNOFP8BF16MM,
+  RVV_PARTITION_ZVVXNOFP8FP32MM,
+  RVV_PARTITION_ZVVXNOFP8FP64MM,
+  RVV_PARTITION_ZVVXNI4FP16MM,
+  RVV_PARTITION_ZVVXNI4BF16MM,
+  RVV_PARTITION_ZVVXNI4FP32MM,
+  RVV_PARTITION_ZVVXNI8FP16MM,
+  RVV_PARTITION_ZVVXNI8BF16MM,
+  RVV_PARTITION_ZVVXNI8FP32MM,
+  RVV_PARTITION_ZVVXNI8FP64MM,
   NUM_RVV_EXT_PARTITIONS
 };
 
@@ -227,6 +361,140 @@ static inline const char * required_ext_to_isa_name (enum required_ext required)
       return "xandesvpackfph";
     case XANDESVDOT_EXT:
       return "xandesvdot";
+    case ZVVMM_EXT:
+      return "zvvmm";
+    case ZVVFMM_EXT:
+      return "zvvfmm";
+    case ZVVMTLS_EXT:
+      return "zvvmtls";
+    case ZVVMTTLS_EXT:
+      return "zvvmttls";
+    case ZVVI4I8MM_EXT:
+      return "zvvi4i8mm";
+    case ZVVI4I16MM_EXT:
+      return "zvvi4i16mm";
+    case ZVVI4I32MM_EXT:
+      return "zvvi4i32mm";
+    case ZVVI8MM_EXT:
+      return "zvvi8mm";
+    case ZVVI8I16MM_EXT:
+      return "zvvi8i16mm";
+    case ZVVI8I32MM_EXT:
+      return "zvvi8i32mm";
+    case ZVVI8I64MM_EXT:
+      return "zvvi8i64mm";
+    case ZVVI16MM_EXT:
+      return "zvvi16mm";
+    case ZVVI16I32MM_EXT:
+      return "zvvi16i32mm";
+    case ZVVI16I64MM_EXT:
+      return "zvvi16i64mm";
+    case ZVVI32MM_EXT:
+      return "zvvi32mm";
+    case ZVVI32I64MM_EXT:
+      return "zvvi32i64mm";
+    case ZVVI64MM_EXT:
+      return "zvvi64mm";
+    case ZVVOFP4OFP8MM_EXT:
+      return "zvvofp4ofp8mm";
+    case ZVVOFP4FP16MM_EXT:
+      return "zvvofp4fp16mm";
+    case ZVVOFP4BF16MM_EXT:
+      return "zvvofp4bf16mm";
+    case ZVVOFP4FP32MM_EXT:
+      return "zvvofp4fp32mm";
+    case ZVVOFP8MM_EXT:
+      return "zvvofp8mm";
+    case ZVVOFP8FP16MM_EXT:
+      return "zvvofp8fp16mm";
+    case ZVVOFP8BF16MM_EXT:
+      return "zvvofp8bf16mm";
+    case ZVVOFP8FP32MM_EXT:
+      return "zvvofp8fp32mm";
+    case ZVVOFP8FP64MM_EXT:
+      return "zvvofp8fp64mm";
+    case ZVVFP16MM_EXT:
+      return "zvvfp16mm";
+    case ZVVFP16FP32MM_EXT:
+      return "zvvfp16fp32mm";
+    case ZVVFP16FP64MM_EXT:
+      return "zvvfp16fp64mm";
+    case ZVVBF16MM_EXT:
+      return "zvvbf16mm";
+    case ZVVBF16FP32MM_EXT:
+      return "zvvbf16fp32mm";
+    case ZVVBF16FP64MM_EXT:
+      return "zvvbf16fp64mm";
+    case ZVVFP32MM_EXT:
+      return "zvvfp32mm";
+    case ZVVFP32FP64MM_EXT:
+      return "zvvfp32fp64mm";
+    case ZVVFP64MM_EXT:
+      return "zvvfp64mm";
+    case ZVVXOFP4OFP8MM_EXT:
+      return "zvvxofp4ofp8mm";
+    case ZVVXOFP4FP16MM_EXT:
+      return "zvvxofp4fp16mm";
+    case ZVVXOFP4BF16MM_EXT:
+      return "zvvxofp4bf16mm";
+    case ZVVXOFP4FP32MM_EXT:
+      return "zvvxofp4fp32mm";
+    case ZVVXOFP8MM_EXT:
+      return "zvvxofp8mm";
+    case ZVVXOFP8FP16MM_EXT:
+      return "zvvxofp8fp16mm";
+    case ZVVXOFP8BF16MM_EXT:
+      return "zvvxofp8bf16mm";
+    case ZVVXOFP8FP32MM_EXT:
+      return "zvvxofp8fp32mm";
+    case ZVVXOFP8FP64MM_EXT:
+      return "zvvxofp8fp64mm";
+    case ZVVXI4FP16MM_EXT:
+      return "zvvxi4fp16mm";
+    case ZVVXI4BF16MM_EXT:
+      return "zvvxi4bf16mm";
+    case ZVVXI4FP32MM_EXT:
+      return "zvvxi4fp32mm";
+    case ZVVXI8FP16MM_EXT:
+      return "zvvxi8fp16mm";
+    case ZVVXI8BF16MM_EXT:
+      return "zvvxi8bf16mm";
+    case ZVVXI8FP32MM_EXT:
+      return "zvvxi8fp32mm";
+    case ZVVXI8FP64MM_EXT:
+      return "zvvxi8fp64mm";
+    case ZVVXNOFP4OFP8MM_EXT:
+      return "zvvxnofp4ofp8mm";
+    case ZVVXNOFP4FP16MM_EXT:
+      return "zvvxnofp4fp16mm";
+    case ZVVXNOFP4BF16MM_EXT:
+      return "zvvxnofp4bf16mm";
+    case ZVVXNOFP4FP32MM_EXT:
+      return "zvvxnofp4fp32mm";
+    case ZVVXNOFP8MM_EXT:
+      return "zvvxnofp8mm";
+    case ZVVXNOFP8FP16MM_EXT:
+      return "zvvxnofp8fp16mm";
+    case ZVVXNOFP8BF16MM_EXT:
+      return "zvvxnofp8bf16mm";
+    case ZVVXNOFP8FP32MM_EXT:
+      return "zvvxnofp8fp32mm";
+    case ZVVXNOFP8FP64MM_EXT:
+      return "zvvxnofp8fp64mm";
+    case ZVVXNI4FP16MM_EXT:
+      return "zvvxni4fp16mm";
+    case ZVVXNI4BF16MM_EXT:
+      return "zvvxni4bf16mm";
+    case ZVVXNI4FP32MM_EXT:
+      return "zvvxni4fp32mm";
+    case ZVVXNI8FP16MM_EXT:
+      return "zvvxni8fp16mm";
+    case ZVVXNI8BF16MM_EXT:
+      return "zvvxni8bf16mm";
+    case ZVVXNI8FP32MM_EXT:
+      return "zvvxni8fp32mm";
+    case ZVVXNI8FP64MM_EXT:
+      return "zvvxni8fp64mm";
     default:
       gcc_unreachable ();
   }
@@ -282,6 +550,140 @@ static inline bool required_extensions_specified (enum required_ext required)
       return TARGET_XANDESVPACKFPH;
     case XANDESVDOT_EXT:
       return TARGET_XANDESVDOT;
+    case ZVVMM_EXT:
+      return TARGET_ZVVMM;
+    case ZVVFMM_EXT:
+      return TARGET_ZVVFMM;
+    case ZVVMTLS_EXT:
+      return TARGET_ZVVMTLS;
+    case ZVVMTTLS_EXT:
+      return TARGET_ZVVMTTLS;
+    case ZVVI4I8MM_EXT:
+      return TARGET_ZVVI4I8MM;
+    case ZVVI4I16MM_EXT:
+      return TARGET_ZVVI4I16MM;
+    case ZVVI4I32MM_EXT:
+      return TARGET_ZVVI4I32MM;
+    case ZVVI8MM_EXT:
+      return TARGET_ZVVI8MM;
+    case ZVVI8I16MM_EXT:
+      return TARGET_ZVVI8I16MM;
+    case ZVVI8I32MM_EXT:
+      return TARGET_ZVVI8I32MM;
+    case ZVVI8I64MM_EXT:
+      return TARGET_ZVVI8I64MM;
+    case ZVVI16MM_EXT:
+      return TARGET_ZVVI16MM;
+    case ZVVI16I32MM_EXT:
+      return TARGET_ZVVI16I32MM;
+    case ZVVI16I64MM_EXT:
+      return TARGET_ZVVI16I64MM;
+    case ZVVI32MM_EXT:
+      return TARGET_ZVVI32MM;
+    case ZVVI32I64MM_EXT:
+      return TARGET_ZVVI32I64MM;
+    case ZVVI64MM_EXT:
+      return TARGET_ZVVI64MM;
+    case ZVVOFP4OFP8MM_EXT:
+      return TARGET_ZVVOFP4OFP8MM;
+    case ZVVOFP4FP16MM_EXT:
+      return TARGET_ZVVOFP4FP16MM;
+    case ZVVOFP4BF16MM_EXT:
+      return TARGET_ZVVOFP4BF16MM;
+    case ZVVOFP4FP32MM_EXT:
+      return TARGET_ZVVOFP4FP32MM;
+    case ZVVOFP8MM_EXT:
+      return TARGET_ZVVOFP8MM;
+    case ZVVOFP8FP16MM_EXT:
+      return TARGET_ZVVOFP8FP16MM;
+    case ZVVOFP8BF16MM_EXT:
+      return TARGET_ZVVOFP8BF16MM;
+    case ZVVOFP8FP32MM_EXT:
+      return TARGET_ZVVOFP8FP32MM;
+    case ZVVOFP8FP64MM_EXT:
+      return TARGET_ZVVOFP8FP64MM;
+    case ZVVFP16MM_EXT:
+      return TARGET_ZVVFP16MM;
+    case ZVVFP16FP32MM_EXT:
+      return TARGET_ZVVFP16FP32MM;
+    case ZVVFP16FP64MM_EXT:
+      return TARGET_ZVVFP16FP64MM;
+    case ZVVBF16MM_EXT:
+      return TARGET_ZVVBF16MM;
+    case ZVVBF16FP32MM_EXT:
+      return TARGET_ZVVBF16FP32MM;
+    case ZVVBF16FP64MM_EXT:
+      return TARGET_ZVVBF16FP64MM;
+    case ZVVFP32MM_EXT:
+      return TARGET_ZVVFP32MM;
+    case ZVVFP32FP64MM_EXT:
+      return TARGET_ZVVFP32FP64MM;
+    case ZVVFP64MM_EXT:
+      return TARGET_ZVVFP64MM;
+    case ZVVXOFP4OFP8MM_EXT:
+      return TARGET_ZVVXOFP4OFP8MM;
+    case ZVVXOFP4FP16MM_EXT:
+      return TARGET_ZVVXOFP4FP16MM;
+    case ZVVXOFP4BF16MM_EXT:
+      return TARGET_ZVVXOFP4BF16MM;
+    case ZVVXOFP4FP32MM_EXT:
+      return TARGET_ZVVXOFP4FP32MM;
+    case ZVVXOFP8MM_EXT:
+      return TARGET_ZVVXOFP8MM;
+    case ZVVXOFP8FP16MM_EXT:
+      return TARGET_ZVVXOFP8FP16MM;
+    case ZVVXOFP8BF16MM_EXT:
+      return TARGET_ZVVXOFP8BF16MM;
+    case ZVVXOFP8FP32MM_EXT:
+      return TARGET_ZVVXOFP8FP32MM;
+    case ZVVXOFP8FP64MM_EXT:
+      return TARGET_ZVVXOFP8FP64MM;
+    case ZVVXI4FP16MM_EXT:
+      return TARGET_ZVVXI4FP16MM;
+    case ZVVXI4BF16MM_EXT:
+      return TARGET_ZVVXI4BF16MM;
+    case ZVVXI4FP32MM_EXT:
+      return TARGET_ZVVXI4FP32MM;
+    case ZVVXI8FP16MM_EXT:
+      return TARGET_ZVVXI8FP16MM;
+    case ZVVXI8BF16MM_EXT:
+      return TARGET_ZVVXI8BF16MM;
+    case ZVVXI8FP32MM_EXT:
+      return TARGET_ZVVXI8FP32MM;
+    case ZVVXI8FP64MM_EXT:
+      return TARGET_ZVVXI8FP64MM;
+    case ZVVXNOFP4OFP8MM_EXT:
+      return TARGET_ZVVXNOFP4OFP8MM;
+    case ZVVXNOFP4FP16MM_EXT:
+      return TARGET_ZVVXNOFP4FP16MM;
+    case ZVVXNOFP4BF16MM_EXT:
+      return TARGET_ZVVXNOFP4BF16MM;
+    case ZVVXNOFP4FP32MM_EXT:
+      return TARGET_ZVVXNOFP4FP32MM;
+    case ZVVXNOFP8MM_EXT:
+      return TARGET_ZVVXNOFP8MM;
+    case ZVVXNOFP8FP16MM_EXT:
+      return TARGET_ZVVXNOFP8FP16MM;
+    case ZVVXNOFP8BF16MM_EXT:
+      return TARGET_ZVVXNOFP8BF16MM;
+    case ZVVXNOFP8FP32MM_EXT:
+      return TARGET_ZVVXNOFP8FP32MM;
+    case ZVVXNOFP8FP64MM_EXT:
+      return TARGET_ZVVXNOFP8FP64MM;
+    case ZVVXNI4FP16MM_EXT:
+      return TARGET_ZVVXNI4FP16MM;
+    case ZVVXNI4BF16MM_EXT:
+      return TARGET_ZVVXNI4BF16MM;
+    case ZVVXNI4FP32MM_EXT:
+      return TARGET_ZVVXNI4FP32MM;
+    case ZVVXNI8FP16MM_EXT:
+      return TARGET_ZVVXNI8FP16MM;
+    case ZVVXNI8BF16MM_EXT:
+      return TARGET_ZVVXNI8BF16MM;
+    case ZVVXNI8FP32MM_EXT:
+      return TARGET_ZVVXNI8FP32MM;
+    case ZVVXNI8FP64MM_EXT:
+      return TARGET_ZVVXNI8FP64MM;
     default:
       gcc_unreachable ();
   }
