@@ -31431,6 +31431,10 @@ to @samp{zvks} and @samp{zvkg}.
 @tab 1.0
 @tab Vector data independent execution latency extension.
 
+@item zvmma
+@tab 1.0
+@tab IME extension
+
 @item zfh
 @tab 1.0
 @tab Half-precision floating-point extension.

@@ -400,6 +400,11 @@ Mask(ZVKSG)  Var(riscv_zvk_subext)
 Mask(ZVKT)   Var(riscv_zvk_subext)
 
 TargetVariable
+int riscv_zvm_subext
+
+Mask(ZVMMA)  Var(riscv_zvm_subext)
+
+TargetVariable
 int riscv_zicmo_subext
 
 Mask(ZICBOZ) Var(riscv_zicmo_subext)

@@ -187,6 +187,8 @@ static const riscv_implied_info_t riscv_implied_info[] =
   {"zvksed", "zve32x"},
   {"zvksh",  "zve32x"},
 
+  {"zvmma", "zve64x"},
+
   {"zfbfmin", "zfhmin"},
   {"zfh", "zfhmin"},
   {"zfhmin", "f"},
@@ -367,6 +369,8 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
   {"zvksg", ISA_SPEC_CLASS_NONE, 1, 0},
   {"zvkt", ISA_SPEC_CLASS_NONE, 1, 0},
 
+  {"zvmma", ISA_SPEC_CLASS_NONE, 1, 0},
+  
   {"zvl32b", ISA_SPEC_CLASS_NONE, 1, 0},
   {"zvl64b", ISA_SPEC_CLASS_NONE, 1, 0},
   {"zvl128b", ISA_SPEC_CLASS_NONE, 1, 0},
@@ -1697,6 +1701,8 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
   RISCV_EXT_FLAG_ENTRY ("zvksc",  x_riscv_zvk_subext, MASK_ZVKSC),
   RISCV_EXT_FLAG_ENTRY ("zvksg",  x_riscv_zvk_subext, MASK_ZVKSG),
   RISCV_EXT_FLAG_ENTRY ("zvkt",   x_riscv_zvk_subext, MASK_ZVKT),
+
+  RISCV_EXT_FLAG_ENTRY ("zvmma",   x_riscv_zvm_subext, MASK_ZVMMA),
 
   RISCV_EXT_FLAG_ENTRY ("zvl32b",    x_riscv_zvl_flags, MASK_ZVL32B),
   RISCV_EXT_FLAG_ENTRY ("zvl64b",    x_riscv_zvl_flags, MASK_ZVL64B),
