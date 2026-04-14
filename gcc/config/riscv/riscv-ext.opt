@@ -303,6 +303,14 @@ Mask(ZVKT) Var(riscv_zvk_subext)
 
 Mask(ZVMMA) Var(riscv_zvmma_subext)
 
+Mask(ZVVFMM) Var(riscv_zvmma_subext)
+
+Mask(ZVVMM) Var(riscv_zvmma_subext)
+
+Mask(ZVVMTLS) Var(riscv_zvmma_subext)
+
+Mask(ZVVMTTLS) Var(riscv_zvmma_subext)
+
 Mask(ZVL1024B) Var(riscv_zvl_subext)
 
 Mask(ZVL128B) Var(riscv_zvl_subext)

@@ -406,6 +406,22 @@
 @tab 1.0
 @tab Vector matrix-multiply accumulate (IME) extension
 
+@item @samp{zvvfmm}
+@tab 1.0
+@tab Vector floating-point matrix multiply-accumulate extension
+
+@item @samp{zvvmm}
+@tab 1.0
+@tab Vector integer matrix multiply-accumulate extension
+
+@item @samp{zvvmtls}
+@tab 1.0
+@tab Vector matrix tile load/store extension
+
+@item @samp{zvvmttls}
+@tab 1.0
+@tab Vector matrix transposing tile load/store extension
+
 @item @samp{zvl1024b}
 @tab 1.0
 @tab Minimum vector length standard extensions
