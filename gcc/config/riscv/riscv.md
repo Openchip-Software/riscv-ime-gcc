@@ -490,6 +490,8 @@
 ;; vsm3me       crypto vector SM3 Message Expansion instructions
 ;; vsm3c        crypto vector SM3 Compression instructions
 ;; 18.Vector BF16 instrctions
+;; 19.Vector IME instructions
+;; vmmacc       vector integer matrix multiply-accumulate
 ;; vfncvtbf16  vector narrowing single floating-point to brain floating-point instruction
 ;; vfwcvtbf16  vector widening brain floating-point to single floating-point instruction
 ;; vfwmaccbf16  vector BF16 widening multiply-accumulate
@@ -520,6 +522,7 @@
    vgather,vcompress,vmov,vector,vandn,vbrev,vbrev8,vrev8,vclz,vctz,vcpop,vrol,vror,vwsll,
    vclmul,vclmulh,vghsh,vgmul,vaesef,vaesem,vaesdf,vaesdm,vaeskf1,vaeskf2,vaesz,
    vsha2ms,vsha2ch,vsha2cl,vsm4k,vsm4r,vsm3me,vsm3c,vfncvtbf16,vfwcvtbf16,vfwmaccbf16,
+   vmmacc,
    sf_vc,sf_vc_se"
   (cond [(eq_attr "got" "load") (const_string "load")
 
@@ -4970,6 +4973,7 @@
 (include "pic.md")
 (include "vector.md")
 (include "vector-crypto.md")
+(include "vector-ime.md")
 (include "vector-bfloat16.md")
 (include "zicond.md")
 (include "mips-insn.md")

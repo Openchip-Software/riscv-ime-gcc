@@ -3551,6 +3551,9 @@ static function_group_info function_groups[] = {
 #define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)                         \
   {#NAME, &bases::NAME, &shapes::SHAPE, PREDS, OPS_INFO, REQUIRED_EXTENSIONS},
 #include "andes-vector-builtins-functions.def"
+#define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)                         \
+  {#NAME, &bases::NAME, &shapes::SHAPE, PREDS, OPS_INFO, REQUIRED_EXTENSIONS},
+#include "zvmma-vector-builtins-functions.def"
 
 };
 
@@ -3670,6 +3673,14 @@ get_builtin_partition (required_ext ext, const function_instance &instance)
       return RVV_PARTITION_XANDESVPACKFPH;
     case XANDESVDOT_EXT:
       return RVV_PARTITION_XANDESVDOT;
+    case ZVVMM_EXT:
+      return RVV_PARTITION_ZVVMM;
+    case ZVVFMM_EXT:
+      return RVV_PARTITION_ZVVFMM;
+    case ZVVMTLS_EXT:
+      return RVV_PARTITION_ZVVMTLS;
+    case ZVVMTTLS_EXT:
+      return RVV_PARTITION_ZVVMTTLS;
     default:
       gcc_unreachable ();
     }
