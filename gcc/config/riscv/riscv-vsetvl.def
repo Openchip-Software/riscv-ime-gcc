@@ -43,6 +43,11 @@ along with GCC; see the file COPYING3.  If not see
 		     available_p, fuse)
 #endif
 
+#ifndef DEF_IME_RULE
+#define DEF_IME_RULE(prev_demand, next_demand, fused_demand, compatible_p,     \
+		     available_p, fuse)
+#endif
+
 /* Define SEW and LMUL rules.  */
 DEF_SEW_LMUL_RULE (sew_lmul, sew_lmul, sew_lmul, sew_lmul_eq_p, sew_lmul_eq_p,
 		   nop)
@@ -175,6 +180,27 @@ DEF_AVL_RULE (ignore_avl, non_zero_avl, non_zero_avl, can_use_next_avl_p,
 	      always_false, use_next_avl)
 DEF_AVL_RULE (ignore_avl, ignore_avl, ignore_avl, always_true, always_true, nop)
 
+/* Define IME vtype compatible and merge rules.  The IME dimension is
+   orthogonal to sew/lmul, policy and avl: it captures whether an
+   instruction needs the IME-specific vtype bits (lambda, altfmt_A,
+   altfmt_B, altfmt, bs) established and, when it does, the concrete
+   tuple in vsetvl_info::m_ime_req.
+
+   When prev is already IME and next is not, we clear IME from the
+   fused state but still keep prev available to next: the actual
+   hardware state might or might not still carry the IME bits (a
+   vsetvli driven by the other dimensions would zero them), and the
+   next IME instruction will see ignore_ime and re-establish the
+   tuple via rule 3.  */
+
+DEF_IME_RULE (ime_vtype, ime_vtype, ime_vtype, ime_eq_p, ime_eq_p, nop)
+DEF_IME_RULE (ime_vtype, ignore_ime, ignore_ime, always_true, always_true,
+	      use_next_ime)
+DEF_IME_RULE (ignore_ime, ime_vtype, ime_vtype, always_true, always_false,
+	      use_next_ime)
+DEF_IME_RULE (ignore_ime, ignore_ime, ignore_ime, always_true, always_true, nop)
+
 #undef DEF_SEW_LMUL_RULE
 #undef DEF_POLICY_RULE
 #undef DEF_AVL_RULE
+#undef DEF_IME_RULE

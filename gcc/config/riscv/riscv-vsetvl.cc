@@ -87,6 +87,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "profile-count.h"
 #include "gcse.h"
 #include "cfgloop.h"
+#include "diagnostic-core.h"
 
 using namespace rtl_ssa;
 using namespace riscv_vector;
@@ -817,6 +818,7 @@ enum demand_flags : unsigned
   DEMAND_MASK_POLICY_P = 1 << 5,
   DEMAND_AVL_P = 1 << 6,
   DEMAND_NON_ZERO_AVL_P = 1 << 7,
+  DEMAND_IME_P = 1 << 8,
 };
 
 /* We split the demand information into three parts. They are sew and lmul
@@ -858,6 +860,16 @@ enum class avl_demand_type : unsigned
   ignore_avl = demand_flags::DEMAND_EMPTY_P,
 };
 
+/* Dimensionally separate demand track for the IME vtype bits (lambda,
+   altfmt, altfmt_A, altfmt_B, bs).  Non-IME instructions do not care and
+   use ignore_ime; IME instructions use ime_vtype and carry the concrete
+   tuple in vsetvl_info::m_ime_req.  */
+enum class ime_demand_type : unsigned
+{
+  ime_vtype = demand_flags::DEMAND_IME_P,
+  ignore_ime = demand_flags::DEMAND_EMPTY_P,
+};
+
 /* IME-specific vtype requirements for an instruction.  Populated only
    when the instruction pattern has its `requires_ime_vtype' attribute
    set to "yes".  The fields reflect the vtype CSR state the IME spec
@@ -897,21 +909,106 @@ struct ime_vtype_req
   bool operator!= (const ime_vtype_req &o) const { return !(*this == o); }
 };
 
+/* Compute log2(lambda) for an IME instruction with the given accumulator
+   SEW_BITS and register-group multiplier MUL_C, using the compile-time
+   knowledge of VLEN (if any).  Returns:
+
+     >= 0 : the log2 of the required lambda (so lambda = 1 << result);
+	    lambda is always in {1, 2, 4, 8, 16, 32, 64} so the result is
+	    in the range [0, 6].
+     -1   : VLEN is not compile-time known; the caller must emit a
+	    runtime computation.
+     -2   : the (VLEN, SEW, MUL_C) triple cannot yield an integer lambda.
+	    The caller must raise a diagnostic.  */
+
+static int
+compute_ime_lambda_log2 (int sew_bits, int mul_c)
+{
+  if (!BYTES_PER_RISCV_VECTOR.is_constant ())
+    return -1;
+
+  HOST_WIDE_INT vlenb = BYTES_PER_RISCV_VECTOR.to_constant ();
+  HOST_WIDE_INT vlen_bits = vlenb * 8;
+  HOST_WIDE_INT denom = (HOST_WIDE_INT) sew_bits * mul_c;
+  if (denom <= 0 || vlen_bits < denom || vlen_bits % denom != 0)
+    return -2;
+  HOST_WIDE_INT lambda_sq = vlen_bits / denom;
+  if (lambda_sq <= 0 || (lambda_sq & (lambda_sq - 1)) != 0)
+    return -2;
+  int log_sq = exact_log2 (lambda_sq);
+  if (log_sq < 0 || (log_sq & 1) != 0)
+    return -2;
+  int lambda_log2 = log_sq >> 1;
+  if (lambda_log2 < 0 || lambda_log2 > 6)
+    return -2;
+  return lambda_log2;
+}
+
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
    `requires_ime_vtype' attribute set to yes.  The returned record is
    fully determined by RINSN's operand modes; see §C-Language Intrinsics
    of the IME specification for the mapping rules.
 
-   The body of this helper is intentionally empty at this stage: no IME
-   instruction pattern yet sets `requires_ime_vtype=yes', so this code
-   path is unreachable from real compilations.  Each IME instruction
-   family added in later commits extends this function with the
-   derivation rules specific to that family.  */
+   The current implementation handles the integer vmmacc.vv family
+   (Zvvmm, W=1).  Integer signedness (altfmt_A / altfmt_B) is currently
+   hardcoded to 0 (signed) because the RTL pattern does not yet
+   distinguish between vint/vuint operands; that split will come with a
+   signed/unsigned UNSPEC separation in a follow-up.  Widening variants,
+   FP mmacc and microscaled variants each extend this function with
+   their own derivation rules.  */
 static ime_vtype_req
-riscv_extract_ime_requirements (rtx_insn *rinsn ATTRIBUTE_UNUSED)
+riscv_extract_ime_requirements (rtx_insn *rinsn)
 {
-  return ime_vtype_req ();
+  ime_vtype_req r;
+
+  /* Callers may have invalidated recog_data for other insns between
+     the original extract_insn_cached(rinsn) and us.  Re-extract.  */
+  extract_insn_cached (rinsn);
+
+  /* Accumulator type (operand 0) determines SEW and MUL_C.  */
+  machine_mode acc_mode = GET_MODE (recog_data.operand[0]);
+  r.sew = GET_MODE_UNIT_BITSIZE (acc_mode);
+  r.mul_c = get_vlmul (acc_mode);
+
+  /* Input type (operand 2 = vs1) determines the input LMUL.  For
+     widening variants this also determines EEW = SEW / W; for W=1 it
+     matches the accumulator SEW.  */
+  machine_mode in_mode = GET_MODE (recog_data.operand[2]);
+  uint8_t in_sew = GET_MODE_UNIT_BITSIZE (in_mode);
+  r.lmul = get_vlmul (in_mode);
+  gcc_assert (r.sew > 0 && in_sew > 0 && r.sew % in_sew == 0);
+  r.widen_w = r.sew / in_sew;
+
+  /* Integer: altfmt (output) always 0.  Signedness placeholder: the
+     current RTL pattern does not split signed vs unsigned, so we treat
+     both as signed until the UNSPEC split lands.  */
+  r.altfmt = false;
+  r.altfmt_a = false;
+  r.altfmt_b = false;
+  r.bs = false;
+
+  /* Static lambda if VLEN is known; runtime otherwise.  */
+  int mul_c_val;
+  switch (r.mul_c)
+    {
+    case LMUL_1: mul_c_val = 1; break;
+    case LMUL_2: mul_c_val = 2; break;
+    case LMUL_4: mul_c_val = 4; break;
+    case LMUL_8: mul_c_val = 8; break;
+    default:     mul_c_val = 0; break;  /* Fractional or reserved: invalid.  */
+    }
+  if (mul_c_val == 0)
+    r.lambda_log2 = -2;
+  else
+    r.lambda_log2 = compute_ime_lambda_log2 (r.sew, mul_c_val);
+
+  return r;
 }
+
+/* Forward declarations for helpers that need vsetvl_info; the
+   definitions come right after the class, below.  */
+class vsetvl_info;
+static rtx emit_ime_vtype_build (const vsetvl_info &info);
 
 /* Go through all uses of INSN looking for a single use of register REG.
    Return true if we find
@@ -978,9 +1075,12 @@ private:
 
   /* IME state.  M_IME_REQUIRED is true when the instruction pattern has
      `requires_ime_vtype=yes'; M_IME_REQ holds the concrete tuple in that
-     case.  Unused (zero-initialised) otherwise.  */
+     case.  M_IME_DEMAND is the demand dimension: ime_vtype when the
+     instruction needs the IME vtype bits established, ignore_ime
+     otherwise.  */
   bool m_ime_required;
   ime_vtype_req m_ime_req;
+  ime_demand_type m_ime_demand;
 
 public:
   vsetvl_info ()
@@ -991,7 +1091,8 @@ public:
       m_policy_demand (policy_demand_type::tail_mask_policy),
       m_avl_demand (avl_demand_type::avl), m_state (state_type::UNINITIALIZED),
       m_delete (false), m_change_vtype_only (false), m_read_vl_insn (nullptr),
-      m_vl_used_by_non_rvv_insn (false), m_ime_required (false), m_ime_req ()
+      m_vl_used_by_non_rvv_insn (false), m_ime_required (false), m_ime_req (),
+      m_ime_demand (ime_demand_type::ignore_ime)
   {}
 
   vsetvl_info (insn_info *insn) : vsetvl_info () { parse_insn (insn); }
@@ -1031,6 +1132,8 @@ public:
   const ime_vtype_req &get_ime_req () const { return m_ime_req; }
   void set_ime_required (bool r) { m_ime_required = r; }
   void set_ime_req (const ime_vtype_req &r) { m_ime_req = r; }
+  ime_demand_type get_ime_demand () const { return m_ime_demand; }
+  void set_ime_demand (ime_demand_type demand) { m_ime_demand = demand; }
 
   bool has_imm_avl () const { return m_avl && CONST_INT_P (m_avl); }
   bool has_vlmax_avl () const { return vlmax_avl_p (m_avl); }
@@ -1157,6 +1260,10 @@ public:
       default:
 	gcc_unreachable ();
       }
+
+    m_ime_demand = (demand_flags & DEMAND_IME_P)
+		     ? ime_demand_type::ime_vtype
+		     : ime_demand_type::ignore_ime;
   }
 
   void parse_insn (rtx_insn *rinsn)
@@ -1179,6 +1286,7 @@ public:
       {
 	m_ime_required = true;
 	m_ime_req = riscv_extract_ime_requirements (rinsn);
+	m_ime_demand = ime_demand_type::ime_vtype;
 	/* For an IME mmacc, the physically encoded vtype.LMUL is the
 	   *input* LMUL (m_ime_req.lmul), not the data-mode LMUL that
 	   ::get_vlmul returned above (which is the accumulator's MUL_C
@@ -1333,6 +1441,9 @@ public:
 	  dflags |= demand_flags::DEMAND_MASK_POLICY_P;
       }
 
+    if (m_ime_required)
+      dflags |= demand_flags::DEMAND_IME_P;
+
     normalize_demand (dflags);
 
     /* Optimize AVL from the vsetvl instruction.  */
@@ -1440,6 +1551,7 @@ public:
 	   && get_avl_demand () == other.get_avl_demand ()
 	   && get_sew_lmul_demand () == other.get_sew_lmul_demand ()
 	   && get_policy_demand () == other.get_policy_demand ()
+	   && get_ime_demand () == other.get_ime_demand ()
 	   && ime_required_p () == other.ime_required_p ()
 	   && (!ime_required_p () || get_ime_req () == other.get_ime_req ());
   }
@@ -1490,6 +1602,9 @@ public:
       fprintf (file, " demand_avl");
     else if (m_avl_demand == avl_demand_type::non_zero_avl)
       fprintf (file, " demand_non_zero_avl");
+
+    if (m_ime_demand == ime_demand_type::ime_vtype)
+      fprintf (file, " demand_ime_vtype");
     fprintf (file, "\n");
 
     fprintf (file, "%sSEW=%d, ", indent, get_sew ());
@@ -1522,6 +1637,91 @@ public:
       }
   }
 };
+
+/* Encode the vsew field (bits 3..5 of vtype) from an element width in
+   bits.  SEW_BITS must be one of {8, 16, 32, 64}.  */
+
+static unsigned
+ime_vsew_encoding (int sew_bits)
+{
+  /* e8 -> 000, e16 -> 001, e32 -> 010, e64 -> 011.  */
+  gcc_assert (sew_bits >= 8 && (sew_bits & (sew_bits - 1)) == 0);
+  return exact_log2 (sew_bits) - 3;
+}
+
+/* Compose the compile-time-known portion of the full vtype value:
+   vlmul | vsew | vta | vma | altfmt | bs | altfmt_B | altfmt_A
+   (i.e. everything except the lambda field at bits XLEN-4..XLEN-2,
+   which may need runtime computation).  */
+
+static HOST_WIDE_INT
+compute_static_vtype_without_lambda (const vsetvl_info &info, int xlen)
+{
+  HOST_WIDE_INT val = 0;
+  val |= (unsigned) info.get_vlmul ();
+  val |= (HOST_WIDE_INT) ime_vsew_encoding (info.get_sew ()) << 3;
+  if (info.get_ta ())
+    val |= (HOST_WIDE_INT) 1 << 6;
+  if (info.get_ma ())
+    val |= (HOST_WIDE_INT) 1 << 7;
+
+  const ime_vtype_req &r = info.get_ime_req ();
+  if (r.altfmt)
+    val |= (HOST_WIDE_INT) 1 << 8;
+  if (r.bs)
+    val |= (HOST_WIDE_INT) 1 << (xlen - 7);
+  if (r.altfmt_b)
+    val |= (HOST_WIDE_INT) 1 << (xlen - 6);
+  if (r.altfmt_a)
+    val |= (HOST_WIDE_INT) 1 << (xlen - 5);
+  return val;
+}
+
+/* Return a const_int rtx holding the full vtype value for an IME
+   instruction, or NULL_RTX if the value cannot be computed at compile
+   time (runtime lambda dispatch required -- NYI).
+
+   The vsetvl pass runs post-reload and cannot create fresh pseudos,
+   so the IME setup pattern (@vsetvl_ime<mode>) takes a const_int
+   vtype operand and synthesises the load in its own asm template.
+   This helper's job is to compute that constant.  Runtime lambda
+   support will be added once we have a post-reload-safe way to emit
+   the csrr/ctz sequence.  */
+
+static rtx
+emit_ime_vtype_build (const vsetvl_info &info)
+{
+  const ime_vtype_req &r = info.get_ime_req ();
+  int xlen = GET_MODE_BITSIZE (Pmode);
+  HOST_WIDE_INT static_val = compute_static_vtype_without_lambda (info, xlen);
+
+  if (r.lambda_log2 == -2)
+    {
+      sorry ("IME intrinsic: the %<(VLEN, SEW, MUL_C)%> combination does "
+	     "not yield a supported %<lambda%> value");
+      return NULL_RTX;
+    }
+
+  if (r.lambda_log2 >= 0)
+    {
+      /* Static lambda: the full vtype is a compile-time constant.  */
+      int lambda_enc = r.lambda_log2 + 1;
+      static_val |= (HOST_WIDE_INT) lambda_enc << (xlen - 4);
+      return gen_int_mode (static_val, Pmode);
+    }
+
+  /* Runtime lambda: the value depends on VLEN read at runtime.  Not
+     supported yet -- the vsetvl pass runs post-reload and cannot emit
+     the multi-instruction compute sequence (csrr vlenb + ctz + shifts
+     + or) without creating fresh pseudos.  A follow-up commit will
+     address this, either by lowering the IME setup during intrinsic
+     expand (pre-reload) or by teaching the pass to emit
+     hard-register-only sequences.  */
+  sorry ("IME intrinsic with runtime %<lambda%> is not yet supported; "
+	 "use %<-mrvv-vector-bits=zvl%> with a %<zvl*b%> that makes VLEN "
+	 "compile-time known");
+  return NULL_RTX;
+}
 
 class vsetvl_block_info
 {
@@ -2044,6 +2244,23 @@ private:
     use_next_avl (prev, next);
   }
 
+  /* predictors for IME vtype dimension */
+
+  inline bool ime_eq_p (const vsetvl_info &prev, const vsetvl_info &next)
+  {
+    /* Only called via the (ime_vtype, ime_vtype) rule, where both sides
+       have m_ime_required=true and a populated m_ime_req.  */
+    return prev.get_ime_req () == next.get_ime_req ();
+  }
+
+  /* modifier for IME vtype dimension: copy next's IME state into prev.  */
+
+  inline void use_next_ime (vsetvl_info &prev, const vsetvl_info &next)
+  {
+    prev.set_ime_required (next.ime_required_p ());
+    prev.set_ime_req (next.get_ime_req ());
+  }
+
 public:
   /* Can we move vsetvl info between prev_insn and next_insn safe? */
   bool avl_vl_unmodified_between_p (insn_info *prev_insn, insn_info *next_insn,
@@ -2334,11 +2551,65 @@ public:
     gcc_unreachable ();
   }
 
+  bool ime_compatible_p (const vsetvl_info &prev, const vsetvl_info &next)
+  {
+    gcc_assert (prev.valid_p () && next.valid_p ());
+    ime_demand_type prev_flags = prev.get_ime_demand ();
+    ime_demand_type next_flags = next.get_ime_demand ();
+#define DEF_IME_RULE(PREV_FLAGS, NEXT_FLAGS, NEW_FLAGS, COMPATIBLE_P,          \
+		     AVAILABLE_P, FUSE)                                        \
+  if (prev_flags == ime_demand_type::PREV_FLAGS                                \
+      && next_flags == ime_demand_type::NEXT_FLAGS)                            \
+    return COMPATIBLE_P (prev, next);
+
+#include "riscv-vsetvl.def"
+
+    gcc_unreachable ();
+  }
+
+  bool ime_available_p (const vsetvl_info &prev, const vsetvl_info &next)
+  {
+    gcc_assert (prev.valid_p () && next.valid_p ());
+    ime_demand_type prev_flags = prev.get_ime_demand ();
+    ime_demand_type next_flags = next.get_ime_demand ();
+#define DEF_IME_RULE(PREV_FLAGS, NEXT_FLAGS, NEW_FLAGS, COMPATIBLE_P,          \
+		     AVAILABLE_P, FUSE)                                        \
+  if (prev_flags == ime_demand_type::PREV_FLAGS                                \
+      && next_flags == ime_demand_type::NEXT_FLAGS)                            \
+    return AVAILABLE_P (prev, next);
+
+#include "riscv-vsetvl.def"
+
+    gcc_unreachable ();
+  }
+
+  void merge_ime (vsetvl_info &prev, const vsetvl_info &next)
+  {
+    gcc_assert (prev.valid_p () && next.valid_p ());
+    ime_demand_type prev_flags = prev.get_ime_demand ();
+    ime_demand_type next_flags = next.get_ime_demand ();
+#define DEF_IME_RULE(PREV_FLAGS, NEXT_FLAGS, NEW_FLAGS, COMPATIBLE_P,          \
+		     AVAILABLE_P, FUSE)                                        \
+  if (prev_flags == ime_demand_type::PREV_FLAGS                                \
+      && next_flags == ime_demand_type::NEXT_FLAGS)                            \
+    {                                                                          \
+      gcc_assert (COMPATIBLE_P (prev, next));                                  \
+      FUSE (prev, next);                                                       \
+      prev.set_ime_demand (ime_demand_type::NEW_FLAGS);                        \
+      return;                                                                  \
+    }
+
+#include "riscv-vsetvl.def"
+
+    gcc_unreachable ();
+  }
+
   bool compatible_p (const vsetvl_info &prev, const vsetvl_info &next)
   {
     bool compatible_p = sew_lmul_compatible_p (prev, next)
 			&& policy_compatible_p (prev, next)
 			&& avl_compatible_p (prev, next)
+			&& ime_compatible_p (prev, next)
 			&& vl_not_in_conflict_p (prev, next);
     return compatible_p;
   }
@@ -2348,6 +2619,7 @@ public:
     bool available_p = sew_lmul_available_p (prev, next)
 		       && policy_available_p (prev, next)
 		       && avl_available_p (prev, next)
+		       && ime_available_p (prev, next)
 		       && vl_not_in_conflict_p (prev, next);
     gcc_assert (!available_p || compatible_p (prev, next));
     return available_p;
@@ -2359,6 +2631,7 @@ public:
     merge_sew_lmul (prev, next);
     merge_policy (prev, next);
     merge_avl (prev, next);
+    merge_ime (prev, next);
     gcc_assert (available_p (prev, next));
   }
 };
@@ -2496,8 +2769,74 @@ private:
       }
   }
 
+  /* Emit a single register-form vsetvl instruction to establish the
+     full IME vtype.  The vtype value is passed as a const_int; the
+     @vsetvl_ime<mode> pattern expands it into a "li + vsetvl"
+     two-instruction sequence at assembly time, reusing its dest VL
+     register as the temporary for the li.  No new pseudos are
+     required, which is essential because this runs post-reload.  */
+
+  void insert_ime_vsetvl_insn (enum emit_type emit_type,
+			       const vsetvl_info &info)
+  {
+    rtx vtype_const = emit_ime_vtype_build (info);
+    if (vtype_const == NULL_RTX)
+      return;  /* sorry() already reported.  */
+
+    rtx avl = info.get_avl ();
+    if (!avl)
+      avl = const0_rtx;
+
+    /* Pick a destination/scratch register for the vsetvl_ime insn.  The
+       @vsetvl_ime pattern reuses its dest register as the scratch for
+       the "li" that loads the vtype constant.  If the IME instruction
+       we're setting up has its own VL destination (rare -- only for
+       vsetvl intrinsics), reuse that; otherwise fall back to the
+       dedicated prologue temp (x5 / t0), which is caller-saved and not
+       reserved across the function body.  The new VL value written by
+       the register-form vsetvl is dead in the latter case, which is
+       fine because downstream RVV insns read VL via VL_REGNUM, not via
+       a GPR.  */
+    rtx dest_vl = info.has_vl ()
+		    ? info.get_vl ()
+		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+
+    rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+    rtx_insn *rinsn = info.get_insn ()->rtl ();
+    rtx_insn *inserted = NULL;
+
+    if (emit_type == EMIT_DIRECT)
+      {
+	emit_insn (pat);
+	inserted = get_last_insn ();
+      }
+    else if (emit_type == EMIT_BEFORE)
+      {
+	emit_insn_before (pat, rinsn);
+	inserted = PREV_INSN (rinsn);
+      }
+    else
+      {
+	emit_insn_after (pat, rinsn);
+	inserted = NEXT_INSN (rinsn);
+      }
+
+    if (dump_file && inserted)
+      {
+	fprintf (dump_file, "  Insert IME vsetvl insn %d:\n",
+		 INSN_UID (inserted));
+	print_rtl_single (dump_file, inserted);
+      }
+  }
+
   void insert_vsetvl_insn (enum emit_type emit_type, const vsetvl_info &info)
   {
+    if (info.ime_required_p ())
+      {
+	insert_ime_vsetvl_insn (emit_type, info);
+	return;
+      }
+
     rtx pat = info.get_vsetvl_pat ();
     rtx_insn *rinsn = info.get_insn ()->rtl ();
 
@@ -2535,6 +2874,14 @@ private:
 
   void change_vsetvl_insn (const vsetvl_info &info)
   {
+    /* IME setups are multi-insn sequences (constant load + register-form
+       vsetvl) that cannot be dropped into an existing insn via
+       validate_change_or_fail.  They are always inserted fresh, never
+       produced by changing an existing vsetvli.  If this trips, the
+       caller tried to rewrite a plain vsetvli to an IME setup, which is
+       not supported.  */
+    gcc_assert (!info.ime_required_p ());
+
     rtx_insn *rinsn = info.get_insn ()->rtl ();
     rtx new_pat = info.get_vsetvl_pat ();
 
@@ -3821,6 +4168,10 @@ pre_vsetvl::remove_unused_dest_operand ()
 	{
 	  rtx vl = get_vl (rinsn);
 	  vsetvl_info info = vsetvl_info (rinsn);
+	  /* IME vsetvls are register-form sequences; rewriting them
+	     in place via validate_change_or_fail is not supported.  */
+	  if (info.ime_required_p ())
+	    continue;
 	  if (has_no_uses (cfg_bb, rinsn, REGNO (vl)))
 	    if (!info.has_vlmax_avl ())
 	      {
@@ -3902,6 +4253,24 @@ pass_vsetvl::simple_vsetvl ()
 	  if (has_vtype_op (rinsn))
 	    {
 	      const auto &info = vsetvl_info (rinsn);
+	      if (info.ime_required_p ())
+		{
+		  rtx vtype_const = emit_ime_vtype_build (info);
+		  if (vtype_const == NULL_RTX)
+		    continue;  /* sorry() already reported.  */
+		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
+		  rtx dest_vl
+		    = info.has_vl ()
+			? info.get_vl ()
+			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+		  rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+		  emit_insn_before (pat, rinsn);
+		  if (dump_file)
+		    fprintf (dump_file,
+			     "  Insert IME vsetvl insn before insn %d\n",
+			     INSN_UID (rinsn));
+		  continue;
+		}
 	      rtx pat = info.get_vsetvl_pat ();
 	      emit_insn_before (pat, rinsn);
 	      if (dump_file)
