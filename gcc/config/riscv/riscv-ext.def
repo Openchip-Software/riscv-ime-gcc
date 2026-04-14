@@ -1383,7 +1383,59 @@ DEFINE_RISCV_EXT(
   /* FULL_NAME */ "Vector matrix-multiply accumulate (IME) extension",
   /* DESC */ "",
   /* URL */ ,
-  /* DEP_EXTS */ ({"zvl64"}),
+  /* DEP_EXTS */ ({"zvvmm", "zvvfmm", "zvvmtls", "zvvmttls"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmma,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ EXT_FLAG_MACRO)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvfmm,
+  /* UPPERCASE_NAME */ ZVVFMM,
+  /* FULL_NAME */ "Vector floating-point matrix multiply-accumulate extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmma,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvmm,
+  /* UPPERCASE_NAME */ ZVVMM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmma,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvmtls,
+  /* UPPERCASE_NAME */ ZVVMTLS,
+  /* FULL_NAME */ "Vector matrix tile load/store extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmma,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvmttls,
+  /* UPPERCASE_NAME */ ZVVMTTLS,
+  /* FULL_NAME */ "Vector matrix transposing tile load/store extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x"}),
   /* SUPPORTED_VERSIONS */ ({{1, 0}}),
   /* FLAG_GROUP */ zvmma,
   /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
