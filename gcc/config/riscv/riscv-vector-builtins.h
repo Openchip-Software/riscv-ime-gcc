@@ -137,6 +137,10 @@ enum required_ext
   XANDESVSINTLOAD_EXT,	/* XANDESVSINTLOAD extension */
   XANDESVPACKFPH_EXT,	/* XANDESVPACKFPH extension */
   XANDESVDOT_EXT,	/* XANDESVDOT extension */
+  ZVVMM_EXT,		/* Zvvmm extension */
+  ZVVFMM_EXT,		/* Zvvfmm extension */
+  ZVVMTLS_EXT,		/* Zvvmtls extension */
+  ZVVMTTLS_EXT,		/* Zvvmttls extension */
   /* Please update required_ext_to_isa_name and required_extensions_specified
      when adding or removing enum values.  */
 };
@@ -167,6 +171,10 @@ enum rvv_builtin_partition
   RVV_PARTITION_XANDESVSINTLOAD,
   RVV_PARTITION_XANDESVPACKFPH,
   RVV_PARTITION_XANDESVDOT,
+  RVV_PARTITION_ZVVMM,
+  RVV_PARTITION_ZVVFMM,
+  RVV_PARTITION_ZVVMTLS,
+  RVV_PARTITION_ZVVMTTLS,
   NUM_RVV_EXT_PARTITIONS
 };
 
@@ -227,6 +235,14 @@ static inline const char * required_ext_to_isa_name (enum required_ext required)
       return "xandesvpackfph";
     case XANDESVDOT_EXT:
       return "xandesvdot";
+    case ZVVMM_EXT:
+      return "zvvmm";
+    case ZVVFMM_EXT:
+      return "zvvfmm";
+    case ZVVMTLS_EXT:
+      return "zvvmtls";
+    case ZVVMTTLS_EXT:
+      return "zvvmttls";
     default:
       gcc_unreachable ();
   }
@@ -282,6 +298,14 @@ static inline bool required_extensions_specified (enum required_ext required)
       return TARGET_XANDESVPACKFPH;
     case XANDESVDOT_EXT:
       return TARGET_XANDESVDOT;
+    case ZVVMM_EXT:
+      return TARGET_ZVVMM;
+    case ZVVFMM_EXT:
+      return TARGET_ZVVFMM;
+    case ZVVMTLS_EXT:
+      return TARGET_ZVVMTLS;
+    case ZVVMTTLS_EXT:
+      return TARGET_ZVVMTTLS;
     default:
       gcc_unreachable ();
   }
