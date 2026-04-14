@@ -33,6 +33,52 @@
 ])
 
 ;; ---------------------------------------------------------------------------
+;; Register-form vsetvl for IME instructions
+;; ---------------------------------------------------------------------------
+;;
+;; The RISC-V Vector spec defines three forms of vtype setup:
+;;
+;;   vsetvli  rd, rs1, vtypei     -- AVL from rs1, vtype from immediate
+;;   vsetivli rd, uimm,  vtypei   -- AVL from 5-bit immediate, vtype from immediate
+;;   vsetvl   rd, rs1,   rs2      -- AVL from rs1, vtype from rs2 (register)
+;;
+;; Only the third form can set the IME-specific upper vtype bits (lambda,
+;; altfmt_A, altfmt_B, altfmt, bs), because they do not fit in the 11-bit
+;; vtypei immediate encoding used by the first two.
+;;
+;; The existing @vsetvl<mode> / @vsetvl_discard_result<mode> patterns emit
+;; the immediate form.  This pattern adds the register form.
+;;
+;; Post-reload constraint: the vsetvl pass creates IME setup insns
+;; post-reload and cannot allocate fresh pseudo-registers.  We work
+;; around this by taking the pre-computed full vtype value as a
+;; const_int operand and reusing the destination VL register (operand
+;; 0) as scratch for the "li" that loads the constant.  The vsetvl
+;; instruction then reads operand 0 as its vtype source and writes the
+;; resulting VL back into operand 0, which is fine because the incoming
+;; const_int is dead once we have built vtype.
+;;
+;; Operands:
+;;   0: destination VL register (also used as the "li" scratch)
+;;   1: AVL -- register or zero for VLMAX
+;;   2: full vtype value as a const_int (synthesised by the vsetvl
+;;      pass from the static sew/vlmul/ta/ma/IME tuple)
+(define_insn "@vsetvl_ime<mode>"
+  [(set (match_operand:P 0 "register_operand"             "=&r")
+	(unspec:P [(match_operand:P 1 "pmode_reg_or_0_operand" "rJ")
+		   (match_operand 2 "const_int_operand"    " i")]
+		  UNSPEC_VSETVL_IME))
+   (set (reg:SI VL_REGNUM)
+	(unspec:SI [(match_dup 1)
+		    (match_dup 2)] UNSPEC_VSETVL_IME))
+   (set (reg:SI VTYPE_REGNUM)
+	(unspec:SI [(match_dup 2)] UNSPEC_VSETVL_IME))]
+  "TARGET_VECTOR"
+  "li\t%0,%2\n\tvsetvl\t%0,%z1,%0"
+  [(set_attr "type" "vsetvl")
+   (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
 ;; Zvvmm - Vector integer matrix multiply-accumulate, W=1 (no widening)
 ;; ---------------------------------------------------------------------------
 ;;
