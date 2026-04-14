@@ -817,6 +817,7 @@ enum demand_flags : unsigned
   DEMAND_MASK_POLICY_P = 1 << 5,
   DEMAND_AVL_P = 1 << 6,
   DEMAND_NON_ZERO_AVL_P = 1 << 7,
+  DEMAND_IME_P = 1 << 8,
 };
 
 /* We split the demand information into three parts. They are sew and lmul
@@ -856,6 +857,16 @@ enum class avl_demand_type : unsigned
   avl = demand_flags::DEMAND_AVL_P,
   non_zero_avl = demand_flags::DEMAND_NON_ZERO_AVL_P,
   ignore_avl = demand_flags::DEMAND_EMPTY_P,
+};
+
+/* Dimensionally separate demand track for the IME vtype bits (lambda,
+   altfmt, altfmt_A, altfmt_B, bs).  Non-IME instructions do not care and
+   use ignore_ime; IME instructions use ime_vtype and carry the concrete
+   tuple in vsetvl_info::m_ime_req.  */
+enum class ime_demand_type : unsigned
+{
+  ime_vtype = demand_flags::DEMAND_IME_P,
+  ignore_ime = demand_flags::DEMAND_EMPTY_P,
 };
 
 /* IME-specific vtype requirements for an instruction.  Populated only
@@ -978,9 +989,12 @@ private:
 
   /* IME state.  M_IME_REQUIRED is true when the instruction pattern has
      `requires_ime_vtype=yes'; M_IME_REQ holds the concrete tuple in that
-     case.  Unused (zero-initialised) otherwise.  */
+     case.  M_IME_DEMAND is the demand dimension: ime_vtype when the
+     instruction needs the IME vtype bits established, ignore_ime
+     otherwise.  */
   bool m_ime_required;
   ime_vtype_req m_ime_req;
+  ime_demand_type m_ime_demand;
 
 public:
   vsetvl_info ()
@@ -991,7 +1005,8 @@ public:
       m_policy_demand (policy_demand_type::tail_mask_policy),
       m_avl_demand (avl_demand_type::avl), m_state (state_type::UNINITIALIZED),
       m_delete (false), m_change_vtype_only (false), m_read_vl_insn (nullptr),
-      m_vl_used_by_non_rvv_insn (false), m_ime_required (false), m_ime_req ()
+      m_vl_used_by_non_rvv_insn (false), m_ime_required (false), m_ime_req (),
+      m_ime_demand (ime_demand_type::ignore_ime)
   {}
 
   vsetvl_info (insn_info *insn) : vsetvl_info () { parse_insn (insn); }
@@ -1031,6 +1046,8 @@ public:
   const ime_vtype_req &get_ime_req () const { return m_ime_req; }
   void set_ime_required (bool r) { m_ime_required = r; }
   void set_ime_req (const ime_vtype_req &r) { m_ime_req = r; }
+  ime_demand_type get_ime_demand () const { return m_ime_demand; }
+  void set_ime_demand (ime_demand_type demand) { m_ime_demand = demand; }
 
   bool has_imm_avl () const { return m_avl && CONST_INT_P (m_avl); }
   bool has_vlmax_avl () const { return vlmax_avl_p (m_avl); }
@@ -1157,6 +1174,10 @@ public:
       default:
 	gcc_unreachable ();
       }
+
+    m_ime_demand = (demand_flags & DEMAND_IME_P)
+		     ? ime_demand_type::ime_vtype
+		     : ime_demand_type::ignore_ime;
   }
 
   void parse_insn (rtx_insn *rinsn)
@@ -1179,6 +1200,7 @@ public:
       {
 	m_ime_required = true;
 	m_ime_req = riscv_extract_ime_requirements (rinsn);
+	m_ime_demand = ime_demand_type::ime_vtype;
       }
   }
 
@@ -1309,6 +1331,9 @@ public:
 	  dflags |= demand_flags::DEMAND_MASK_POLICY_P;
       }
 
+    if (m_ime_required)
+      dflags |= demand_flags::DEMAND_IME_P;
+
     normalize_demand (dflags);
 
     /* Optimize AVL from the vsetvl instruction.  */
@@ -1416,6 +1441,7 @@ public:
 	   && get_avl_demand () == other.get_avl_demand ()
 	   && get_sew_lmul_demand () == other.get_sew_lmul_demand ()
 	   && get_policy_demand () == other.get_policy_demand ()
+	   && get_ime_demand () == other.get_ime_demand ()
 	   && ime_required_p () == other.ime_required_p ()
 	   && (!ime_required_p () || get_ime_req () == other.get_ime_req ());
   }
@@ -1466,6 +1492,9 @@ public:
       fprintf (file, " demand_avl");
     else if (m_avl_demand == avl_demand_type::non_zero_avl)
       fprintf (file, " demand_non_zero_avl");
+
+    if (m_ime_demand == ime_demand_type::ime_vtype)
+      fprintf (file, " demand_ime_vtype");
     fprintf (file, "\n");
 
     fprintf (file, "%sSEW=%d, ", indent, get_sew ());
@@ -2020,6 +2049,23 @@ private:
     use_next_avl (prev, next);
   }
 
+  /* predictors for IME vtype dimension */
+
+  inline bool ime_eq_p (const vsetvl_info &prev, const vsetvl_info &next)
+  {
+    /* Only called via the (ime_vtype, ime_vtype) rule, where both sides
+       have m_ime_required=true and a populated m_ime_req.  */
+    return prev.get_ime_req () == next.get_ime_req ();
+  }
+
+  /* modifier for IME vtype dimension: copy next's IME state into prev.  */
+
+  inline void use_next_ime (vsetvl_info &prev, const vsetvl_info &next)
+  {
+    prev.set_ime_required (next.ime_required_p ());
+    prev.set_ime_req (next.get_ime_req ());
+  }
+
 public:
   /* Can we move vsetvl info between prev_insn and next_insn safe? */
   bool avl_vl_unmodified_between_p (insn_info *prev_insn, insn_info *next_insn,
@@ -2310,11 +2356,65 @@ public:
     gcc_unreachable ();
   }
 
+  bool ime_compatible_p (const vsetvl_info &prev, const vsetvl_info &next)
+  {
+    gcc_assert (prev.valid_p () && next.valid_p ());
+    ime_demand_type prev_flags = prev.get_ime_demand ();
+    ime_demand_type next_flags = next.get_ime_demand ();
+#define DEF_IME_RULE(PREV_FLAGS, NEXT_FLAGS, NEW_FLAGS, COMPATIBLE_P,          \
+		     AVAILABLE_P, FUSE)                                        \
+  if (prev_flags == ime_demand_type::PREV_FLAGS                                \
+      && next_flags == ime_demand_type::NEXT_FLAGS)                            \
+    return COMPATIBLE_P (prev, next);
+
+#include "riscv-vsetvl.def"
+
+    gcc_unreachable ();
+  }
+
+  bool ime_available_p (const vsetvl_info &prev, const vsetvl_info &next)
+  {
+    gcc_assert (prev.valid_p () && next.valid_p ());
+    ime_demand_type prev_flags = prev.get_ime_demand ();
+    ime_demand_type next_flags = next.get_ime_demand ();
+#define DEF_IME_RULE(PREV_FLAGS, NEXT_FLAGS, NEW_FLAGS, COMPATIBLE_P,          \
+		     AVAILABLE_P, FUSE)                                        \
+  if (prev_flags == ime_demand_type::PREV_FLAGS                                \
+      && next_flags == ime_demand_type::NEXT_FLAGS)                            \
+    return AVAILABLE_P (prev, next);
+
+#include "riscv-vsetvl.def"
+
+    gcc_unreachable ();
+  }
+
+  void merge_ime (vsetvl_info &prev, const vsetvl_info &next)
+  {
+    gcc_assert (prev.valid_p () && next.valid_p ());
+    ime_demand_type prev_flags = prev.get_ime_demand ();
+    ime_demand_type next_flags = next.get_ime_demand ();
+#define DEF_IME_RULE(PREV_FLAGS, NEXT_FLAGS, NEW_FLAGS, COMPATIBLE_P,          \
+		     AVAILABLE_P, FUSE)                                        \
+  if (prev_flags == ime_demand_type::PREV_FLAGS                                \
+      && next_flags == ime_demand_type::NEXT_FLAGS)                            \
+    {                                                                          \
+      gcc_assert (COMPATIBLE_P (prev, next));                                  \
+      FUSE (prev, next);                                                       \
+      prev.set_ime_demand (ime_demand_type::NEW_FLAGS);                        \
+      return;                                                                  \
+    }
+
+#include "riscv-vsetvl.def"
+
+    gcc_unreachable ();
+  }
+
   bool compatible_p (const vsetvl_info &prev, const vsetvl_info &next)
   {
     bool compatible_p = sew_lmul_compatible_p (prev, next)
 			&& policy_compatible_p (prev, next)
 			&& avl_compatible_p (prev, next)
+			&& ime_compatible_p (prev, next)
 			&& vl_not_in_conflict_p (prev, next);
     return compatible_p;
   }
@@ -2324,6 +2424,7 @@ public:
     bool available_p = sew_lmul_available_p (prev, next)
 		       && policy_available_p (prev, next)
 		       && avl_available_p (prev, next)
+		       && ime_available_p (prev, next)
 		       && vl_not_in_conflict_p (prev, next);
     gcc_assert (!available_p || compatible_p (prev, next));
     return available_p;
@@ -2335,6 +2436,7 @@ public:
     merge_sew_lmul (prev, next);
     merge_policy (prev, next);
     merge_avl (prev, next);
+    merge_ime (prev, next);
     gcc_assert (available_p (prev, next));
   }
 };
