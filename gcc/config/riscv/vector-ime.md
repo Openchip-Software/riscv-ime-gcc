@@ -23,4 +23,11 @@
 
 (define_c_enum "unspec" [
   UNSPEC_VMMACC
+
+  ;; Register-form vsetvl used to establish the full vtype value for IME
+  ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
+  ;; standard SEW/LMUL/ta/ma).  A plain vsetvli/vsetivli cannot encode these
+  ;; upper vtype bits; they require a register source containing the full
+  ;; vtype value.
+  UNSPEC_VSETVL_IME
 ])
