@@ -695,6 +695,25 @@ static CONSTEXPR const rvv_arg_type_info vvv_args[]
   = {rvv_arg_type_info (RVV_BASE_vector), rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_vector), rvv_arg_type_info_end};
 
+/* A list of args for an IME multiply-accumulate intrinsic: the accumulator
+   (RVV_BASE_vector -- matches the instance type index, which encodes the
+   SEW and the accumulator-specific register-group multiplier MUL_C) plus
+   two inputs fixed at LMUL=1 (RVV_BASE_lmul1_vector -- same SEW as vd, but
+   LMUL=1 regardless of MUL_C).  This expresses the spec's default
+   (LMUL=1) non-widening vmmacc.vv variant:
+
+       vint32m2_t __riscv_vmmacc_vv_i32m2 (vint32m2_t vd,
+                                           vint32m1_t vs1,
+                                           vint32m1_t vs2,
+                                           size_t vl);
+
+   where m2 on vd denotes MUL_C=2 and the m1 on vs1/vs2 denotes LMUL=1.
+   The _lm{N} variants for LMUL > 1 will get their own args arrays.  */
+static CONSTEXPR const rvv_arg_type_info ime_vss_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_lmul1_vector), rvv_arg_type_info_end};
+
 /* A list of args for vector_type func (vector_type, vector_type, vector_type)
  * function.  */
 static CONSTEXPR const rvv_arg_type_info vqq_args[]
@@ -3272,6 +3291,21 @@ static CONSTEXPR const rvv_op_info u_vvvv_crypto_sew64_ops
      OP_TYPE_vv,					   /* Suffix */
      rvv_arg_type_info (RVV_BASE_vector), /* Return type */
      vvv_args /* Args */};
+
+/* IME integer matrix multiply-accumulate, default (LMUL=1) variant.
+   The accumulator type (i_ops / u_ops) carries both SEW and MUL_C via the
+   vector type index; vs1/vs2 are fixed at LMUL=1 via ime_vss_args.  */
+static CONSTEXPR const rvv_op_info i_ime_vss_ops
+  = {i_ops,
+     OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector),
+     ime_vss_args};
+
+static CONSTEXPR const rvv_op_info u_ime_vss_ops
+  = {u_ops,
+     OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector),
+     ime_vss_args};
 
 static CONSTEXPR const rvv_op_info sf_vc_x_ops
   = {full_v_u_ops,					     /* Types */
