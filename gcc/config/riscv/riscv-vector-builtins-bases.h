@@ -352,6 +352,8 @@ extern const function_base *const vfwcvtbf16_f;
 /* Zvfbfwma */
 extern const function_base *const vfwmaccbf16;
 extern const function_base *const vfwmaccbf16_frm;
+/* Zvvmm */
+extern const function_base *const vmmacc;
 }
 
 } // end namespace riscv_vector

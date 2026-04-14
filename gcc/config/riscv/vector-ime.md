@@ -31,3 +31,39 @@
   ;; vtype value.
   UNSPEC_VSETVL_IME
 ])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmm - Vector integer matrix multiply-accumulate, W=1 (no widening)
+;; ---------------------------------------------------------------------------
+;;
+;; vmmacc.vv vd, vs1, vs2 performs an accumulator-style multiply-accumulate:
+;;
+;;     vd += matmul (vs1, vs2)
+;;
+;; The accumulator vd has SEW bit elements and uses MUL_C registers (encoded
+;; by the register group size of vd in the C intrinsic type).  The inputs
+;; vs1/vs2 have the same SEW as the accumulator but use their own LMUL,
+;; independent of MUL_C.  This pattern handles the spec-default LMUL=1
+;; variant; _lm{N} variants for LMUL > 1 will get their own patterns.
+;;
+;; No mask, no merge operand: IME multiply-accumulate instructions do not
+;; support element-level masking or tail policies in the standard RVV sense.
+(define_insn "@pred_vmmacc<mode>"
+  [(set (match_operand:VI 0 "register_operand"              "=vr")
+	(if_then_else:VI
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI
+	    [(match_operand:VI         1 "register_operand" "  0")
+	     (match_operand:<V_LMUL1>  2 "register_operand" " vr")
+	     (match_operand:<V_LMUL1>  3 "register_operand" " vr")] UNSPEC_VMMACC)
+	  (match_dup 1)))]
+  "TARGET_ZVVMM"
+  "vmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "mode" "<MODE>")])

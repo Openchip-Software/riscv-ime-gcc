@@ -21,10 +21,15 @@ along with GCC; see the file COPYING3. If not see
 #define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)
 #endif
 
-/* Zvvmm - Vector integer matrix multiply-accumulate.
-   Intentionally empty at this stage: the vmmacc intrinsic definition is
-   deferred until the compiler-managed IME vtype infrastructure (lambda,
-   altfmt_A, altfmt_B) is in place and a shape class exists that models the
-   MUL_C/LMUL split between the accumulator and input operand types.  */
+/* Zvvmm - Vector integer matrix multiply-accumulate, W=1 (no widening),
+   default LMUL=1 variant.  The accumulator type suffix on the generated
+   name encodes both SEW and MUL_C, e.g. __riscv_vmmacc_vv_i32m2 is the
+   signed variant with a 2-register accumulator.  vs1/vs2 always use the
+   LMUL=1 form of the same SEW.  The _lm{N} variants for LMUL > 1, plus
+   the _su / _us mixed-sign variants, will be added in follow-ups.  */
+#define REQUIRED_EXTENSIONS ZVVMM_EXT
+DEF_RVV_FUNCTION (vmmacc, no_mask_policy, none_tu_preds, i_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc, no_mask_policy, none_tu_preds, u_ime_vss_ops)
+#undef REQUIRED_EXTENSIONS
 
 #undef DEF_RVV_FUNCTION

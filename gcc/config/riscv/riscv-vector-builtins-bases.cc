@@ -2782,6 +2782,25 @@ static CONSTEXPR const vfwcvtbf16_f vfwcvtbf16_f_obj;
 static CONSTEXPR const vfwmaccbf16<NO_FRM> vfwmaccbf16_obj;
 static CONSTEXPR const vfwmaccbf16<HAS_FRM> vfwmaccbf16_frm_obj;
 
+/* IME vector integer matrix multiply-accumulate (W=1).  Expands to
+   @pred_vmmacc<mode>, where the iterator <mode> is the accumulator mode
+   (operand 0) and the input operands are at LMUL=1 via V_LMUL1.  No
+   mask/merge/policy operands.  */
+class vmmacc_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vmmacc (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmmacc_ime_op vmmacc_obj;
+
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
 #define BASE(NAME) \
@@ -3109,4 +3128,6 @@ BASE (vfwcvtbf16_f)
 /* Zvfbfwma */
 BASE (vfwmaccbf16)
 BASE (vfwmaccbf16_frm)
+/* Zvvmm */
+BASE (vmmacc)
 } // end namespace riscv_vector
