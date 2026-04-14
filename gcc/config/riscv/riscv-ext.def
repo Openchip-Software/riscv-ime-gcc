@@ -1443,6 +1443,825 @@ DEFINE_RISCV_EXT(
   /* EXTRA_EXTENSION_FLAGS */ 0)
 
 DEFINE_RISCV_EXT(
+  /* NAME */ zvvi4i8mm,
+  /* UPPERCASE_NAME */ ZVVI4I8MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int4 inputs/Int8 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi4i16mm,
+  /* UPPERCASE_NAME */ ZVVI4I16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int4 inputs/Int16 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi4i32mm,
+  /* UPPERCASE_NAME */ ZVVI4I32MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int4 inputs/Int32 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi8mm,
+  /* UPPERCASE_NAME */ ZVVI8MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int8 inputs/Int8 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi8i16mm,
+  /* UPPERCASE_NAME */ ZVVI8I16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int8 inputs/Int16 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi8i32mm,
+  /* UPPERCASE_NAME */ ZVVI8I32MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int8 inputs/Int32 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi8i64mm,
+  /* UPPERCASE_NAME */ ZVVI8I64MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int8 inputs/Int64 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi16mm,
+  /* UPPERCASE_NAME */ ZVVI16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int16 inputs/Int16 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi16i32mm,
+  /* UPPERCASE_NAME */ ZVVI16I32MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int16 inputs/Int32 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi16i64mm,
+  /* UPPERCASE_NAME */ ZVVI16I64MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int16 inputs/Int64 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi32mm,
+  /* UPPERCASE_NAME */ ZVVI32MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int32 inputs/Int32 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi32i64mm,
+  /* UPPERCASE_NAME */ ZVVI32I64MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int32 inputs/Int64 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvi64mm,
+  /* UPPERCASE_NAME */ ZVVI64MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate, Int64 inputs/Int64 output",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64x", "zvvmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmi,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp4ofp8mm,
+  /* UPPERCASE_NAME */ ZVVOFP4OFP8MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP4 inputs/OFP8 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp4fp16mm,
+  /* UPPERCASE_NAME */ ZVVOFP4FP16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP4 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp4bf16mm,
+  /* UPPERCASE_NAME */ ZVVOFP4BF16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP4 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp4fp32mm,
+  /* UPPERCASE_NAME */ ZVVOFP4FP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP4 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp8mm,
+  /* UPPERCASE_NAME */ ZVVOFP8MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP8 inputs/OFP8 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp8fp16mm,
+  /* UPPERCASE_NAME */ ZVVOFP8FP16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP8 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp8bf16mm,
+  /* UPPERCASE_NAME */ ZVVOFP8BF16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP8 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp8fp32mm,
+  /* UPPERCASE_NAME */ ZVVOFP8FP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP8 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvofp8fp64mm,
+  /* UPPERCASE_NAME */ ZVVOFP8FP64MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, OFP8 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64d", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvfp16mm,
+  /* UPPERCASE_NAME */ ZVVFP16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, FP16 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvfp16fp32mm,
+  /* UPPERCASE_NAME */ ZVVFP16FP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, FP16 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvfp16fp64mm,
+  /* UPPERCASE_NAME */ ZVVFP16FP64MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, FP16 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64d", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvbf16mm,
+  /* UPPERCASE_NAME */ ZVVBF16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, BF16 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvbf16fp32mm,
+  /* UPPERCASE_NAME */ ZVVBF16FP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, BF16 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvbf16fp64mm,
+  /* UPPERCASE_NAME */ ZVVBF16FP64MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, BF16 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64d", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvfp32mm,
+  /* UPPERCASE_NAME */ ZVVFP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, FP32 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvfp32fp64mm,
+  /* UPPERCASE_NAME */ ZVVFP32FP64MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, FP32 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64d", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvfp64mm,
+  /* UPPERCASE_NAME */ ZVVFP64MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate, FP64 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64d", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmf,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp4ofp8mm,
+  /* UPPERCASE_NAME */ ZVVXOFP4OFP8MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/OFP8 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp4ofp8mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp4fp16mm,
+  /* UPPERCASE_NAME */ ZVVXOFP4FP16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp4fp16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp4bf16mm,
+  /* UPPERCASE_NAME */ ZVVXOFP4BF16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp4bf16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp4fp32mm,
+  /* UPPERCASE_NAME */ ZVVXOFP4FP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp4fp32mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp8mm,
+  /* UPPERCASE_NAME */ ZVVXOFP8MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/OFP8 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp8mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp8fp16mm,
+  /* UPPERCASE_NAME */ ZVVXOFP8FP16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp8fp16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp8bf16mm,
+  /* UPPERCASE_NAME */ ZVVXOFP8BF16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp8bf16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp8fp32mm,
+  /* UPPERCASE_NAME */ ZVVXOFP8FP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp8fp32mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxofp8fp64mm,
+  /* UPPERCASE_NAME */ ZVVXOFP8FP64MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvofp8fp64mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxi4fp16mm,
+  /* UPPERCASE_NAME */ ZVVXI4FP16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT4 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxi4bf16mm,
+  /* UPPERCASE_NAME */ ZVVXI4BF16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT4 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxi4fp32mm,
+  /* UPPERCASE_NAME */ ZVVXI4FP32MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT4 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxi8fp16mm,
+  /* UPPERCASE_NAME */ ZVVXI8FP16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT8 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxi8bf16mm,
+  /* UPPERCASE_NAME */ ZVVXI8BF16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT8 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxi8fp32mm,
+  /* UPPERCASE_NAME */ ZVVXI8FP32MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT8 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve32f", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxi8fp64mm,
+  /* UPPERCASE_NAME */ ZVVXI8FP64MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=32), MXINT8 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zve64d", "zvvfmm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp4ofp8mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP4OFP8MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/OFP8 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp4ofp8mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp4fp16mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP4FP16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp4fp16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp4bf16mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP4BF16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp4bf16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp4fp32mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP4FP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp4fp32mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp8mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP8MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/OFP8 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp8mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp8fp16mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP8FP16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp8fp16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp8bf16mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP8BF16MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp8bf16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp8fp32mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP8FP32MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp8fp32mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxnofp8fp64mm,
+  /* UPPERCASE_NAME */ ZVVXNOFP8FP64MM,
+  /* FULL_NAME */ "Vector FP matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxofp8fp64mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxni4fp16mm,
+  /* UPPERCASE_NAME */ ZVVXNI4FP16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT4 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxi4fp16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxni4bf16mm,
+  /* UPPERCASE_NAME */ ZVVXNI4BF16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT4 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxi4bf16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxni4fp32mm,
+  /* UPPERCASE_NAME */ ZVVXNI4FP32MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT4 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxi4fp32mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxni8fp16mm,
+  /* UPPERCASE_NAME */ ZVVXNI8FP16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT8 inputs/FP16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxi8fp16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxni8bf16mm,
+  /* UPPERCASE_NAME */ ZVVXNI8BF16MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT8 inputs/BF16 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxi8bf16mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxni8fp32mm,
+  /* UPPERCASE_NAME */ ZVVXNI8FP32MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT8 inputs/FP32 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxi8fp32mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ zvvxni8fp64mm,
+  /* UPPERCASE_NAME */ ZVVXNI8FP64MM,
+  /* FULL_NAME */ "Vector integer matrix multiply-accumulate microscaling (BS=16), MXINT8 inputs/FP64 accumulator",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zvvxi8fp64mm"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ zvmmx,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
   /* NAME */ zvl1024b,
   /* UPPERCASE_NAME */ ZVL1024B,
   /* FULL_NAME */ "Minimum vector length standard extensions",
