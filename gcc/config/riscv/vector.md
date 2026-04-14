@@ -35,6 +35,17 @@
 
 ;; True if the type is RVV instructions that include VTYPE
 ;; global status register in the use op list.
+;; True for instructions that require IME-specific vtype state
+;; (lambda, altfmt_A, altfmt_B, altfmt, bs).  These instructions
+;; need a register-form vsetvl to establish the full vtype value
+;; before execution; a plain vsetvli (immediate form) would zero
+;; the upper vtype bits and corrupt the IME configuration.
+;;
+;; Defaulting to "no" keeps existing instructions unaffected.  IME
+;; instruction patterns (in vector-ime.md) override this to "yes".
+(define_attr "requires_ime_vtype" "no,yes"
+  (const_string "no"))
+
 ;; We known VTYPE has 4 fields: SEW, LMUL, TA, MA.
 ;; The instruction need any of VTYPE field is set as true
 ;; in this attribute.
