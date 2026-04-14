@@ -858,6 +858,61 @@ enum class avl_demand_type : unsigned
   ignore_avl = demand_flags::DEMAND_EMPTY_P,
 };
 
+/* IME-specific vtype requirements for an instruction.  Populated only
+   when the instruction pattern has its `requires_ime_vtype' attribute
+   set to "yes".  The fields reflect the vtype CSR state the IME spec
+   demands: the accumulator width (sew / mul_c), the input register-group
+   multiplier (lmul), the per-instruction widening factor W, the per-side
+   alternate-format selectors, the output format selector, and the
+   microscaling block-size selector.
+
+   LAMBDA_LOG2 holds the log2 of the required lambda when VLEN is known
+   at compile time, and -1 otherwise (in which case the vsetvl pass must
+   emit runtime computation).  */
+struct ime_vtype_req
+{
+  uint8_t sew;
+  vlmul_type mul_c;
+  uint8_t lmul;
+  uint8_t widen_w;
+  bool altfmt_a;
+  bool altfmt_b;
+  bool altfmt;
+  bool bs;
+  int8_t lambda_log2;
+
+  ime_vtype_req ()
+    : sew (0), mul_c (LMUL_RESERVED), lmul (0), widen_w (0),
+      altfmt_a (false), altfmt_b (false), altfmt (false), bs (false),
+      lambda_log2 (-1)
+  {}
+
+  bool operator== (const ime_vtype_req &o) const
+  {
+    return sew == o.sew && mul_c == o.mul_c && lmul == o.lmul
+	   && widen_w == o.widen_w && altfmt_a == o.altfmt_a
+	   && altfmt_b == o.altfmt_b && altfmt == o.altfmt && bs == o.bs
+	   && lambda_log2 == o.lambda_log2;
+  }
+  bool operator!= (const ime_vtype_req &o) const { return !(*this == o); }
+};
+
+/* Extract the IME vtype requirements for RINSN.  RINSN must have its
+   `requires_ime_vtype' attribute set to yes.  The returned record is
+   fully determined by RINSN's operand modes; see §C-Language Intrinsics
+   of the IME specification for the mapping rules.
+
+   The body of this helper is intentionally empty at this stage: no IME
+   instruction pattern yet sets `requires_ime_vtype=yes', so this code
+   path is unreachable from real compilations.  Each IME instruction
+   family added in later commits extends this function with the
+   derivation rules specific to that family.  */
+static ime_vtype_req
+riscv_extract_ime_requirements (rtx_insn *rinsn ATTRIBUTE_UNUSED)
+{
+  return ime_vtype_req ();
+}
+
 /* Go through all uses of INSN looking for a single use of register REG.
    Return true if we find
     - Uses in a non-RVV insn
@@ -921,6 +976,12 @@ private:
   insn_info *m_read_vl_insn;
   bool m_vl_used_by_non_rvv_insn;
 
+  /* IME state.  M_IME_REQUIRED is true when the instruction pattern has
+     `requires_ime_vtype=yes'; M_IME_REQ holds the concrete tuple in that
+     case.  Unused (zero-initialised) otherwise.  */
+  bool m_ime_required;
+  ime_vtype_req m_ime_req;
+
 public:
   vsetvl_info ()
     : m_insn (nullptr), m_bb (nullptr), m_avl (NULL_RTX), m_vl (NULL_RTX),
@@ -930,7 +991,7 @@ public:
       m_policy_demand (policy_demand_type::tail_mask_policy),
       m_avl_demand (avl_demand_type::avl), m_state (state_type::UNINITIALIZED),
       m_delete (false), m_change_vtype_only (false), m_read_vl_insn (nullptr),
-      m_vl_used_by_non_rvv_insn (false)
+      m_vl_used_by_non_rvv_insn (false), m_ime_required (false), m_ime_req ()
   {}
 
   vsetvl_info (insn_info *insn) : vsetvl_info () { parse_insn (insn); }
@@ -965,6 +1026,11 @@ public:
   uint8_t get_max_sew () const { return m_max_sew; }
   insn_info *get_read_vl_insn () const { return m_read_vl_insn; }
   bool vl_used_by_non_rvv_insn_p () const { return m_vl_used_by_non_rvv_insn; }
+
+  bool ime_required_p () const { return m_ime_required; }
+  const ime_vtype_req &get_ime_req () const { return m_ime_req; }
+  void set_ime_required (bool r) { m_ime_required = r; }
+  void set_ime_req (const ime_vtype_req &r) { m_ime_req = r; }
 
   bool has_imm_avl () const { return m_avl && CONST_INT_P (m_avl); }
   bool has_vlmax_avl () const { return vlmax_avl_p (m_avl); }
@@ -1109,6 +1175,11 @@ public:
     m_vlmul = ::get_vlmul (rinsn);
     m_ta = tail_agnostic_p (rinsn);
     m_ma = mask_agnostic_p (rinsn);
+    if (get_attr_requires_ime_vtype (rinsn) == REQUIRES_IME_VTYPE_YES)
+      {
+	m_ime_required = true;
+	m_ime_req = riscv_extract_ime_requirements (rinsn);
+      }
   }
 
   void parse_insn (insn_info *insn)
@@ -1168,6 +1239,12 @@ public:
       m_ratio = calculate_ratio (m_sew, m_vlmul);
     m_ta = tail_agnostic_p (insn->rtl ());
     m_ma = mask_agnostic_p (insn->rtl ());
+
+    if (get_attr_requires_ime_vtype (insn->rtl ()) == REQUIRES_IME_VTYPE_YES)
+      {
+	m_ime_required = true;
+	m_ime_req = riscv_extract_ime_requirements (insn->rtl ());
+      }
 
     /* If merge operand is undef value, we prefer agnostic.  */
     int merge_op_idx = get_attr_merge_op_idx (insn->rtl ());
@@ -1338,7 +1415,9 @@ public:
 	   && get_ma () == other.get_ma ()
 	   && get_avl_demand () == other.get_avl_demand ()
 	   && get_sew_lmul_demand () == other.get_sew_lmul_demand ()
-	   && get_policy_demand () == other.get_policy_demand ();
+	   && get_policy_demand () == other.get_policy_demand ()
+	   && ime_required_p () == other.ime_required_p ()
+	   && (!ime_required_p () || get_ime_req () == other.get_ime_req ());
   }
 
   void dump (FILE *file, const char *indent = "") const
@@ -1408,6 +1487,15 @@ public:
 	       get_read_vl_insn ()->uid ());
     if (vl_used_by_non_rvv_insn_p ())
       fprintf (file, "%suse_by_non_rvv_insn=true\n", indent);
+    if (ime_required_p ())
+      {
+	const ime_vtype_req &r = get_ime_req ();
+	fprintf (file,
+		 "%sIME: sew=%u mul_c=%s lmul=%u W=%u altfmt_a=%d altfmt_b=%d"
+		 " altfmt=%d bs=%d lambda_log2=%d\n",
+		 indent, r.sew, vlmul_to_str (r.mul_c), r.lmul, r.widen_w,
+		 r.altfmt_a, r.altfmt_b, r.altfmt, r.bs, (int) r.lambda_log2);
+      }
   }
 };
 
