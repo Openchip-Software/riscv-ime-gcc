@@ -714,6 +714,30 @@ static CONSTEXPR const rvv_arg_type_info ime_vss_args[]
      rvv_arg_type_info (RVV_BASE_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_lmul1_vector), rvv_arg_type_info_end};
 
+/* Args for the W=2 widening IME multiply-accumulate (vwmmacc.vv).  The
+   accumulator sits at SEW with MUL_C; the two inputs are SEW/2 and
+   LMUL=1 via ime_double_trunc_lmul1_vector.  Four variants cover the
+   four sign combinations; for same-sign cases the inputs inherit
+   signedness from the accumulator type index, for mixed-sign we force
+   each side.  */
+static CONSTEXPR const rvv_arg_type_info ime_wvss_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_su_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_us_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_signed_vector),
+     rvv_arg_type_info_end};
+
 /* A list of args for vector_type func (vector_type, vector_type, vector_type)
  * function.  */
 static CONSTEXPR const rvv_arg_type_info vqq_args[]
@@ -3307,6 +3331,34 @@ static CONSTEXPR const rvv_op_info u_ime_vss_ops
      rvv_arg_type_info (RVV_BASE_vector),
      ime_vss_args};
 
+/* Op-info structs for vwmmacc.vv (W=2) -- same-sign (ss, uu) and
+   mixed-sign (su, us).  Signed accumulator is mandated by the spec
+   for both _su and _us.  */
+
+static CONSTEXPR const rvv_op_info i_ime_wvss_ops
+  = {i_ops,
+     OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector),
+     ime_wvss_args};
+
+static CONSTEXPR const rvv_op_info u_ime_wvss_ops
+  = {u_ops,
+     OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector),
+     ime_wvss_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_wvss_ops
+  = {i_ops,
+     OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector),
+     ime_wvss_su_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_wvss_ops
+  = {i_ops,
+     OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector),
+     ime_wvss_us_args};
+
 static CONSTEXPR const rvv_op_info sf_vc_x_ops
   = {full_v_u_ops,					     /* Types */
      OP_TYPE_x,					     /* Suffix */
@@ -4385,9 +4437,70 @@ rvv_arg_type_info::get_scalar_float_type (vector_type_index type_idx) const
     return NULL_TREE;
 }
 
+/* Compute the vector_type_index for an IME widening input type, i.e.
+   a type with half the accumulator's SEW and LMUL=1.  We obtain it by
+   chaining two existing base-type lookups: DOUBLE_TRUNC (half SEW,
+   same SEW/LMUL ratio) followed by LMUL1 (same SEW, LMUL=1).  The
+   SIGNED / UNSIGNED variants first canonicalise the input signedness
+   via the SIGNED / UNSIGNED base types.  Returns NUM_VECTOR_TYPES if
+   any step of the chain fails.  */
+
+static vector_type_index
+ime_widening_input_idx (vector_type_index type_idx, rvv_base_type kind)
+{
+  if (type_idx == VECTOR_TYPE_INVALID)
+    return NUM_VECTOR_TYPES;
+
+  /* Step 1: canonicalise sign if this kind asks for a specific one.  */
+  vector_type_index canonical = type_idx;
+  if (kind == RVV_BASE_ime_double_trunc_lmul1_signed_vector)
+    canonical = function_types[type_idx].type_indexes[RVV_BASE_signed_vector];
+  else if (kind == RVV_BASE_ime_double_trunc_lmul1_unsigned_vector)
+    canonical = function_types[type_idx].type_indexes[RVV_BASE_unsigned_vector];
+  if (canonical == VECTOR_TYPE_INVALID)
+    return NUM_VECTOR_TYPES;
+
+  /* Step 2: halve the SEW (same SEW/LMUL ratio as the accumulator).  */
+  vector_type_index trunc
+    = function_types[canonical].type_indexes[RVV_BASE_double_trunc_vector];
+  if (trunc == VECTOR_TYPE_INVALID)
+    return NUM_VECTOR_TYPES;
+
+  /* Step 3: normalise to LMUL=1 while keeping the halved SEW.  */
+  vector_type_index result
+    = function_types[trunc].type_indexes[RVV_BASE_lmul1_vector];
+  if (result == VECTOR_TYPE_INVALID)
+    return NUM_VECTOR_TYPES;
+
+  return result;
+}
+
+/* Helper used from DEF_RVV_BASE_TYPE expansions in get_tree_type() for
+   the IME widening-input base types.  Returns the tree for the computed
+   vector type, or NULL_TREE if the chain cannot be resolved or the
+   target type is not registered for the current -march.  */
+
+static tree
+get_ime_widening_input_type (vector_type_index type_idx, rvv_base_type kind)
+{
+  vector_type_index idx = ime_widening_input_idx (type_idx, kind);
+  if (idx == NUM_VECTOR_TYPES)
+    return NULL_TREE;
+  return builtin_types[idx].vector;
+}
+
 vector_type_index
 rvv_arg_type_info::get_function_type_index (vector_type_index type_idx) const
 {
+  if (base_type == RVV_BASE_ime_double_trunc_lmul1_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul1_signed_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul1_unsigned_vector)
+    {
+      vector_type_index idx = ime_widening_input_idx (type_idx, base_type);
+      if (idx == NUM_VECTOR_TYPES || !builtin_types[idx].vector)
+	return NUM_VECTOR_TYPES;
+      return idx;
+    }
   tree type
     = builtin_types[function_types[type_idx].type_indexes[base_type]].vector;
   return type ? function_types[type_idx].type_indexes[base_type]

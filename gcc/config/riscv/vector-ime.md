@@ -22,8 +22,12 @@
 ;; transient-marinating-cake.md for the rollout order.
 
 (define_c_enum "unspec" [
-  UNSPEC_VMMACC_S   ;; Zvvmm vmmacc.vv, signed*signed   (altfmt_A=0, altfmt_B=0)
-  UNSPEC_VMMACC_U   ;; Zvvmm vmmacc.vv, unsigned*unsigned (altfmt_A=1, altfmt_B=1)
+  UNSPEC_VMMACC_S    ;; Zvvmm vmmacc.vv,  signed*signed    (altfmt_A=0, altfmt_B=0)
+  UNSPEC_VMMACC_U    ;; Zvvmm vmmacc.vv,  unsigned*unsigned (altfmt_A=1, altfmt_B=1)
+  UNSPEC_VWMMACC_S   ;; Zvvmm vwmmacc.vv, signed*signed    (W=2, altfmt_A=0, altfmt_B=0)
+  UNSPEC_VWMMACC_U   ;; Zvvmm vwmmacc.vv, unsigned*unsigned (W=2, altfmt_A=1, altfmt_B=1)
+  UNSPEC_VWMMACC_SU  ;; Zvvmm vwmmacc.vv, signed*unsigned  (W=2, altfmt_A=0, altfmt_B=1)
+  UNSPEC_VWMMACC_US  ;; Zvvmm vwmmacc.vv, unsigned*signed  (W=2, altfmt_A=1, altfmt_B=0)
 
   ;; Register-form vsetvl used to establish the full vtype value for IME
   ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
@@ -48,6 +52,38 @@
 
 (define_int_attr vmmacc_altfmt [(UNSPEC_VMMACC_S "ss")
 				(UNSPEC_VMMACC_U "uu")])
+
+(define_int_iterator VWMMACC_SUSUUS
+  [UNSPEC_VWMMACC_S UNSPEC_VWMMACC_U UNSPEC_VWMMACC_SU UNSPEC_VWMMACC_US])
+
+(define_int_attr vwmmacc_su_name [(UNSPEC_VWMMACC_S  "_s")
+				  (UNSPEC_VWMMACC_U  "_u")
+				  (UNSPEC_VWMMACC_SU "_su")
+				  (UNSPEC_VWMMACC_US "_us")])
+
+(define_int_attr vwmmacc_altfmt [(UNSPEC_VWMMACC_S  "ss")
+				 (UNSPEC_VWMMACC_U  "uu")
+				 (UNSPEC_VWMMACC_SU "su")
+				 (UNSPEC_VWMMACC_US "us")])
+
+;; Accumulator modes for the W=2 widening integer matrix
+;; multiply-accumulate (vwmmacc.vv).  The input modes are half the
+;; accumulator SEW at LMUL=1 (see VI_TRUNC_LMUL1 below).  Fractional
+;; accumulator LMULs are omitted for now; they correspond to
+;; MUL_C < 1 configurations that only arise on unusual (VLEN, lambda)
+;; targets.
+(define_mode_iterator VWMMACC_ACC [RVVM8HI RVVM4HI RVVM2HI RVVM1HI
+				   RVVM8SI RVVM4SI RVVM2SI RVVM1SI
+				   RVVM8DI RVVM4DI RVVM2DI RVVM1DI])
+
+;; Map each VWMMACC_ACC accumulator mode to the LMUL=1 form at half its
+;; SEW: the mode used for vs1 / vs2 operands.
+(define_mode_attr VI_TRUNC_LMUL1 [(RVVM8HI "RVVM1QI") (RVVM4HI "RVVM1QI")
+				  (RVVM2HI "RVVM1QI") (RVVM1HI "RVVM1QI")
+				  (RVVM8SI "RVVM1HI") (RVVM4SI "RVVM1HI")
+				  (RVVM2SI "RVVM1HI") (RVVM1SI "RVVM1HI")
+				  (RVVM8DI "RVVM1SI") (RVVM4DI "RVVM1SI")
+				  (RVVM2DI "RVVM1SI") (RVVM1DI "RVVM1SI")])
 
 ;; ---------------------------------------------------------------------------
 ;; Register-form vsetvl for IME instructions
@@ -135,4 +171,34 @@
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmm - Vector integer matrix multiply-accumulate, W=2 (vwmmacc.vv)
+;; ---------------------------------------------------------------------------
+;;
+;; vwmmacc.vv vd, vs1, vs2 -- accumulator at SEW, inputs at SEW/2 and LMUL=1
+;; (independent of MUL_C).  Four sign combinations (ss / uu / su / us) share
+;; the same assembly mnemonic; the distinction lives in vtype altfmt_A and
+;; altfmt_B, which the vsetvl pass reads from the ime_altfmt attribute.
+(define_insn "@pred_vwmmacc<vwmmacc_su_name><mode>"
+  [(set (match_operand:VWMMACC_ACC 0 "register_operand"        "=vr")
+	(if_then_else:VWMMACC_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VWMMACC_ACC
+	    [(match_operand:VWMMACC_ACC 1 "register_operand"      "  0")
+	     (match_operand:<VI_TRUNC_LMUL1> 2 "register_operand" " vr")
+	     (match_operand:<VI_TRUNC_LMUL1> 3 "register_operand" " vr")]
+	    VWMMACC_SUSUUS)
+	  (match_dup 1)))]
+  "TARGET_ZVVMM"
+  "vwmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "<vwmmacc_altfmt>")
    (set_attr "mode" "<MODE>")])
