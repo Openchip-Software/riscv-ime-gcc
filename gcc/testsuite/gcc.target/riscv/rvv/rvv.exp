@@ -39,6 +39,8 @@ dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/*.\[cS\]]] \
 	"" $CFLAGS
 dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/base/*.\[cS\]]] \
 	"" $CFLAGS
+dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/zvmma/*.\[cS\]]] \
+	"" $CFLAGS
 dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/xsfvector/*.\[cS\]]] \
 	"" $CFLAGS
 dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/xtheadvector/*.\[cS\]]] \
