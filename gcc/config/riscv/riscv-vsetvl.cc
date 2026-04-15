@@ -980,12 +980,25 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
       }
   gcc_assert (acc_mode != VOIDmode);
   r.sew = GET_MODE_UNIT_BITSIZE (acc_mode);
-  r.mul_c = get_vlmul (acc_mode);
+
+  /* Tile load/store instructions (vmtl.v, vmts.v, vmttl.v, vmtts.v)
+     move data between memory and a plain vector register group; there
+     is no accumulator, so the lambda constraint is computed with a
+     notional MUL_C=1.  The LMUL of the data vector is carried through
+     the vtype LMUL field separately, not folded into lambda.
+     The mmacc family uses the data register's LMUL as MUL_C because
+     its vd really is the accumulator register group.  */
+  enum attr_type t = get_attr_type (rinsn);
+  bool is_tile = (t == TYPE_VLDS || t == TYPE_VSTS);
+  if (is_tile)
+    r.mul_c = riscv_vector::LMUL_1;
+  else
+    r.mul_c = get_vlmul (acc_mode);
 
   /* For the mmacc family operand 2 is vs1 and may have a different
      LMUL (input LMUL) and/or a narrower SEW (widening variants).
-     For tile load/store the data and address-stride operands have
-     the same element width, so fall back to the accumulator mode.  */
+     For tile load/store the stride operand is a scalar register, so
+     fall back to the data-vector mode.  */
   machine_mode in_mode = acc_mode;
   if (recog_data.n_operands > 2
       && REG_P (recog_data.operand[2])

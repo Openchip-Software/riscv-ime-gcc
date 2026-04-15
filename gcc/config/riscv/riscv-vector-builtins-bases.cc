@@ -2881,6 +2881,17 @@ public:
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
 
+  /* Unmasked tile loads return a vector whose LMUL cannot be
+     inferred from the scalar pointer / stride argument types, so
+     different LMUL variants cannot coexist as overloads of the
+     same short name.  Disable overloaded-form registration in
+     this case (matching the loadstore shape's treatment of
+     non-masked plain loads).  */
+  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  {
+    return pred != PRED_TYPE_none;
+  }
+
   unsigned int call_properties (const function_instance &) const override
   {
     return CP_READ_MEMORY;
@@ -2932,6 +2943,11 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+
+  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  {
+    return pred != PRED_TYPE_none;
+  }
 
   unsigned int call_properties (const function_instance &) const override
   {
