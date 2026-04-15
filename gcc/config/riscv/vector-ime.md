@@ -37,6 +37,8 @@
   UNSPEC_V8WMMACC_SU ;; Zvvmm v8wmmacc.vv, signed*unsigned (W=8, altfmt_A=0, altfmt_B=1)
   UNSPEC_V8WMMACC_US ;; Zvvmm v8wmmacc.vv, unsigned*signed (W=8, altfmt_A=1, altfmt_B=0)
 
+  UNSPEC_VMTL        ;; Zvvmtls order-preserving tile load (vmtl.v)
+
   ;; Register-form vsetvl used to establish the full vtype value for IME
   ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
   ;; standard SEW/LMUL/ta/ma).  A plain vsetvli/vsetivli cannot encode these
@@ -136,6 +138,10 @@
 
 (define_mode_attr VI_OCT_TRUNC_LMUL1 [(RVVM8DI "RVVM1QI") (RVVM4DI "RVVM1QI")
 				      (RVVM2DI "RVVM1QI") (RVVM1DI "RVVM1QI")])
+
+;; Integer modes at LMUL=1 for the tile load/store patterns.  The MVP
+;; only ships LMUL=1 variants; larger LMULs follow.
+(define_mode_iterator VI_LMUL1 [RVVM1QI RVVM1HI RVVM1SI RVVM1DI])
 
 ;; ---------------------------------------------------------------------------
 ;; Register-form vsetvl for IME instructions
@@ -291,6 +297,43 @@
 ;; v8wmmacc.vv vd, vs1, vs2 -- accumulator at SEW (DI only), inputs at
 ;; SEW/8 (QI) and LMUL=1.  Four sign combinations; altfmt_A / altfmt_B
 ;; encode the per-side signedness.
+;; ---------------------------------------------------------------------------
+;; Zvvmtls - Order-preserving tile load (vmtl.v), MVP
+;; ---------------------------------------------------------------------------
+;;
+;; vmtl.v vd, (rs1), rs2 -- loads a 2D matrix tile into the vector
+;; register group starting at vd.  rs1 is the base address, rs2 is the
+;; leading dimension in ELEMENTS (not bytes).  SEW, LMUL, lambda, and
+;; ta/ma come from vtype; this MVP pattern covers LMUL=1 only and the
+;; default (dynamic-lambda) form without the immediate Lλ override.
+;;
+;; Operand 3 is a memory_operand representing the base "(rs1)" so the
+;; RTL aliasing framework knows this is a memory read.  Operand 4 is
+;; the element-count stride delivered to rs2.
+(define_insn "@pred_vmtl<mode>"
+  [(set (match_operand:VI_LMUL1 0 "register_operand"           "=vr")
+	(if_then_else:VI_LMUL1
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1
+	    [(match_operand:VI_LMUL1 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTL)
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4"
+  [(set_attr "type" "vlds")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "mode" "<MODE>")])
+
 (define_insn "@pred_v8wmmacc<v8wmmacc_su_name><mode>"
   [(set (match_operand:V8WMMACC_ACC 0 "register_operand"        "=vr")
 	(if_then_else:V8WMMACC_ACC

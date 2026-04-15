@@ -367,6 +367,7 @@ extern const function_base *const v8wmmacc_s;
 extern const function_base *const v8wmmacc_u;
 extern const function_base *const v8wmmacc_su;
 extern const function_base *const v8wmmacc_us;
+extern const function_base *const vmtl;
 }
 
 } // end namespace riscv_vector

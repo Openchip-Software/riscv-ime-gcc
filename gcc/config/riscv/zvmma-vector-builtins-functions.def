@@ -61,4 +61,13 @@ DEF_RVV_FUNCTION (v8wmmacc_su, ime_mmacc, none_tu_preds, i_su_ime_8wvss_ops)
 DEF_RVV_FUNCTION (v8wmmacc_us, ime_mmacc, none_tu_preds, i_us_ime_8wvss_ops)
 #undef REQUIRED_EXTENSIONS
 
+/* Zvvmtls -- Order-preserving tile load (vmtl.v), MVP.  LMUL=1 only,
+   unmasked, dynamic lambda from vtype; larger LMULs, the immediate
+   Lλ variants, masked variants, and the companion vmts.v store
+   follow in separate commits.  */
+#define REQUIRED_EXTENSIONS ZVVMTLS_EXT
+DEF_RVV_FUNCTION (vmtl, ime_tile_load, none_preds,
+		  iu_m1_v_scalar_const_ptr_ptrdiff_ops)
+#undef REQUIRED_EXTENSIONS
+
 #undef DEF_RVV_FUNCTION

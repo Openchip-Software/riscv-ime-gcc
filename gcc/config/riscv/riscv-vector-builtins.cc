@@ -3419,6 +3419,25 @@ static CONSTEXPR const rvv_op_info i_us_ime_qwvss_ops
   = {i_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_args};
 
+/* Type set used by the IME tile load/store MVP: all signed and
+   unsigned integer vector types at LMUL=1.  Larger LMULs follow in a
+   separate commit.  */
+static const rvv_type_info iu_m1_ops[]
+  = {{VECTOR_TYPE_vint8m1_t, 0},  {VECTOR_TYPE_vint16m1_t, 0},
+     {VECTOR_TYPE_vint32m1_t, 0}, {VECTOR_TYPE_vint64m1_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint8m1_t, 0}, {VECTOR_TYPE_vuint16m1_t, 0},
+     {VECTOR_TYPE_vuint32m1_t, 0},
+     {VECTOR_TYPE_vuint64m1_t, RVV_REQUIRE_ELEN_64},
+     {NUM_VECTOR_TYPES, 0}};
+
+/* Op-info for vmtl.v tile load: (const T *base, ptrdiff_t ld) -> vector.
+   The ld operand is the leading dimension measured in elements.  */
+static CONSTEXPR const rvv_op_info iu_m1_v_scalar_const_ptr_ptrdiff_ops
+  = {iu_m1_ops,
+     OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_vector),
+     scalar_const_ptr_ptrdiff_args};
+
 /* Op-info structs for v8wmmacc.vv (W=8).  */
 
 static CONSTEXPR const rvv_op_info i_ime_8wvss_ops
