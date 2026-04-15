@@ -2829,6 +2829,46 @@ static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_U>  vwmmacc_u_obj;
 static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_SU> vwmmacc_su_obj;
 static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_US> vwmmacc_us_obj;
 
+/* IME vector widening integer matrix multiply-accumulate (W=4).  */
+template<int UNSPEC>
+class vqwmmacc_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vqwmmacc (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_S>  vqwmmacc_s_obj;
+static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_U>  vqwmmacc_u_obj;
+static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU> vqwmmacc_su_obj;
+static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_US> vqwmmacc_us_obj;
+
+/* IME vector widening integer matrix multiply-accumulate (W=8).  */
+template<int UNSPEC>
+class v8wmmacc_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_v8wmmacc (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_S>  v8wmmacc_s_obj;
+static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_U>  v8wmmacc_u_obj;
+static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU> v8wmmacc_su_obj;
+static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_US> v8wmmacc_us_obj;
+
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
 #define BASE(NAME) \
@@ -3163,4 +3203,12 @@ BASE (vwmmacc_s)
 BASE (vwmmacc_u)
 BASE (vwmmacc_su)
 BASE (vwmmacc_us)
+BASE (vqwmmacc_s)
+BASE (vqwmmacc_u)
+BASE (vqwmmacc_su)
+BASE (vqwmmacc_us)
+BASE (v8wmmacc_s)
+BASE (v8wmmacc_u)
+BASE (v8wmmacc_su)
+BASE (v8wmmacc_us)
 } // end namespace riscv_vector

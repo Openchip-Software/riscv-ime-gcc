@@ -1472,6 +1472,32 @@ struct ime_mmacc_def : public build_base
 	base = "vwmmacc";
 	sign_suffix = "_us";
       }
+    else if (strcmp (internal, "vqwmmacc_s") == 0
+	     || strcmp (internal, "vqwmmacc_u") == 0)
+      base = "vqwmmacc";
+    else if (strcmp (internal, "vqwmmacc_su") == 0)
+      {
+	base = "vqwmmacc";
+	sign_suffix = "_su";
+      }
+    else if (strcmp (internal, "vqwmmacc_us") == 0)
+      {
+	base = "vqwmmacc";
+	sign_suffix = "_us";
+      }
+    else if (strcmp (internal, "v8wmmacc_s") == 0
+	     || strcmp (internal, "v8wmmacc_u") == 0)
+      base = "v8wmmacc";
+    else if (strcmp (internal, "v8wmmacc_su") == 0)
+      {
+	base = "v8wmmacc";
+	sign_suffix = "_su";
+      }
+    else if (strcmp (internal, "v8wmmacc_us") == 0)
+      {
+	base = "v8wmmacc";
+	sign_suffix = "_us";
+      }
     else
       base = internal;
 

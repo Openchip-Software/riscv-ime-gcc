@@ -773,6 +773,18 @@ DEF_RVV_BASE_TYPE (ime_double_trunc_lmul1_signed_vector,
 		   get_ime_widening_input_type (type_idx, base_type))
 DEF_RVV_BASE_TYPE (ime_double_trunc_lmul1_unsigned_vector,
 		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul1_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul1_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul1_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul1_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul1_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul1_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
 
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
