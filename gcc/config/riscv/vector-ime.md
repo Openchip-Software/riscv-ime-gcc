@@ -49,19 +49,24 @@
 ;; The existing @vsetvl<mode> / @vsetvl_discard_result<mode> patterns emit
 ;; the immediate form.  This pattern adds the register form.
 ;;
-;; Operands:
-;;   0: destination VL register
-;;   1: AVL -- register or zero for VLMAX
-;;   2: full vtype value in a register (caller builds via constant
-;;      synthesis, or via runtime lambda computation once §6 lands)
+;; Post-reload constraint: the vsetvl pass creates IME setup insns
+;; post-reload and cannot allocate fresh pseudo-registers.  We work
+;; around this by taking the pre-computed full vtype value as a
+;; const_int operand and reusing the destination VL register (operand
+;; 0) as scratch for the "li" that loads the constant.  The vsetvl
+;; instruction then reads operand 0 as its vtype source and writes the
+;; resulting VL back into operand 0, which is fine because the incoming
+;; const_int is dead once we have built vtype.
 ;;
-;; The get_vsetvl_pat() dispatch in riscv-vsetvl.cc (added in a follow-up
-;; commit) routes to this pattern when vsetvl_info::m_ime_demand ==
-;; ime_vtype.
+;; Operands:
+;;   0: destination VL register (also used as the "li" scratch)
+;;   1: AVL -- register or zero for VLMAX
+;;   2: full vtype value as a const_int (synthesised by the vsetvl
+;;      pass from the static sew/vlmul/ta/ma/IME tuple)
 (define_insn "@vsetvl_ime<mode>"
-  [(set (match_operand:P 0 "register_operand"             "=r")
+  [(set (match_operand:P 0 "register_operand"             "=&r")
 	(unspec:P [(match_operand:P 1 "pmode_reg_or_0_operand" "rJ")
-		   (match_operand:P 2 "register_operand"   " r")]
+		   (match_operand 2 "const_int_operand"    " i")]
 		  UNSPEC_VSETVL_IME))
    (set (reg:SI VL_REGNUM)
 	(unspec:SI [(match_dup 1)
@@ -69,22 +74,7 @@
    (set (reg:SI VTYPE_REGNUM)
 	(unspec:SI [(match_dup 2)] UNSPEC_VSETVL_IME))]
   "TARGET_VECTOR"
-  "vsetvl\t%0,%z1,%2"
-  [(set_attr "type" "vsetvl")
-   (set_attr "mode" "<MODE>")])
-
-;; Variant that discards the VL destination (writes x0).  Used when the
-;; vsetvl pass only needs to establish vtype and the VL value is not
-;; consumed by any downstream instruction.
-(define_insn "@vsetvl_ime_discard_result<mode>"
-  [(set (reg:SI VL_REGNUM)
-	(unspec:SI [(match_operand:P 0 "pmode_reg_or_0_operand" "rJ")
-		    (match_operand:P 1 "register_operand"   " r")]
-		   UNSPEC_VSETVL_IME))
-   (set (reg:SI VTYPE_REGNUM)
-	(unspec:SI [(match_dup 1)] UNSPEC_VSETVL_IME))]
-  "TARGET_VECTOR"
-  "vsetvl\tzero,%z0,%1"
+  "li\t%0,%2\n\tvsetvl\t%0,%z1,%0"
   [(set_attr "type" "vsetvl")
    (set_attr "mode" "<MODE>")])
 
