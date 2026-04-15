@@ -61,4 +61,25 @@ DEF_RVV_FUNCTION (v8wmmacc_su, ime_mmacc, none_tu_preds, i_su_ime_8wvss_ops)
 DEF_RVV_FUNCTION (v8wmmacc_us, ime_mmacc, none_tu_preds, i_us_ime_8wvss_ops)
 #undef REQUIRED_EXTENSIONS
 
+/* Zvvmtls -- Order-preserving tile load (vmtl.v) and store (vmts.v),
+   MVP.  LMUL=1 only, unmasked, dynamic lambda from vtype; larger
+   LMULs, the immediate Lλ variants, and masked variants follow.  */
+#define REQUIRED_EXTENSIONS ZVVMTLS_EXT
+DEF_RVV_FUNCTION (vmtl, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+#undef REQUIRED_EXTENSIONS
+
+/* Zvvmttls -- Transposing tile load (vmttl.v) and store (vmtts.v),
+   MVP.  Same scope as vmtl/vmts.  Sub-byte element types (OFP4,
+   Int4) are excluded by spec: the transposition cannot be done at
+   sub-byte granularity.  */
+#define REQUIRED_EXTENSIONS ZVVMTTLS_EXT
+DEF_RVV_FUNCTION (vmttl, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+#undef REQUIRED_EXTENSIONS
+
 #undef DEF_RVV_FUNCTION

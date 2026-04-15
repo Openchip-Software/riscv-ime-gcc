@@ -2869,6 +2869,123 @@ static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_U>  v8wmmacc_u_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU> v8wmmacc_su_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_US> v8wmmacc_us_obj;
 
+/* Zvvmtls order-preserving tile load (vmtl.v), MVP: LMUL=1, unmasked,
+   dynamic lambda (no immediate Lλ override).  The intrinsic signature
+   is (const T *base, ptrdiff_t ld, size_t vl) -> vector, where ld is
+   the leading dimension in ELEMENTS.  */
+class vmtl_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  /* Unmasked tile loads return a vector whose LMUL cannot be
+     inferred from the scalar pointer / stride argument types, so
+     different LMUL variants cannot coexist as overloads of the
+     same short name.  Disable overloaded-form registration in
+     this case (matching the loadstore shape's treatment of
+     non-masked plain loads).  */
+  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  {
+    return pred != PRED_TYPE_none;
+  }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_READ_MEMORY;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (code_for_pred_vmtl (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmtl_ime vmtl_obj;
+
+/* Zvvmtls order-preserving tile store (vmts.v), MVP: LMUL=1,
+   unmasked, dynamic lambda.  Intrinsic signature is
+   (T *base, ptrdiff_t ld, vector_t data, size_t vl) -> void.  */
+class vmts_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_WRITE_MEMORY;
+  }
+
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return true;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (code_for_pred_vmts (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmts_ime vmts_obj;
+
+/* Zvvmttls transposing tile load (vmttl.v), MVP.  Same shape as
+   vmtl_ime; dispatches to @pred_vmttl<mode>.  */
+class vmttl_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  {
+    return pred != PRED_TYPE_none;
+  }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_READ_MEMORY;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (code_for_pred_vmttl (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmttl_ime vmttl_obj;
+
+/* Zvvmttls transposing tile store (vmtts.v), MVP.  Same shape as
+   vmts_ime; dispatches to @pred_vmtts<mode>.  */
+class vmtts_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_WRITE_MEMORY;
+  }
+
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return true;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (code_for_pred_vmtts (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmtts_ime vmtts_obj;
+
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
 #define BASE(NAME) \
@@ -3211,4 +3328,8 @@ BASE (v8wmmacc_s)
 BASE (v8wmmacc_u)
 BASE (v8wmmacc_su)
 BASE (v8wmmacc_us)
+BASE (vmtl)
+BASE (vmts)
+BASE (vmttl)
+BASE (vmtts)
 } // end namespace riscv_vector

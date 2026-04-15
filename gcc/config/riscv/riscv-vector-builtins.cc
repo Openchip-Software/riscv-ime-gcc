@@ -3419,6 +3419,49 @@ static CONSTEXPR const rvv_op_info i_us_ime_qwvss_ops
   = {i_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_args};
 
+/* Type set used by the IME tile load/store: all signed and unsigned
+   integer vector types at LMUL in {1, 2, 4, 8}.  Fractional LMULs
+   (mf8/mf4/mf2) are excluded -- the IME vtype lambda geometry only
+   admits whole-LMUL register groups for tile transfer.  */
+static const rvv_type_info iu_lmul_ge1_ops[]
+  = {{VECTOR_TYPE_vint8m1_t, 0},   {VECTOR_TYPE_vint8m2_t, 0},
+     {VECTOR_TYPE_vint8m4_t, 0},   {VECTOR_TYPE_vint8m8_t, 0},
+     {VECTOR_TYPE_vint16m1_t, 0},  {VECTOR_TYPE_vint16m2_t, 0},
+     {VECTOR_TYPE_vint16m4_t, 0},  {VECTOR_TYPE_vint16m8_t, 0},
+     {VECTOR_TYPE_vint32m1_t, 0},  {VECTOR_TYPE_vint32m2_t, 0},
+     {VECTOR_TYPE_vint32m4_t, 0},  {VECTOR_TYPE_vint32m8_t, 0},
+     {VECTOR_TYPE_vint64m1_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vint64m2_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vint64m4_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vint64m8_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint8m1_t, 0},  {VECTOR_TYPE_vuint8m2_t, 0},
+     {VECTOR_TYPE_vuint8m4_t, 0},  {VECTOR_TYPE_vuint8m8_t, 0},
+     {VECTOR_TYPE_vuint16m1_t, 0}, {VECTOR_TYPE_vuint16m2_t, 0},
+     {VECTOR_TYPE_vuint16m4_t, 0}, {VECTOR_TYPE_vuint16m8_t, 0},
+     {VECTOR_TYPE_vuint32m1_t, 0}, {VECTOR_TYPE_vuint32m2_t, 0},
+     {VECTOR_TYPE_vuint32m4_t, 0}, {VECTOR_TYPE_vuint32m8_t, 0},
+     {VECTOR_TYPE_vuint64m1_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint64m2_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint64m4_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint64m8_t, RVV_REQUIRE_ELEN_64},
+     {NUM_VECTOR_TYPES, 0}};
+
+/* Op-info for vmtl.v tile load: (const T *base, ptrdiff_t ld) -> vector.
+   The ld operand is the leading dimension measured in elements.  */
+static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops
+  = {iu_lmul_ge1_ops,
+     OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_vector),
+     scalar_const_ptr_ptrdiff_args};
+
+/* Op-info for vmts.v tile store: (T *base, ptrdiff_t ld, vector_t) -> void.
+   The ld operand is the leading dimension measured in elements.  */
+static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops
+  = {iu_lmul_ge1_ops,
+     OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_void),
+     scalar_ptr_ptrdiff_args};
+
 /* Op-info structs for v8wmmacc.vv (W=8).  */
 
 static CONSTEXPR const rvv_op_info i_ime_8wvss_ops

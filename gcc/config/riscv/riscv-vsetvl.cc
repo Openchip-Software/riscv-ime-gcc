@@ -965,15 +965,45 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
      the original extract_insn_cached(rinsn) and us.  Re-extract.  */
   extract_insn_cached (rinsn);
 
-  /* Accumulator type (operand 0) determines SEW and MUL_C.  */
-  machine_mode acc_mode = GET_MODE (recog_data.operand[0]);
+  /* The data-vector mode tells us SEW and (for mmacc) MUL_C.  For
+     load-shaped patterns (mmacc, vmtl) operand 0 is the vector
+     destination.  For store-shaped patterns (vmts) operand 0 is a
+     memory_operand -- fall back to the first vector register
+     operand instead.  */
+  machine_mode acc_mode = VOIDmode;
+  for (int i = 0; i < recog_data.n_operands; i++)
+    if (REG_P (recog_data.operand[i])
+	&& VECTOR_MODE_P (GET_MODE (recog_data.operand[i])))
+      {
+	acc_mode = GET_MODE (recog_data.operand[i]);
+	break;
+      }
+  gcc_assert (acc_mode != VOIDmode);
   r.sew = GET_MODE_UNIT_BITSIZE (acc_mode);
-  r.mul_c = get_vlmul (acc_mode);
 
-  /* Input type (operand 2 = vs1) determines the input LMUL.  For
-     widening variants this also determines EEW = SEW / W; for W=1 it
-     matches the accumulator SEW.  */
-  machine_mode in_mode = GET_MODE (recog_data.operand[2]);
+  /* Tile load/store instructions (vmtl.v, vmts.v, vmttl.v, vmtts.v)
+     move data between memory and a plain vector register group; there
+     is no accumulator, so the lambda constraint is computed with a
+     notional MUL_C=1.  The LMUL of the data vector is carried through
+     the vtype LMUL field separately, not folded into lambda.
+     The mmacc family uses the data register's LMUL as MUL_C because
+     its vd really is the accumulator register group.  */
+  enum attr_type t = get_attr_type (rinsn);
+  bool is_tile = (t == TYPE_VLDS || t == TYPE_VSTS);
+  if (is_tile)
+    r.mul_c = riscv_vector::LMUL_1;
+  else
+    r.mul_c = get_vlmul (acc_mode);
+
+  /* For the mmacc family operand 2 is vs1 and may have a different
+     LMUL (input LMUL) and/or a narrower SEW (widening variants).
+     For tile load/store the stride operand is a scalar register, so
+     fall back to the data-vector mode.  */
+  machine_mode in_mode = acc_mode;
+  if (recog_data.n_operands > 2
+      && REG_P (recog_data.operand[2])
+      && VECTOR_MODE_P (GET_MODE (recog_data.operand[2])))
+    in_mode = GET_MODE (recog_data.operand[2]);
   uint8_t in_sew = GET_MODE_UNIT_BITSIZE (in_mode);
   r.lmul = get_vlmul (in_mode);
   gcc_assert (r.sew > 0 && in_sew > 0 && r.sew % in_sew == 0);
