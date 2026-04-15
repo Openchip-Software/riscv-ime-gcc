@@ -1408,6 +1408,35 @@ struct sf_vcix_def : public build_base
    and _L{N} suffixes will be added as their corresponding intrinsic
    families land.  */
 
+/* Shape for IME tile load/store intrinsics (vmtl.v, vmts.v, vmttl.v,
+   vmtts.v).  Names follow:
+
+     __riscv_{base}_v_{type}[_Lλ][_m]
+
+   The SEW is NOT embedded in the base name (unlike the standard RVV
+   loadstore shape which produces e.g. vle16_v_i16m1).  This MVP
+   version handles the unmasked / non-Lλ case only; the _Lλ and _m
+   slots land with follow-up extensions.  */
+struct ime_tile_load_def : public build_base
+{
+  char *get_name (function_builder &b, const function_instance &instance,
+		  bool overloaded_p) const override
+  {
+    if (overloaded_p && !instance.base->can_be_overloaded_p (instance.pred))
+      return nullptr;
+
+    b.append_base_name (instance.base_name);
+    /* "_v" operand suffix.  */
+    b.append_name (operand_suffixes[instance.op_info->op]);
+    if (!overloaded_p)
+      b.append_name (type_suffixes[instance.type.index].vector);
+    /* TODO: append "_Lλ" (tile load/store immediate lambda) and the
+       canonical "_m" mask suffix when those variants land.  */
+    b.append_name (predication_suffixes[instance.pred]);
+    return b.finish_name ();
+  }
+};
+
 struct ime_mmacc_def : public build_base
 {
   /* IME intrinsics derive their vs1/vs2 operand types by chaining
@@ -1607,4 +1636,5 @@ SHAPE (sf_vfnrclip, sf_vfnrclip)
 SHAPE(sf_vcix_se, sf_vcix_se)
 SHAPE(sf_vcix, sf_vcix)
 SHAPE (ime_mmacc, ime_mmacc)
+SHAPE (ime_tile_load, ime_tile_load)
 } // end namespace riscv_vector

@@ -2869,6 +2869,31 @@ static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_U>  v8wmmacc_u_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU> v8wmmacc_su_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_US> v8wmmacc_us_obj;
 
+/* Zvvmtls order-preserving tile load (vmtl.v), MVP: LMUL=1, unmasked,
+   dynamic lambda (no immediate Lλ override).  The intrinsic signature
+   is (const T *base, ptrdiff_t ld, size_t vl) -> vector, where ld is
+   the leading dimension in ELEMENTS.  */
+class vmtl_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_READ_MEMORY;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (code_for_pred_vmtl (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmtl_ime vmtl_obj;
+
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
 #define BASE(NAME) \
@@ -3211,4 +3236,5 @@ BASE (v8wmmacc_s)
 BASE (v8wmmacc_u)
 BASE (v8wmmacc_su)
 BASE (v8wmmacc_us)
+BASE (vmtl)
 } // end namespace riscv_vector
