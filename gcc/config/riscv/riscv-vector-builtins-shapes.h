@@ -64,6 +64,8 @@ extern const function_shape *const sf_vqmacc;
 extern const function_shape *const sf_vfnrclip;
 extern const function_shape *const sf_vcix_se;
 extern const function_shape *const sf_vcix;
+/* IME (Zvmma) shapes.  */
+extern const function_shape *const ime_mmacc;
 }
 
 } // end namespace riscv_vector

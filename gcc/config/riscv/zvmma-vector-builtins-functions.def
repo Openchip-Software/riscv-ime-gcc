@@ -25,11 +25,40 @@ along with GCC; see the file COPYING3. If not see
    default LMUL=1 variant.  The accumulator type suffix on the generated
    name encodes both SEW and MUL_C, e.g. __riscv_vmmacc_vv_i32m2 is the
    signed variant with a 2-register accumulator.  vs1/vs2 always use the
-   LMUL=1 form of the same SEW.  The _lm{N} variants for LMUL > 1, plus
-   the _su / _us mixed-sign variants, will be added in follow-ups.  */
+   LMUL=1 form of the same SEW.
+
+   Signed and unsigned share the user-visible base name "vmmacc"; the
+   ime_mmacc shape class generates "__riscv_vmmacc_vv_i*" from the
+   signed internal base (vmmacc_s) and "__riscv_vmmacc_vv_u*" from the
+   unsigned one (vmmacc_u).  The two internal bases route to different
+   UNSPECs at RTL level so the vsetvl pass can set altfmt_A/altfmt_B
+   correctly in vtype.  The _lm{N} variants for LMUL > 1 and the
+   _su / _us mixed-sign variants will be added in follow-ups.  */
 #define REQUIRED_EXTENSIONS ZVVMM_EXT
-DEF_RVV_FUNCTION (vmmacc, no_mask_policy, none_tu_preds, i_ime_vss_ops)
-DEF_RVV_FUNCTION (vmmacc, no_mask_policy, none_tu_preds, u_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_s,   ime_mmacc, none_tu_preds, i_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_u,   ime_mmacc, none_tu_preds, u_ime_vss_ops)
+/* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2 LMUL=1.
+   Four sign combinations.  Mixed-sign variants share the signed
+   accumulator ops (i_ops) since the spec mandates a signed
+   accumulator; the _su / _us suffixes on the generated name come
+   from the ime_mmacc shape class decoding the internal base
+   name.  */
+DEF_RVV_FUNCTION (vwmmacc_s,  ime_mmacc, none_tu_preds, i_ime_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_u,  ime_mmacc, none_tu_preds, u_ime_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_su, ime_mmacc, none_tu_preds, i_su_ime_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_us, ime_mmacc, none_tu_preds, i_us_ime_wvss_ops)
+/* vqwmmacc.vv (W=4): accumulator SEW, inputs SEW/4 LMUL=1.  Only
+   SI and DI accumulators have a valid quad-truncated integer input
+   type.  */
+DEF_RVV_FUNCTION (vqwmmacc_s,  ime_mmacc, none_tu_preds, i_ime_qwvss_ops)
+DEF_RVV_FUNCTION (vqwmmacc_u,  ime_mmacc, none_tu_preds, u_ime_qwvss_ops)
+DEF_RVV_FUNCTION (vqwmmacc_su, ime_mmacc, none_tu_preds, i_su_ime_qwvss_ops)
+DEF_RVV_FUNCTION (vqwmmacc_us, ime_mmacc, none_tu_preds, i_us_ime_qwvss_ops)
+/* v8wmmacc.vv (W=8): accumulator SEW (DI only), inputs SEW/8 LMUL=1.  */
+DEF_RVV_FUNCTION (v8wmmacc_s,  ime_mmacc, none_tu_preds, i_ime_8wvss_ops)
+DEF_RVV_FUNCTION (v8wmmacc_u,  ime_mmacc, none_tu_preds, u_ime_8wvss_ops)
+DEF_RVV_FUNCTION (v8wmmacc_su, ime_mmacc, none_tu_preds, i_su_ime_8wvss_ops)
+DEF_RVV_FUNCTION (v8wmmacc_us, ime_mmacc, none_tu_preds, i_us_ime_8wvss_ops)
 #undef REQUIRED_EXTENSIONS
 
 #undef DEF_RVV_FUNCTION
