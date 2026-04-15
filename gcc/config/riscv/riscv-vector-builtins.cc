@@ -738,6 +738,48 @@ static CONSTEXPR const rvv_arg_type_info ime_wvss_us_args[]
      rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_signed_vector),
      rvv_arg_type_info_end};
 
+/* Args for the W=4 widening IME multiply-accumulate (vqwmmacc.vv).
+   The accumulator is at SEW with MUL_C; inputs are SEW/4 and LMUL=1
+   (ime_quad_trunc_lmul1_*_vector).  */
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_su_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_us_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_signed_vector),
+     rvv_arg_type_info_end};
+
+/* Args for the W=8 widening IME multiply-accumulate (v8wmmacc.vv).
+   The accumulator is at SEW with MUL_C; inputs are SEW/8 and LMUL=1
+   (ime_oct_trunc_lmul1_*_vector).  */
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_su_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_signed_vector),
+     rvv_arg_type_info_end};
+
 /* A list of args for vector_type func (vector_type, vector_type, vector_type)
  * function.  */
 static CONSTEXPR const rvv_arg_type_info vqq_args[]
@@ -3359,6 +3401,42 @@ static CONSTEXPR const rvv_op_info i_us_ime_wvss_ops
      rvv_arg_type_info (RVV_BASE_vector),
      ime_wvss_us_args};
 
+/* Op-info structs for vqwmmacc.vv (W=4).  */
+
+static CONSTEXPR const rvv_op_info i_ime_qwvss_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_args};
+
+static CONSTEXPR const rvv_op_info u_ime_qwvss_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_qwvss_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_su_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_qwvss_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_args};
+
+/* Op-info structs for v8wmmacc.vv (W=8).  */
+
+static CONSTEXPR const rvv_op_info i_ime_8wvss_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_args};
+
+static CONSTEXPR const rvv_op_info u_ime_8wvss_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_8wvss_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_su_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_8wvss_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_args};
+
 static CONSTEXPR const rvv_op_info sf_vc_x_ops
   = {full_v_u_ops,					     /* Types */
      OP_TYPE_x,					     /* Suffix */
@@ -4438,12 +4516,12 @@ rvv_arg_type_info::get_scalar_float_type (vector_type_index type_idx) const
 }
 
 /* Compute the vector_type_index for an IME widening input type, i.e.
-   a type with half the accumulator's SEW and LMUL=1.  We obtain it by
-   chaining two existing base-type lookups: DOUBLE_TRUNC (half SEW,
-   same SEW/LMUL ratio) followed by LMUL1 (same SEW, LMUL=1).  The
-   SIGNED / UNSIGNED variants first canonicalise the input signedness
-   via the SIGNED / UNSIGNED base types.  Returns NUM_VECTOR_TYPES if
-   any step of the chain fails.  */
+   a type with SEW/W of the accumulator's SEW (W = 2, 4 or 8) and
+   LMUL=1.  We obtain it by chaining existing base-type lookups: a
+   trunc step (DOUBLE/QUAD/OCT, same SEW/LMUL ratio) followed by LMUL1
+   (same SEW, LMUL=1).  The SIGNED / UNSIGNED variants first
+   canonicalise the input signedness via the SIGNED / UNSIGNED base
+   types.  Returns NUM_VECTOR_TYPES if any step of the chain fails.  */
 
 static vector_type_index
 ime_widening_input_idx (vector_type_index type_idx, rvv_base_type kind)
@@ -4451,22 +4529,62 @@ ime_widening_input_idx (vector_type_index type_idx, rvv_base_type kind)
   if (type_idx == VECTOR_TYPE_INVALID)
     return NUM_VECTOR_TYPES;
 
+  /* Decode the (trunc-kind, sign-kind) pair from KIND.  */
+  rvv_base_type trunc_kind;
+  rvv_base_type sign_kind = NUM_BASE_TYPES;
+  switch (kind)
+    {
+    case RVV_BASE_ime_double_trunc_lmul1_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      break;
+    case RVV_BASE_ime_double_trunc_lmul1_signed_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      break;
+    case RVV_BASE_ime_double_trunc_lmul1_unsigned_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul1_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul1_signed_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul1_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul1_signed_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      break;
+    default:
+      return NUM_VECTOR_TYPES;
+    }
+
   /* Step 1: canonicalise sign if this kind asks for a specific one.  */
   vector_type_index canonical = type_idx;
-  if (kind == RVV_BASE_ime_double_trunc_lmul1_signed_vector)
-    canonical = function_types[type_idx].type_indexes[RVV_BASE_signed_vector];
-  else if (kind == RVV_BASE_ime_double_trunc_lmul1_unsigned_vector)
-    canonical = function_types[type_idx].type_indexes[RVV_BASE_unsigned_vector];
+  if (sign_kind != NUM_BASE_TYPES)
+    canonical = function_types[type_idx].type_indexes[sign_kind];
   if (canonical == VECTOR_TYPE_INVALID)
     return NUM_VECTOR_TYPES;
 
-  /* Step 2: halve the SEW (same SEW/LMUL ratio as the accumulator).  */
+  /* Step 2: narrow the SEW by the widening factor W.  */
   vector_type_index trunc
-    = function_types[canonical].type_indexes[RVV_BASE_double_trunc_vector];
+    = function_types[canonical].type_indexes[trunc_kind];
   if (trunc == VECTOR_TYPE_INVALID)
     return NUM_VECTOR_TYPES;
 
-  /* Step 3: normalise to LMUL=1 while keeping the halved SEW.  */
+  /* Step 3: normalise to LMUL=1 while keeping the narrowed SEW.  */
   vector_type_index result
     = function_types[trunc].type_indexes[RVV_BASE_lmul1_vector];
   if (result == VECTOR_TYPE_INVALID)
@@ -4494,7 +4612,13 @@ rvv_arg_type_info::get_function_type_index (vector_type_index type_idx) const
 {
   if (base_type == RVV_BASE_ime_double_trunc_lmul1_vector
       || base_type == RVV_BASE_ime_double_trunc_lmul1_signed_vector
-      || base_type == RVV_BASE_ime_double_trunc_lmul1_unsigned_vector)
+      || base_type == RVV_BASE_ime_double_trunc_lmul1_unsigned_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul1_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul1_signed_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul1_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul1_signed_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector)
     {
       vector_type_index idx = ime_widening_input_idx (type_idx, base_type);
       if (idx == NUM_VECTOR_TYPES || !builtin_types[idx].vector)
