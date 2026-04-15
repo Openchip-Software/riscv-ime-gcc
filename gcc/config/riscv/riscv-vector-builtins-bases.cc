@@ -2923,6 +2923,57 @@ public:
 
 static CONSTEXPR const vmts_ime vmts_obj;
 
+/* Zvvmttls transposing tile load (vmttl.v), MVP.  Same shape as
+   vmtl_ime; dispatches to @pred_vmttl<mode>.  */
+class vmttl_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_READ_MEMORY;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (code_for_pred_vmttl (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmttl_ime vmttl_obj;
+
+/* Zvvmttls transposing tile store (vmtts.v), MVP.  Same shape as
+   vmts_ime; dispatches to @pred_vmtts<mode>.  */
+class vmtts_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_WRITE_MEMORY;
+  }
+
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return true;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (code_for_pred_vmtts (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmtts_ime vmtts_obj;
+
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
 #define BASE(NAME) \
@@ -3267,4 +3318,6 @@ BASE (v8wmmacc_su)
 BASE (v8wmmacc_us)
 BASE (vmtl)
 BASE (vmts)
+BASE (vmttl)
+BASE (vmtts)
 } // end namespace riscv_vector
