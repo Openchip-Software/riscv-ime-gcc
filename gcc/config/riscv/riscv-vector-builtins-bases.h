@@ -353,7 +353,20 @@ extern const function_base *const vfwcvtbf16_f;
 extern const function_base *const vfwmaccbf16;
 extern const function_base *const vfwmaccbf16_frm;
 /* Zvvmm */
-extern const function_base *const vmmacc;
+extern const function_base *const vmmacc_s;
+extern const function_base *const vmmacc_u;
+extern const function_base *const vwmmacc_s;
+extern const function_base *const vwmmacc_u;
+extern const function_base *const vwmmacc_su;
+extern const function_base *const vwmmacc_us;
+extern const function_base *const vqwmmacc_s;
+extern const function_base *const vqwmmacc_u;
+extern const function_base *const vqwmmacc_su;
+extern const function_base *const vqwmmacc_us;
+extern const function_base *const v8wmmacc_s;
+extern const function_base *const v8wmmacc_u;
+extern const function_base *const v8wmmacc_su;
+extern const function_base *const v8wmmacc_us;
 }
 
 } // end namespace riscv_vector

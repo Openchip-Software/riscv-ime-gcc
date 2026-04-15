@@ -979,13 +979,33 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
   gcc_assert (r.sew > 0 && in_sew > 0 && r.sew % in_sew == 0);
   r.widen_w = r.sew / in_sew;
 
-  /* Integer: altfmt (output) always 0.  Signedness placeholder: the
-     current RTL pattern does not split signed vs unsigned, so we treat
-     both as signed until the UNSPEC split lands.  */
+  /* Integer: altfmt (output) always 0.  Signedness comes from the
+     per-pattern ime_altfmt attribute set by the RTL pattern.  For
+     now we only support same-sign (ss, uu); mixed-sign (su, us)
+     will be added with the widening mmacc variants.  */
   r.altfmt = false;
-  r.altfmt_a = false;
-  r.altfmt_b = false;
   r.bs = false;
+  switch (get_attr_ime_altfmt (rinsn))
+    {
+    case IME_ALTFMT_SS:
+      r.altfmt_a = false;
+      r.altfmt_b = false;
+      break;
+    case IME_ALTFMT_UU:
+      r.altfmt_a = true;
+      r.altfmt_b = true;
+      break;
+    case IME_ALTFMT_SU:
+      r.altfmt_a = false;
+      r.altfmt_b = true;
+      break;
+    case IME_ALTFMT_US:
+      r.altfmt_a = true;
+      r.altfmt_b = false;
+      break;
+    default:
+      gcc_unreachable ();
+    }
 
   /* Static lambda if VLEN is known; runtime otherwise.  */
   int mul_c_val;
