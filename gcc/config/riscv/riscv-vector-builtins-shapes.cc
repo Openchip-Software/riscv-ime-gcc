@@ -1444,73 +1444,122 @@ struct ime_mmacc_def : public build_base
 	}
   }
 
+  /* Canonical IME suffix order (per revised intrinsics spec):
+
+     __riscv_{base}_{op}{type-suffix}[_{inputA}[_{inputB}]]
+              [_su|_us][_lm{N}][_bs{16,32}][_L{N}]{pred}
+
+     The internal base_name always encodes the sign combination by a
+     trailing "_s", "_u", "_su" or "_us" token: e.g. "vwmmacc_su".
+     Strip that token to recover the user-visible base name ("vwmmacc")
+     and, if the sign tail was "_su" or "_us", keep the sign tail as the
+     trailing sign-suffix in canonical order.  This decode replaces the
+     earlier strcmp chain so adding new IME base families (vqwmmacc,
+     v8wmmacc, the FP and microscaled families in §7/§8, ...) does not
+     require touching this function.  */
+  static void
+  decode_base_and_sign (const char *internal, char *base_buf,
+			size_t base_buf_sz, const char *&sign_suffix)
+  {
+    size_t ilen = strlen (internal);
+    size_t base_len = ilen;
+    sign_suffix = "";
+
+    /* Mixed-sign: "_su" or "_us".  */
+    if (ilen >= 3 && internal[ilen - 3] == '_'
+	&& ((internal[ilen - 2] == 's' && internal[ilen - 1] == 'u')
+	    || (internal[ilen - 2] == 'u' && internal[ilen - 1] == 's')))
+      {
+	sign_suffix = internal + ilen - 3;
+	base_len = ilen - 3;
+      }
+    /* Same-sign: "_s" or "_u" -- consumed into the base; no trailing
+       sign token is emitted in the canonical name.  */
+    else if (ilen >= 2 && internal[ilen - 2] == '_'
+	     && (internal[ilen - 1] == 's' || internal[ilen - 1] == 'u'))
+      base_len = ilen - 2;
+
+    gcc_assert (base_len + 1 <= base_buf_sz);
+    memcpy (base_buf, internal, base_len);
+    base_buf[base_len] = '\0';
+  }
+
+  /* Return the LMUL (1, 2, 4 or 8) of the vs1 input operand of an IME
+     multiply-accumulate instance.  Used to decide whether to emit the
+     "_lm{N}" canonical suffix.  All IME integer multiply-accumulate
+     intrinsics shipped so far use LMUL=1 inputs, so this helper maps
+     each currently supported input kind to 1.  When LMUL>1 input
+     variants land (a follow-up commit), new RVV_BASE kinds or a tree
+     inspection of the operand type will extend this mapping.  The
+     default gcc_unreachable () ensures any new input kind is caught
+     loudly rather than silently emitting the wrong canonical name.  */
+  static unsigned
+  ime_input_lmul (const function_instance &instance)
+  {
+    rvv_base_type bt = instance.op_info->args[1].base_type;
+    switch (bt)
+      {
+      case RVV_BASE_lmul1_vector:
+      case RVV_BASE_ime_double_trunc_lmul1_vector:
+      case RVV_BASE_ime_double_trunc_lmul1_signed_vector:
+      case RVV_BASE_ime_double_trunc_lmul1_unsigned_vector:
+      case RVV_BASE_ime_quad_trunc_lmul1_vector:
+      case RVV_BASE_ime_quad_trunc_lmul1_signed_vector:
+      case RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector:
+      case RVV_BASE_ime_oct_trunc_lmul1_vector:
+      case RVV_BASE_ime_oct_trunc_lmul1_signed_vector:
+      case RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector:
+	return 1;
+      default:
+	gcc_unreachable ();
+      }
+  }
+
   char *get_name (function_builder &b, const function_instance &instance,
 		  bool overloaded_p) const override
   {
     if (overloaded_p && !instance.base->can_be_overloaded_p (instance.pred))
       return nullptr;
 
-    /* Decode the internal name (e.g. "vwmmacc_su") into the
-       user-visible base ("vwmmacc") and the sign suffix ("_su" / "_us"
-       for mixed-sign, empty for same-sign).  */
-    const char *internal = instance.base_name;
-    const char *base;
-    const char *sign_suffix = "";
-    if (strcmp (internal, "vmmacc_s") == 0
-	|| strcmp (internal, "vmmacc_u") == 0)
-      base = "vmmacc";
-    else if (strcmp (internal, "vwmmacc_s") == 0
-	     || strcmp (internal, "vwmmacc_u") == 0)
-      base = "vwmmacc";
-    else if (strcmp (internal, "vwmmacc_su") == 0)
-      {
-	base = "vwmmacc";
-	sign_suffix = "_su";
-      }
-    else if (strcmp (internal, "vwmmacc_us") == 0)
-      {
-	base = "vwmmacc";
-	sign_suffix = "_us";
-      }
-    else if (strcmp (internal, "vqwmmacc_s") == 0
-	     || strcmp (internal, "vqwmmacc_u") == 0)
-      base = "vqwmmacc";
-    else if (strcmp (internal, "vqwmmacc_su") == 0)
-      {
-	base = "vqwmmacc";
-	sign_suffix = "_su";
-      }
-    else if (strcmp (internal, "vqwmmacc_us") == 0)
-      {
-	base = "vqwmmacc";
-	sign_suffix = "_us";
-      }
-    else if (strcmp (internal, "v8wmmacc_s") == 0
-	     || strcmp (internal, "v8wmmacc_u") == 0)
-      base = "v8wmmacc";
-    else if (strcmp (internal, "v8wmmacc_su") == 0)
-      {
-	base = "v8wmmacc";
-	sign_suffix = "_su";
-      }
-    else if (strcmp (internal, "v8wmmacc_us") == 0)
-      {
-	base = "v8wmmacc";
-	sign_suffix = "_us";
-      }
-    else
-      base = internal;
+    char base_buf[32];
+    const char *sign_suffix;
+    decode_base_and_sign (instance.base_name, base_buf, sizeof (base_buf),
+			  sign_suffix);
 
-    b.append_base_name (base);
+    /* "__riscv_" + <base>.  */
+    b.append_base_name (base_buf);
 
-    /* "_vv" suffix.  */
+    /* Operand suffix ("_vv").  */
     b.append_name (operand_suffixes[instance.op_info->op]);
 
     if (!overloaded_p)
       {
+	/* Type suffix -- encodes accumulator SEW and MUL_C, e.g. "_i16m2".  */
 	b.append_name (type_suffixes[instance.type.index].vector);
+
+	/* TODO (§6/§7): append "_{inputA}[_{inputB}]" here when the input
+	   element type is non-ISO (Int4, BF16, OFP8, OFP4) or when A and
+	   B have different FP formats.  All currently shipped IME integer
+	   intrinsics inherit the input element type from the accumulator
+	   SEW (divided by W), so no input suffix is emitted.  */
+
+	/* Mixed-sign token ("_su" / "_us").  */
 	if (*sign_suffix)
 	  b.append_name (sign_suffix);
+
+	/* "_lm{N}" when the input LMUL is not 1.  Default (LMUL=1) emits
+	   nothing, matching the current spec's overloaded-short-form
+	   rule and the shipped intrinsics.  */
+	unsigned input_lmul = ime_input_lmul (instance);
+	if (input_lmul > 1)
+	  {
+	    char buf[8];
+	    snprintf (buf, sizeof (buf), "_lm%u", input_lmul);
+	    b.append_name (buf);
+	  }
+
+	/* TODO (§8): append "_bs16" / "_bs32" for microscaled variants.  */
+	/* TODO (§6): append "_L{N}" for tile load/store immediate lambda.  */
       }
 
     b.append_name (predication_suffixes[instance.pred]);
