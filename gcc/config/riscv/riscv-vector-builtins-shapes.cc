@@ -1394,37 +1394,98 @@ struct sf_vcix_def : public build_base
 
 /* IME integer matrix multiply-accumulate shape (Zvmma).
 
-   The spec mandates a single user-visible base name "vmmacc" for both
-   signed and unsigned variants; the signed/unsigned distinction comes
-   from the C type of the accumulator (vint* vs vuint*) and is already
-   encoded in the type_suffixes[].  To support this, several
-   DEF_RVV_FUNCTION entries may share the same user-visible name but
-   map to different internal function_base objects (e.g. vmmacc_s,
-   vmmacc_u) so the expander can route to different RTL patterns.
-   This shape therefore ignores instance.base_name and always emits
-   "vmmacc" as the base name.
+   The spec mandates the user-visible base names "vmmacc" and
+   "vwmmacc" for the non-widening and W=2 widening forms.  The
+   signed/unsigned distinction comes from the C type of the
+   accumulator and input operands.  DEF_RVV_FUNCTION entries use
+   internal base names (vmmacc_s, vmmacc_u, vwmmacc_s, vwmmacc_u,
+   vwmmacc_su, vwmmacc_us) that map to distinct function_base
+   objects so the expander can route to different UNSPECs; this
+   shape maps the internal name back to the user-visible base and,
+   for mixed-sign cases, appends the "_su" / "_us" suffix.
 
-   Only the same-sign (ss, uu) default-LMUL variants are handled here;
-   _lm{N}, _su/_us, _bs{16,32}, and _L{N} suffixes will be added as
-   their corresponding intrinsic families land.  */
+   Only default-LMUL variants are handled here; _lm{N}, _bs{16,32},
+   and _L{N} suffixes will be added as their corresponding intrinsic
+   families land.  */
 
 struct ime_mmacc_def : public build_base
 {
+  /* IME intrinsics derive their vs1/vs2 operand types by chaining
+     type-info lookups (double_trunc + lmul1 + signed/unsigned).  Not all
+     accumulator types in the i_ops/u_ops type sets have a valid chain
+     (e.g. narrowest SEW has no double_trunc, fractional LMULs have no
+     lmul1 sibling).  Filter those out here rather than rely on the
+     XTheadVector-only check_type path in build_one.  */
+  void build (function_builder &b,
+	      const function_group_info &group) const override
+  {
+    for (unsigned int pred_idx = 0; group.preds[pred_idx] != NUM_PRED_TYPES;
+	 ++pred_idx)
+      for (unsigned int vec_type_idx = 0;
+	   group.ops_infos.types[vec_type_idx].index != NUM_VECTOR_TYPES;
+	   ++vec_type_idx)
+	{
+	  auto_vec<tree, 8> argument_types;
+	  function_instance function_instance (group.base_name, *group.base,
+					       *group.shape,
+					       group.ops_infos.types[vec_type_idx],
+					       group.preds[pred_idx],
+					       &group.ops_infos);
+	  tree return_type = group.ops_infos.ret.get_tree_type (
+	    group.ops_infos.types[vec_type_idx].index);
+	  b.allocate_argument_types (function_instance, argument_types);
+	  b.apply_predication (function_instance, return_type, argument_types);
+	  if (!check_type (return_type, argument_types))
+	    continue;
+	  b.add_overloaded_function (function_instance, *group.shape,
+				     group.required_extensions);
+	  b.add_unique_function (function_instance, (*group.shape), return_type,
+				 argument_types, group.required_extensions);
+	}
+  }
+
   char *get_name (function_builder &b, const function_instance &instance,
 		  bool overloaded_p) const override
   {
     if (overloaded_p && !instance.base->can_be_overloaded_p (instance.pred))
       return nullptr;
 
-    /* Always "vmmacc" regardless of which internal base this entry
-       resolves to.  */
-    b.append_base_name ("vmmacc");
+    /* Decode the internal name (e.g. "vwmmacc_su") into the
+       user-visible base ("vwmmacc") and the sign suffix ("_su" / "_us"
+       for mixed-sign, empty for same-sign).  */
+    const char *internal = instance.base_name;
+    const char *base;
+    const char *sign_suffix = "";
+    if (strcmp (internal, "vmmacc_s") == 0
+	|| strcmp (internal, "vmmacc_u") == 0)
+      base = "vmmacc";
+    else if (strcmp (internal, "vwmmacc_s") == 0
+	     || strcmp (internal, "vwmmacc_u") == 0)
+      base = "vwmmacc";
+    else if (strcmp (internal, "vwmmacc_su") == 0)
+      {
+	base = "vwmmacc";
+	sign_suffix = "_su";
+      }
+    else if (strcmp (internal, "vwmmacc_us") == 0)
+      {
+	base = "vwmmacc";
+	sign_suffix = "_us";
+      }
+    else
+      base = internal;
+
+    b.append_base_name (base);
 
     /* "_vv" suffix.  */
     b.append_name (operand_suffixes[instance.op_info->op]);
 
     if (!overloaded_p)
-      b.append_name (type_suffixes[instance.type.index].vector);
+      {
+	b.append_name (type_suffixes[instance.type.index].vector);
+	if (*sign_suffix)
+	  b.append_name (sign_suffix);
+      }
 
     b.append_name (predication_suffixes[instance.pred]);
     return b.finish_name ();

@@ -35,8 +35,18 @@ along with GCC; see the file COPYING3. If not see
    correctly in vtype.  The _lm{N} variants for LMUL > 1 and the
    _su / _us mixed-sign variants will be added in follow-ups.  */
 #define REQUIRED_EXTENSIONS ZVVMM_EXT
-DEF_RVV_FUNCTION (vmmacc_s, ime_mmacc, none_tu_preds, i_ime_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_u, ime_mmacc, none_tu_preds, u_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_s,   ime_mmacc, none_tu_preds, i_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_u,   ime_mmacc, none_tu_preds, u_ime_vss_ops)
+/* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2 LMUL=1.
+   Four sign combinations.  Mixed-sign variants share the signed
+   accumulator ops (i_ops) since the spec mandates a signed
+   accumulator; the _su / _us suffixes on the generated name come
+   from the ime_mmacc shape class decoding the internal base
+   name.  */
+DEF_RVV_FUNCTION (vwmmacc_s,  ime_mmacc, none_tu_preds, i_ime_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_u,  ime_mmacc, none_tu_preds, u_ime_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_su, ime_mmacc, none_tu_preds, i_su_ime_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_us, ime_mmacc, none_tu_preds, i_us_ime_wvss_ops)
 #undef REQUIRED_EXTENSIONS
 
 #undef DEF_RVV_FUNCTION

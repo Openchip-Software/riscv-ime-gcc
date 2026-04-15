@@ -761,6 +761,19 @@ DEF_RVV_BASE_TYPE (xfqf_float, get_xfqf_float_type (type_idx))
 DEF_RVV_BASE_TYPE (scalar_float, get_scalar_float_type (type_idx))
 DEF_RVV_BASE_TYPE (void_const_ptr, const_ptr_type_node)
 
+/* IME (Zvmma) widening-input types: half the accumulator SEW at LMUL=1.
+   These are appended at the END of the base-type list so their enum
+   values do not shift the positional slot indices used by the
+   DEF_RVV_TYPE_INDEX macro body.  Lookups bypass function_types[] via
+   explicit dispatch in rvv_arg_type_info::get_function_type_index()
+   and get_tree_type().  */
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul1_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul1_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul1_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)

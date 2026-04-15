@@ -2807,6 +2807,28 @@ public:
 static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S> vmmacc_s_obj;
 static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U> vmmacc_u_obj;
 
+/* IME vector widening integer matrix multiply-accumulate (W=2).  Same
+   structure as vmmacc_ime_op but dispatches to @pred_vwmmacc*<mode>.
+   Four instances cover ss, uu, su, us.  */
+template<int UNSPEC>
+class vwmmacc_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vwmmacc (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_S>  vwmmacc_s_obj;
+static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_U>  vwmmacc_u_obj;
+static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_SU> vwmmacc_su_obj;
+static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_US> vwmmacc_us_obj;
+
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
 #define BASE(NAME) \
@@ -3137,4 +3159,8 @@ BASE (vfwmaccbf16_frm)
 /* Zvvmm */
 BASE (vmmacc_s)
 BASE (vmmacc_u)
+BASE (vwmmacc_s)
+BASE (vwmmacc_u)
+BASE (vwmmacc_su)
+BASE (vwmmacc_us)
 } // end namespace riscv_vector
