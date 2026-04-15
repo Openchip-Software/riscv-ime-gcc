@@ -37,6 +37,11 @@
   UNSPEC_V8WMMACC_SU ;; Zvvmm v8wmmacc.vv, signed*unsigned (W=8, altfmt_A=0, altfmt_B=1)
   UNSPEC_V8WMMACC_US ;; Zvvmm v8wmmacc.vv, unsigned*signed (W=8, altfmt_A=1, altfmt_B=0)
 
+  UNSPEC_VMTL        ;; Zvvmtls  order-preserving tile load  (vmtl.v)
+  UNSPEC_VMTS        ;; Zvvmtls  order-preserving tile store (vmts.v)
+  UNSPEC_VMTTL       ;; Zvvmttls transposing tile load       (vmttl.v)
+  UNSPEC_VMTTS       ;; Zvvmttls transposing tile store      (vmtts.v)
+
   ;; Register-form vsetvl used to establish the full vtype value for IME
   ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
   ;; standard SEW/LMUL/ta/ma).  A plain vsetvli/vsetivli cannot encode these
@@ -136,6 +141,14 @@
 
 (define_mode_attr VI_OCT_TRUNC_LMUL1 [(RVVM8DI "RVVM1QI") (RVVM4DI "RVVM1QI")
 				      (RVVM2DI "RVVM1QI") (RVVM1DI "RVVM1QI")])
+
+;; Integer modes at LMUL >= 1 for the tile load/store patterns.  The
+;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not
+;; expressible in the tile register-group geometry and are excluded.
+(define_mode_iterator VI_LMUL1 [RVVM1QI RVVM2QI RVVM4QI RVVM8QI
+				RVVM1HI RVVM2HI RVVM4HI RVVM8HI
+				RVVM1SI RVVM2SI RVVM4SI RVVM8SI
+				RVVM1DI RVVM2DI RVVM4DI RVVM8DI])
 
 ;; ---------------------------------------------------------------------------
 ;; Register-form vsetvl for IME instructions
@@ -291,6 +304,130 @@
 ;; v8wmmacc.vv vd, vs1, vs2 -- accumulator at SEW (DI only), inputs at
 ;; SEW/8 (QI) and LMUL=1.  Four sign combinations; altfmt_A / altfmt_B
 ;; encode the per-side signedness.
+;; ---------------------------------------------------------------------------
+;; Zvvmtls - Order-preserving tile load (vmtl.v), MVP
+;; ---------------------------------------------------------------------------
+;;
+;; vmtl.v vd, (rs1), rs2 -- loads a 2D matrix tile into the vector
+;; register group starting at vd.  rs1 is the base address, rs2 is the
+;; leading dimension in ELEMENTS (not bytes).  SEW, LMUL, lambda, and
+;; ta/ma come from vtype; this MVP pattern covers LMUL=1 only and the
+;; default (dynamic-lambda) form without the immediate Lλ override.
+;;
+;; Operand 3 is a memory_operand representing the base "(rs1)" so the
+;; RTL aliasing framework knows this is a memory read.  Operand 4 is
+;; the element-count stride delivered to rs2.
+(define_insn "@pred_vmtl<mode>"
+  [(set (match_operand:VI_LMUL1 0 "register_operand"           "=vr")
+	(if_then_else:VI_LMUL1
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1
+	    [(match_operand:VI_LMUL1 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTL)
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmtls - Order-preserving tile store (vmts.v), MVP
+;; ---------------------------------------------------------------------------
+;;
+;; vmts.v vs3, (rs1), rs2 -- stores the vector register group vs3 to a
+;; 2D matrix tile in memory.  Same scope as the vmtl.v MVP: LMUL=1,
+;; dynamic lambda, unmasked.
+;;
+;; Operand layout follows @pred_strided_store: 0 is the memory
+;; operand, 1 is the mask, 2 is the stride register (rs2), 3 is the
+;; vector data source (vs3).
+(define_insn "@pred_vmts<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1 0 "memory_operand"         "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
+	  UNSPEC_VMTS))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "mode" "<MODE>")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmttls - Transposing tile load (vmttl.v), MVP
+;; ---------------------------------------------------------------------------
+;;
+;; Same operand layout as vmtl.v; the transposition is entirely an
+;; instruction-internal reordering, not visible in RTL.  MVP scope:
+;; LMUL=1, dynamic lambda, unmasked.
+(define_insn "@pred_vmttl<mode>"
+  [(set (match_operand:VI_LMUL1 0 "register_operand"           "=vr")
+	(if_then_else:VI_LMUL1
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1
+	    [(match_operand:VI_LMUL1 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTTL)
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmttls - Transposing tile store (vmtts.v), MVP
+;; ---------------------------------------------------------------------------
+(define_insn "@pred_vmtts<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1 0 "memory_operand"         "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
+	  UNSPEC_VMTTS))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "mode" "<MODE>")
+   (set (attr "avl_type_idx") (const_int 5))])
+
 (define_insn "@pred_v8wmmacc<v8wmmacc_su_name><mode>"
   [(set (match_operand:V8WMMACC_ACC 0 "register_operand"        "=vr")
 	(if_then_else:V8WMMACC_ACC
