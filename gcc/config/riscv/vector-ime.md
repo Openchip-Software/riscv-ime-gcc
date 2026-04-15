@@ -142,9 +142,13 @@
 (define_mode_attr VI_OCT_TRUNC_LMUL1 [(RVVM8DI "RVVM1QI") (RVVM4DI "RVVM1QI")
 				      (RVVM2DI "RVVM1QI") (RVVM1DI "RVVM1QI")])
 
-;; Integer modes at LMUL=1 for the tile load/store patterns.  The MVP
-;; only ships LMUL=1 variants; larger LMULs follow.
-(define_mode_iterator VI_LMUL1 [RVVM1QI RVVM1HI RVVM1SI RVVM1DI])
+;; Integer modes at LMUL >= 1 for the tile load/store patterns.  The
+;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not
+;; expressible in the tile register-group geometry and are excluded.
+(define_mode_iterator VI_LMUL1 [RVVM1QI RVVM2QI RVVM4QI RVVM8QI
+				RVVM1HI RVVM2HI RVVM4HI RVVM8HI
+				RVVM1SI RVVM2SI RVVM4SI RVVM8SI
+				RVVM1DI RVVM2DI RVVM4DI RVVM8DI])
 
 ;; ---------------------------------------------------------------------------
 ;; Register-form vsetvl for IME instructions
