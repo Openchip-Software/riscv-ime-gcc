@@ -1416,8 +1416,10 @@ struct sf_vcix_def : public build_base
    The SEW is NOT embedded in the base name (unlike the standard RVV
    loadstore shape which produces e.g. vle16_v_i16m1).  This MVP
    version handles the unmasked / non-Lλ case only; the _Lλ and _m
-   slots land with follow-up extensions.  */
-struct ime_tile_load_def : public build_base
+   slots land with follow-up extensions.  Shared by both the
+   load-shaped (vmtl, vmttl) and store-shaped (vmts, vmtts) group
+   entries.  */
+struct ime_tile_def : public build_base
 {
   char *get_name (function_builder &b, const function_instance &instance,
 		  bool overloaded_p) const override
@@ -1636,5 +1638,5 @@ SHAPE (sf_vfnrclip, sf_vfnrclip)
 SHAPE(sf_vcix_se, sf_vcix_se)
 SHAPE(sf_vcix, sf_vcix)
 SHAPE (ime_mmacc, ime_mmacc)
-SHAPE (ime_tile_load, ime_tile_load)
+SHAPE (ime_tile, ime_tile)
 } // end namespace riscv_vector

@@ -37,7 +37,8 @@
   UNSPEC_V8WMMACC_SU ;; Zvvmm v8wmmacc.vv, signed*unsigned (W=8, altfmt_A=0, altfmt_B=1)
   UNSPEC_V8WMMACC_US ;; Zvvmm v8wmmacc.vv, unsigned*signed (W=8, altfmt_A=1, altfmt_B=0)
 
-  UNSPEC_VMTL        ;; Zvvmtls order-preserving tile load (vmtl.v)
+  UNSPEC_VMTL        ;; Zvvmtls order-preserving tile load  (vmtl.v)
+  UNSPEC_VMTS        ;; Zvvmtls order-preserving tile store (vmts.v)
 
   ;; Register-form vsetvl used to establish the full vtype value for IME
   ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
@@ -333,6 +334,38 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmtls - Order-preserving tile store (vmts.v), MVP
+;; ---------------------------------------------------------------------------
+;;
+;; vmts.v vs3, (rs1), rs2 -- stores the vector register group vs3 to a
+;; 2D matrix tile in memory.  Same scope as the vmtl.v MVP: LMUL=1,
+;; dynamic lambda, unmasked.
+;;
+;; Operand layout follows @pred_strided_store: 0 is the memory
+;; operand, 1 is the mask, 2 is the stride register (rs2), 3 is the
+;; vector data source (vs3).
+(define_insn "@pred_vmts<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1 0 "memory_operand"         "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
+	  UNSPEC_VMTS))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2"
+  [(set_attr "type" "vsts")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "mode" "<MODE>")
+   (set (attr "avl_type_idx") (const_int 5))])
 
 (define_insn "@pred_v8wmmacc<v8wmmacc_su_name><mode>"
   [(set (match_operand:V8WMMACC_ACC 0 "register_operand"        "=vr")

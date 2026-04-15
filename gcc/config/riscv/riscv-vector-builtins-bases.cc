@@ -2894,6 +2894,35 @@ public:
 
 static CONSTEXPR const vmtl_ime vmtl_obj;
 
+/* Zvvmtls order-preserving tile store (vmts.v), MVP: LMUL=1,
+   unmasked, dynamic lambda.  Intrinsic signature is
+   (T *base, ptrdiff_t ld, vector_t data, size_t vl) -> void.  */
+class vmts_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_WRITE_MEMORY;
+  }
+
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return true;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (code_for_pred_vmts (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmts_ime vmts_obj;
+
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
 #define BASE(NAME) \
@@ -3237,4 +3266,5 @@ BASE (v8wmmacc_u)
 BASE (v8wmmacc_su)
 BASE (v8wmmacc_us)
 BASE (vmtl)
+BASE (vmts)
 } // end namespace riscv_vector

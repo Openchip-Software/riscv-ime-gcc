@@ -3438,6 +3438,14 @@ static CONSTEXPR const rvv_op_info iu_m1_v_scalar_const_ptr_ptrdiff_ops
      rvv_arg_type_info (RVV_BASE_vector),
      scalar_const_ptr_ptrdiff_args};
 
+/* Op-info for vmts.v tile store: (T *base, ptrdiff_t ld, vector_t) -> void.
+   The ld operand is the leading dimension measured in elements.  */
+static CONSTEXPR const rvv_op_info iu_m1_v_scalar_ptr_ptrdiff_ops
+  = {iu_m1_ops,
+     OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_void),
+     scalar_ptr_ptrdiff_args};
+
 /* Op-info structs for v8wmmacc.vv (W=8).  */
 
 static CONSTEXPR const rvv_op_info i_ime_8wvss_ops
