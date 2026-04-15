@@ -66,7 +66,7 @@ extern const function_shape *const sf_vcix_se;
 extern const function_shape *const sf_vcix;
 /* IME (Zvmma) shapes.  */
 extern const function_shape *const ime_mmacc;
-extern const function_shape *const ime_tile_load;
+extern const function_shape *const ime_tile;
 }
 
 } // end namespace riscv_vector
