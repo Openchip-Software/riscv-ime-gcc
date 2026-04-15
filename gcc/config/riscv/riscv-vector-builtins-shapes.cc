@@ -1392,6 +1392,45 @@ struct sf_vcix_def : public build_base
   }
 };
 
+/* IME integer matrix multiply-accumulate shape (Zvmma).
+
+   The spec mandates a single user-visible base name "vmmacc" for both
+   signed and unsigned variants; the signed/unsigned distinction comes
+   from the C type of the accumulator (vint* vs vuint*) and is already
+   encoded in the type_suffixes[].  To support this, several
+   DEF_RVV_FUNCTION entries may share the same user-visible name but
+   map to different internal function_base objects (e.g. vmmacc_s,
+   vmmacc_u) so the expander can route to different RTL patterns.
+   This shape therefore ignores instance.base_name and always emits
+   "vmmacc" as the base name.
+
+   Only the same-sign (ss, uu) default-LMUL variants are handled here;
+   _lm{N}, _su/_us, _bs{16,32}, and _L{N} suffixes will be added as
+   their corresponding intrinsic families land.  */
+
+struct ime_mmacc_def : public build_base
+{
+  char *get_name (function_builder &b, const function_instance &instance,
+		  bool overloaded_p) const override
+  {
+    if (overloaded_p && !instance.base->can_be_overloaded_p (instance.pred))
+      return nullptr;
+
+    /* Always "vmmacc" regardless of which internal base this entry
+       resolves to.  */
+    b.append_base_name ("vmmacc");
+
+    /* "_vv" suffix.  */
+    b.append_name (operand_suffixes[instance.op_info->op]);
+
+    if (!overloaded_p)
+      b.append_name (type_suffixes[instance.type.index].vector);
+
+    b.append_name (predication_suffixes[instance.pred]);
+    return b.finish_name ();
+  }
+};
+
 
 SHAPE(vsetvl, vsetvl)
 SHAPE(vsetvl, vsetvlmax)
@@ -1431,4 +1470,5 @@ SHAPE (sf_vqmacc, sf_vqmacc)
 SHAPE (sf_vfnrclip, sf_vfnrclip)
 SHAPE(sf_vcix_se, sf_vcix_se)
 SHAPE(sf_vcix, sf_vcix)
+SHAPE (ime_mmacc, ime_mmacc)
 } // end namespace riscv_vector
