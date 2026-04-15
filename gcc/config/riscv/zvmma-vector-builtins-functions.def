@@ -25,11 +25,18 @@ along with GCC; see the file COPYING3. If not see
    default LMUL=1 variant.  The accumulator type suffix on the generated
    name encodes both SEW and MUL_C, e.g. __riscv_vmmacc_vv_i32m2 is the
    signed variant with a 2-register accumulator.  vs1/vs2 always use the
-   LMUL=1 form of the same SEW.  The _lm{N} variants for LMUL > 1, plus
-   the _su / _us mixed-sign variants, will be added in follow-ups.  */
+   LMUL=1 form of the same SEW.
+
+   Signed and unsigned share the user-visible base name "vmmacc"; the
+   ime_mmacc shape class generates "__riscv_vmmacc_vv_i*" from the
+   signed internal base (vmmacc_s) and "__riscv_vmmacc_vv_u*" from the
+   unsigned one (vmmacc_u).  The two internal bases route to different
+   UNSPECs at RTL level so the vsetvl pass can set altfmt_A/altfmt_B
+   correctly in vtype.  The _lm{N} variants for LMUL > 1 and the
+   _su / _us mixed-sign variants will be added in follow-ups.  */
 #define REQUIRED_EXTENSIONS ZVVMM_EXT
-DEF_RVV_FUNCTION (vmmacc, no_mask_policy, none_tu_preds, i_ime_vss_ops)
-DEF_RVV_FUNCTION (vmmacc, no_mask_policy, none_tu_preds, u_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_s, ime_mmacc, none_tu_preds, i_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_u, ime_mmacc, none_tu_preds, u_ime_vss_ops)
 #undef REQUIRED_EXTENSIONS
 
 #undef DEF_RVV_FUNCTION

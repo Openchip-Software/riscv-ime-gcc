@@ -22,7 +22,8 @@
 ;; transient-marinating-cake.md for the rollout order.
 
 (define_c_enum "unspec" [
-  UNSPEC_VMMACC
+  UNSPEC_VMMACC_S   ;; Zvvmm vmmacc.vv, signed*signed   (altfmt_A=0, altfmt_B=0)
+  UNSPEC_VMMACC_U   ;; Zvvmm vmmacc.vv, unsigned*unsigned (altfmt_A=1, altfmt_B=1)
 
   ;; Register-form vsetvl used to establish the full vtype value for IME
   ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
@@ -31,6 +32,22 @@
   ;; vtype value.
   UNSPEC_VSETVL_IME
 ])
+
+;; Signedness encoding for the two integer-input operands of IME
+;; multiply-accumulate instructions, as it maps to the vtype altfmt_A /
+;; altfmt_B bits that the vsetvl pass establishes.  For now, only the
+;; same-sign cases (ss, uu) are implemented; mixed-sign (su, us) lands
+;; with the widening variants.
+(define_attr "ime_altfmt" "ss,uu,su,us"
+  (const_string "ss"))
+
+(define_int_iterator VMMACC_SU [UNSPEC_VMMACC_S UNSPEC_VMMACC_U])
+
+(define_int_attr vmmacc_su_name [(UNSPEC_VMMACC_S "_s")
+				 (UNSPEC_VMMACC_U "_u")])
+
+(define_int_attr vmmacc_altfmt [(UNSPEC_VMMACC_S "ss")
+				(UNSPEC_VMMACC_U "uu")])
 
 ;; ---------------------------------------------------------------------------
 ;; Register-form vsetvl for IME instructions
@@ -92,9 +109,14 @@
 ;; independent of MUL_C.  This pattern handles the spec-default LMUL=1
 ;; variant; _lm{N} variants for LMUL > 1 will get their own patterns.
 ;;
+;; Signed (UNSPEC_VMMACC_S) and unsigned (UNSPEC_VMMACC_U) emit the same
+;; vmmacc.vv instruction; the distinction lives entirely in the vtype
+;; altfmt_A / altfmt_B bits that the vsetvl pass establishes from the
+;; ime_altfmt attribute.
+;;
 ;; No mask, no merge operand: IME multiply-accumulate instructions do not
 ;; support element-level masking or tail policies in the standard RVV sense.
-(define_insn "@pred_vmmacc<mode>"
+(define_insn "@pred_vmmacc<vmmacc_su_name><mode>"
   [(set (match_operand:VI 0 "register_operand"              "=vr")
 	(if_then_else:VI
 	  (unspec:<VM>
@@ -106,10 +128,11 @@
 	  (unspec:VI
 	    [(match_operand:VI         1 "register_operand" "  0")
 	     (match_operand:<V_LMUL1>  2 "register_operand" " vr")
-	     (match_operand:<V_LMUL1>  3 "register_operand" " vr")] UNSPEC_VMMACC)
+	     (match_operand:<V_LMUL1>  3 "register_operand" " vr")] VMMACC_SU)
 	  (match_dup 1)))]
   "TARGET_ZVVMM"
   "vmmacc.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
    (set_attr "mode" "<MODE>")])

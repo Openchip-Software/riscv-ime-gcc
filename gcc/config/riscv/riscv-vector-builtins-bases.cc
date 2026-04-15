@@ -2783,9 +2783,14 @@ static CONSTEXPR const vfwmaccbf16<NO_FRM> vfwmaccbf16_obj;
 static CONSTEXPR const vfwmaccbf16<HAS_FRM> vfwmaccbf16_frm_obj;
 
 /* IME vector integer matrix multiply-accumulate (W=1).  Expands to
-   @pred_vmmacc<mode>, where the iterator <mode> is the accumulator mode
-   (operand 0) and the input operands are at LMUL=1 via V_LMUL1.  No
+   @pred_vmmacc_s<mode> or @pred_vmmacc_u<mode>, templated on the
+   UNSPEC code.  The mode iterator is the accumulator mode (operand 0)
+   and the input operands are at LMUL=1 via V_LMUL1.  Signed and
+   unsigned emit the same vmmacc.vv instruction; they differ only in
+   which UNSPEC is on the RTL, so the vsetvl pass can read the
+   ime_altfmt attribute to populate altfmt_A/altfmt_B correctly.  No
    mask/merge/policy operands.  */
+template<int UNSPEC>
 class vmmacc_ime_op : public function_base
 {
 public:
@@ -2795,11 +2800,12 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    return e.use_exact_insn (code_for_pred_vmmacc (e.vector_mode ()));
+    return e.use_exact_insn (code_for_pred_vmmacc (UNSPEC, e.vector_mode ()));
   }
 };
 
-static CONSTEXPR const vmmacc_ime_op vmmacc_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S> vmmacc_s_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U> vmmacc_u_obj;
 
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
@@ -3129,5 +3135,6 @@ BASE (vfwcvtbf16_f)
 BASE (vfwmaccbf16)
 BASE (vfwmaccbf16_frm)
 /* Zvvmm */
-BASE (vmmacc)
+BASE (vmmacc_s)
+BASE (vmmacc_u)
 } // end namespace riscv_vector
