@@ -41,6 +41,13 @@
   UNSPEC_VMTS        ;; Zvvmtls  order-preserving tile store (vmts.v)
   UNSPEC_VMTTL       ;; Zvvmttls transposing tile load       (vmttl.v)
   UNSPEC_VMTTS       ;; Zvvmttls transposing tile store      (vmtts.v)
+  UNSPEC_VMTL_L1     ;; vmtl.v ,L1
+  UNSPEC_VMTL_L2     ;; vmtl.v ,L2
+  UNSPEC_VMTL_L4     ;; vmtl.v ,L4
+  UNSPEC_VMTL_L8     ;; vmtl.v ,L8
+  UNSPEC_VMTL_L16    ;; vmtl.v ,L16
+  UNSPEC_VMTL_L32    ;; vmtl.v ,L32
+  UNSPEC_VMTL_L64    ;; vmtl.v ,L64
 
   ;; Register-form vsetvl used to establish the full vtype value for IME
   ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
@@ -336,6 +343,63 @@
 	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
   "TARGET_ZVVMTLS"
   "vmtl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmtls - vmtl.v with immediate "Lλ" override
+;; ---------------------------------------------------------------------------
+;;
+;; Same operand layout as @pred_vmtl<mode> plus an additional const_int
+;; operand (9) that carries the lambda immediate value (one of
+;; 1/2/4/8/16/32/64).  The immediate overrides the dynamic lambda
+;; field of vtype for this instruction only; SEW/LMUL still come from
+;; vtype, so the IME vtype machinery still runs.
+;; Seven patterns share one template, one per immediate Lλ value.
+;; The lambda is encoded in the UNSPEC so the operand layout stays
+;; identical to @pred_vmtl<mode> and use_contiguous_load_insn works
+;; unchanged.
+(define_int_iterator VMTL_L
+  [UNSPEC_VMTL_L1 UNSPEC_VMTL_L2 UNSPEC_VMTL_L4 UNSPEC_VMTL_L8
+   UNSPEC_VMTL_L16 UNSPEC_VMTL_L32 UNSPEC_VMTL_L64])
+
+(define_int_attr vmtl_L_imm [(UNSPEC_VMTL_L1  "L1")
+			     (UNSPEC_VMTL_L2  "L2")
+			     (UNSPEC_VMTL_L4  "L4")
+			     (UNSPEC_VMTL_L8  "L8")
+			     (UNSPEC_VMTL_L16 "L16")
+			     (UNSPEC_VMTL_L32 "L32")
+			     (UNSPEC_VMTL_L64 "L64")])
+
+(define_int_attr vmtl_L_name [(UNSPEC_VMTL_L1  "_L1")
+			      (UNSPEC_VMTL_L2  "_L2")
+			      (UNSPEC_VMTL_L4  "_L4")
+			      (UNSPEC_VMTL_L8  "_L8")
+			      (UNSPEC_VMTL_L16 "_L16")
+			      (UNSPEC_VMTL_L32 "_L32")
+			      (UNSPEC_VMTL_L64 "_L64")])
+
+(define_insn "@pred_vmtl<vmtl_L_name><mode>"
+  [(set (match_operand:VI_LMUL1 0 "register_operand"           "=vr")
+	(if_then_else:VI_LMUL1
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1
+	    [(match_operand:VI_LMUL1 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTL_L)
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4,<vmtl_L_imm>%p1"
   [(set_attr "type" "vlds")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
