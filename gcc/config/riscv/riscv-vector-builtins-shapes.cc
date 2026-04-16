@@ -1427,13 +1427,47 @@ struct ime_tile_def : public build_base
     if (overloaded_p && !instance.base->can_be_overloaded_p (instance.pred))
       return nullptr;
 
-    b.append_base_name (instance.base_name);
+    /* Decode an optional trailing "_L{N}" tile-immediate-lambda
+       token from the internal base_name, e.g. "vmtl_L4" -> base
+       "vmtl" plus suffix "_L4".  */
+    const char *internal = instance.base_name;
+    size_t ilen = strlen (internal);
+    size_t base_len = ilen;
+    const char *lambda_suffix = "";
+    const char *u = strrchr (internal, '_');
+    if (u && u[1] == 'L' && u[2] != '\0')
+      {
+	const char *p = u + 2;
+	bool all_digits = true;
+	while (*p)
+	  {
+	    if (*p < '0' || *p > '9')
+	      {
+		all_digits = false;
+		break;
+	      }
+	    ++p;
+	  }
+	if (all_digits)
+	  {
+	    lambda_suffix = u;	    /* e.g. "_L4"  */
+	    base_len = u - internal;
+	  }
+      }
+
+    char base_buf[24];
+    gcc_assert (base_len + 1 <= sizeof (base_buf));
+    memcpy (base_buf, internal, base_len);
+    base_buf[base_len] = '\0';
+    b.append_base_name (base_buf);
+
     /* "_v" operand suffix.  */
     b.append_name (operand_suffixes[instance.op_info->op]);
     if (!overloaded_p)
       b.append_name (type_suffixes[instance.type.index].vector);
-    /* TODO: append "_Lλ" (tile load/store immediate lambda) and the
-       canonical "_m" mask suffix when those variants land.  */
+    /* "_Lλ" immediate-lambda suffix, if present.  */
+    if (*lambda_suffix)
+      b.append_name (lambda_suffix);
     b.append_name (predication_suffixes[instance.pred]);
     return b.finish_name ();
   }
