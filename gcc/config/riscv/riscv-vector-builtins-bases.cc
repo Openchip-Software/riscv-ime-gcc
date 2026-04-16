@@ -2904,6 +2904,43 @@ public:
 
 static CONSTEXPR const vmtl_ime vmtl_obj;
 
+/* Zvvmtls vmtl.v with immediate "Lλ" override (one of
+   1/2/4/8/16/32/64).  Each Lλ value maps to its own UNSPEC so the
+   RTL operand layout matches @pred_vmtl<mode> and the existing
+   use_contiguous_load_insn path can be reused unchanged.  */
+template <int UNSPEC>
+class vmtl_L_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  {
+    return pred != PRED_TYPE_none;
+  }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_READ_MEMORY;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmtl (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L1>  vmtl_L1_obj;
+static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L2>  vmtl_L2_obj;
+static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L4>  vmtl_L4_obj;
+static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L8>  vmtl_L8_obj;
+static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L16> vmtl_L16_obj;
+static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L32> vmtl_L32_obj;
+static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L64> vmtl_L64_obj;
+
 /* Zvvmtls order-preserving tile store (vmts.v), MVP: LMUL=1,
    unmasked, dynamic lambda.  Intrinsic signature is
    (T *base, ptrdiff_t ld, vector_t data, size_t vl) -> void.  */
@@ -3332,4 +3369,11 @@ BASE (vmtl)
 BASE (vmts)
 BASE (vmttl)
 BASE (vmtts)
+BASE (vmtl_L1)
+BASE (vmtl_L2)
+BASE (vmtl_L4)
+BASE (vmtl_L8)
+BASE (vmtl_L16)
+BASE (vmtl_L32)
+BASE (vmtl_L64)
 } // end namespace riscv_vector
