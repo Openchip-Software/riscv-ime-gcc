@@ -65,9 +65,9 @@ DEF_RVV_FUNCTION (v8wmmacc_us, ime_mmacc, none_tu_preds, i_us_ime_8wvss_ops)
    MVP.  LMUL=1 only, unmasked, dynamic lambda from vtype; larger
    LMULs, the immediate Lλ variants, and masked variants follow.  */
 #define REQUIRED_EXTENSIONS ZVVMTLS_EXT
-DEF_RVV_FUNCTION (vmtl, ime_tile, none_preds,
+DEF_RVV_FUNCTION (vmtl, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
-DEF_RVV_FUNCTION (vmts, ime_tile, none_preds,
+DEF_RVV_FUNCTION (vmts, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
 #undef REQUIRED_EXTENSIONS
 
@@ -76,9 +76,9 @@ DEF_RVV_FUNCTION (vmts, ime_tile, none_preds,
    Int4) are excluded by spec: the transposition cannot be done at
    sub-byte granularity.  */
 #define REQUIRED_EXTENSIONS ZVVMTTLS_EXT
-DEF_RVV_FUNCTION (vmttl, ime_tile, none_preds,
+DEF_RVV_FUNCTION (vmttl, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
-DEF_RVV_FUNCTION (vmtts, ime_tile, none_preds,
+DEF_RVV_FUNCTION (vmtts, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
 #undef REQUIRED_EXTENSIONS
 

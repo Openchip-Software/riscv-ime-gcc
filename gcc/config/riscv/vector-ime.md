@@ -335,7 +335,7 @@
 	    UNSPEC_VMTL)
 	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
   "TARGET_ZVVMTLS"
-  "vmtl.v\t%0,%3,%4"
+  "vmtl.v\t%0,%3,%4%p1"
   [(set_attr "type" "vlds")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
@@ -366,7 +366,7 @@
 	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
 	  UNSPEC_VMTS))]
   "TARGET_ZVVMTLS"
-  "vmts.v\t%3,%0,%2"
+  "vmts.v\t%3,%0,%2%p1"
   [(set_attr "type" "vsts")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
@@ -398,7 +398,7 @@
 	    UNSPEC_VMTTL)
 	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
   "TARGET_ZVVMTTLS"
-  "vmttl.v\t%0,%3,%4"
+  "vmttl.v\t%0,%3,%4%p1"
   [(set_attr "type" "vlds")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
@@ -421,7 +421,7 @@
 	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
 	  UNSPEC_VMTTS))]
   "TARGET_ZVVMTTLS"
-  "vmtts.v\t%3,%0,%2"
+  "vmtts.v\t%3,%0,%2%p1"
   [(set_attr "type" "vsts")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
