@@ -805,6 +805,32 @@ DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul1_signed_vector,
 DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul1_unsigned_vector,
 		   get_ime_widening_input_type (type_idx, base_type))
 
+/* IME FP fixed-input base types: always return a specific LMUL=1 FP type
+   regardless of the accumulator type.  Used for FP widening mmacc where
+   the input format is independent of the accumulator SEW.  */
+DEF_RVV_BASE_TYPE (ime_fp16_lmul1_vector,
+		   builtin_types[VECTOR_TYPE_vfloat16m1_t].vector)
+DEF_RVV_BASE_TYPE (ime_bf16_lmul1_vector,
+		   builtin_types[VECTOR_TYPE_vbfloat16m1_t].vector)
+DEF_RVV_BASE_TYPE (ime_fp32_lmul1_vector,
+		   builtin_types[VECTOR_TYPE_vfloat32m1_t].vector)
+DEF_RVV_BASE_TYPE (ime_f8e4m3_lmul1_vector,
+		   builtin_types[VECTOR_TYPE_vfloat8e4m3m1_t].vector)
+DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul1_vector,
+		   builtin_types[VECTOR_TYPE_vfloat8e5m2m1_t].vector)
+DEF_RVV_BASE_TYPE (ime_f4e2m1_lmul1_vector,
+		   builtin_types[VECTOR_TYPE_vfloat4e2m1m1_t].vector)
+
+/* IME scales vector: always vuint16m1_t, used for the block-scale operand
+   of microscaled (section 8) intrinsics.  */
+DEF_RVV_BASE_TYPE (ime_scales_vector,
+		   builtin_types[VECTOR_TYPE_vuint16m1_t].vector)
+
+/* IME integer-input base types: always LMUL=1 signed/unsigned int8,
+   used for the integer-input microscaled variants (vfwimmacc etc.).  */
+DEF_RVV_BASE_TYPE (ime_i8_lmul1_vector,
+		   builtin_types[VECTOR_TYPE_vint8m1_t].vector)
+
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)

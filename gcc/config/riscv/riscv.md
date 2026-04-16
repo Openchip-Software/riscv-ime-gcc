@@ -184,6 +184,7 @@
    (VTYPE_REGNUM		67)
    (VXRM_REGNUM			68)
    (FRM_REGNUM			69)
+   (V0_REGNUM			96)
 ])
 
 (include "predicates.md")
