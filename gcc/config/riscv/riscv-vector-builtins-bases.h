@@ -378,6 +378,27 @@ extern const function_base *const vmtl_L8;
 extern const function_base *const vmtl_L16;
 extern const function_base *const vmtl_L32;
 extern const function_base *const vmtl_L64;
+extern const function_base *const vmts_L1;
+extern const function_base *const vmts_L2;
+extern const function_base *const vmts_L4;
+extern const function_base *const vmts_L8;
+extern const function_base *const vmts_L16;
+extern const function_base *const vmts_L32;
+extern const function_base *const vmts_L64;
+extern const function_base *const vmttl_L1;
+extern const function_base *const vmttl_L2;
+extern const function_base *const vmttl_L4;
+extern const function_base *const vmttl_L8;
+extern const function_base *const vmttl_L16;
+extern const function_base *const vmttl_L32;
+extern const function_base *const vmttl_L64;
+extern const function_base *const vmtts_L1;
+extern const function_base *const vmtts_L2;
+extern const function_base *const vmtts_L4;
+extern const function_base *const vmtts_L8;
+extern const function_base *const vmtts_L16;
+extern const function_base *const vmtts_L32;
+extern const function_base *const vmtts_L64;
 }
 
 } // end namespace riscv_vector

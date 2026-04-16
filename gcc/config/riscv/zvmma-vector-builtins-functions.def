@@ -85,6 +85,21 @@ DEF_RVV_FUNCTION (vmtl_L32, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
 DEF_RVV_FUNCTION (vmtl_L64, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+/* Immediate-lambda variants of vmts.v.  */
+DEF_RVV_FUNCTION (vmts_L1,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L2,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L4,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L8,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
 #undef REQUIRED_EXTENSIONS
 
 /* Zvvmttls -- Transposing tile load (vmttl.v) and store (vmtts.v),
@@ -95,6 +110,35 @@ DEF_RVV_FUNCTION (vmtl_L64, ime_tile, none_m_preds,
 DEF_RVV_FUNCTION (vmttl, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
 DEF_RVV_FUNCTION (vmtts, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+/* Immediate-lambda variants of vmttl.v / vmtts.v.  */
+DEF_RVV_FUNCTION (vmttl_L1,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L2,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L4,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L8,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L1,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L2,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L4,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L8,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L64, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
 #undef REQUIRED_EXTENSIONS
 
