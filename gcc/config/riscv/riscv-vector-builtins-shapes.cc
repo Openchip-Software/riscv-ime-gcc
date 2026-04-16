@@ -1522,13 +1522,46 @@ struct ime_mmacc_def : public build_base
      earlier strcmp chain so adding new IME base families (vqwmmacc,
      v8wmmacc, the FP and microscaled families in §7/§8, ...) does not
      require touching this function.  */
+  /* Known FP format tokens that appear as trailing suffixes in the
+     internal base name for FP mmacc variants.  Ordered longest-first
+     so that e.g. "_f8e4m3" is matched before a hypothetical shorter
+     prefix.  */
+  static constexpr const char *fp_format_tokens[] = {
+    "_f8e4m3", "_f8e5m2", "_f4e2m1",
+    "_bf16", "_f16", "_f32",
+    "_i8",
+    nullptr
+  };
+
+  /* Block-scale suffix tokens for microscaled (section 8) variants.  */
+  static constexpr const char *bs_tokens[] = {
+    "_bs32", "_bs16",
+    nullptr
+  };
+
   static void
   decode_base_and_sign (const char *internal, char *base_buf,
-			size_t base_buf_sz, const char *&sign_suffix)
+			size_t base_buf_sz, const char *&sign_suffix,
+			const char *&bs_suffix)
   {
     size_t ilen = strlen (internal);
     size_t base_len = ilen;
     sign_suffix = "";
+    bs_suffix = "";
+
+    /* First strip any trailing "_bs32" / "_bs16" block-scale suffix.  */
+    for (const char *const *bp = bs_tokens; *bp; ++bp)
+      {
+	size_t tlen = strlen (*bp);
+	if (ilen > tlen
+	    && memcmp (internal + ilen - tlen, *bp, tlen) == 0)
+	  {
+	    bs_suffix = *bp;
+	    ilen -= tlen;
+	    base_len = ilen;
+	    break;
+	  }
+      }
 
     /* Mixed-sign: "_su" or "_us".  */
     if (ilen >= 3 && internal[ilen - 3] == '_'
@@ -1543,6 +1576,23 @@ struct ime_mmacc_def : public build_base
     else if (ilen >= 2 && internal[ilen - 2] == '_'
 	     && (internal[ilen - 1] == 's' || internal[ilen - 1] == 'u'))
       base_len = ilen - 2;
+    else
+      {
+	/* FP/integer format token: "_f16", "_bf16", "_f32", "_f8e4m3",
+	   "_i8", etc.  These are stripped from the user-visible base
+	   name; the input type suffix is emitted separately by
+	   get_name().  */
+	for (const char *const *fp = fp_format_tokens; *fp; ++fp)
+	  {
+	    size_t tlen = strlen (*fp);
+	    if (ilen > tlen
+		&& memcmp (internal + ilen - tlen, *fp, tlen) == 0)
+	      {
+		base_len = ilen - tlen;
+		break;
+	      }
+	  }
+      }
 
     gcc_assert (base_len + 1 <= base_buf_sz);
     memcpy (base_buf, internal, base_len);
@@ -1574,6 +1624,14 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_oct_trunc_lmul1_vector:
       case RVV_BASE_ime_oct_trunc_lmul1_signed_vector:
       case RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector:
+      /* FP fixed-input base types (all at LMUL=1).  */
+      case RVV_BASE_ime_fp16_lmul1_vector:
+      case RVV_BASE_ime_bf16_lmul1_vector:
+      case RVV_BASE_ime_fp32_lmul1_vector:
+      case RVV_BASE_ime_f8e4m3_lmul1_vector:
+      case RVV_BASE_ime_f8e5m2_lmul1_vector:
+      case RVV_BASE_ime_f4e2m1_lmul1_vector:
+      case RVV_BASE_ime_i8_lmul1_vector:
 	return 1;
       default:
 	gcc_unreachable ();
@@ -1588,8 +1646,9 @@ struct ime_mmacc_def : public build_base
 
     char base_buf[32];
     const char *sign_suffix;
+    const char *bs_suffix;
     decode_base_and_sign (instance.base_name, base_buf, sizeof (base_buf),
-			  sign_suffix);
+			  sign_suffix, bs_suffix);
 
     /* "__riscv_" + <base>.  */
     b.append_base_name (base_buf);
@@ -1602,11 +1661,39 @@ struct ime_mmacc_def : public build_base
 	/* Type suffix -- encodes accumulator SEW and MUL_C, e.g. "_i16m2".  */
 	b.append_name (type_suffixes[instance.type.index].vector);
 
-	/* TODO (§6/§7): append "_{inputA}[_{inputB}]" here when the input
-	   element type is non-ISO (Int4, BF16, OFP8, OFP4) or when A and
-	   B have different FP formats.  All currently shipped IME integer
-	   intrinsics inherit the input element type from the accumulator
-	   SEW (divided by W), so no input suffix is emitted.  */
+	/* For FP widening variants, append the input type suffix.
+	   The input base type tells us which fixed-type LMUL=1 vector
+	   is used; map it to the corresponding type suffix string.  */
+	{
+	  rvv_base_type vs1_bt = instance.op_info->args[1].base_type;
+	  switch (vs1_bt)
+	    {
+	    case RVV_BASE_ime_fp16_lmul1_vector:
+	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m1_t].vector);
+	      break;
+	    case RVV_BASE_ime_bf16_lmul1_vector:
+	      b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m1_t].vector);
+	      break;
+	    case RVV_BASE_ime_fp32_lmul1_vector:
+	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m1_t].vector);
+	      break;
+	    case RVV_BASE_ime_f8e4m3_lmul1_vector:
+	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m1_t].vector);
+	      break;
+	    case RVV_BASE_ime_f8e5m2_lmul1_vector:
+	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m1_t].vector);
+	      break;
+	    case RVV_BASE_ime_f4e2m1_lmul1_vector:
+	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat4e2m1m1_t].vector);
+	      break;
+	    case RVV_BASE_ime_i8_lmul1_vector:
+	      b.append_name (type_suffixes[VECTOR_TYPE_vint8m1_t].vector);
+	      break;
+	    default:
+	      /* Integer / same-format FP: no input suffix needed.  */
+	      break;
+	    }
+	}
 
 	/* Mixed-sign token ("_su" / "_us").  */
 	if (*sign_suffix)
@@ -1623,7 +1710,10 @@ struct ime_mmacc_def : public build_base
 	    b.append_name (buf);
 	  }
 
-	/* TODO (§8): append "_bs16" / "_bs32" for microscaled variants.  */
+	/* Block-scale suffix ("_bs16" / "_bs32") for microscaled variants.  */
+	if (*bs_suffix)
+	  b.append_name (bs_suffix);
+
 	/* TODO (§6): append "_L{N}" for tile load/store immediate lambda.  */
       }
 
