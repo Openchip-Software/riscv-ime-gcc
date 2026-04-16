@@ -2869,6 +2869,163 @@ static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_U>  v8wmmacc_u_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU> v8wmmacc_su_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_US> v8wmmacc_us_obj;
 
+/* Zvvfmm FP matrix multiply-accumulate, W=1 (vfmmacc.vv).  */
+class vfmmacc_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vfmmacc (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vfmmacc_ime_op vfmmacc_obj;
+
+/* Zvvfmm FP matrix multiply-accumulate, W=2 (vfwmmacc.vv).  */
+class vfwmmacc_f16_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vfwmmacc_f16 (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vfwmmacc_f16_ime_op vfwmmacc_f16_obj;
+
+class vfwmmacc_bf16_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vfwmmacc_bf16 (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vfwmmacc_bf16_ime_op vfwmmacc_bf16_obj;
+
+class vfwmmacc_f32_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vfwmmacc_f32 (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vfwmmacc_f32_ime_op vfwmmacc_f32_obj;
+
+/* Zvvfmm FP matrix multiply-accumulate, W=4 (vfqwmmacc.vv).  */
+class vfqwmmacc_f16_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vfqwmmacc_f16 (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vfqwmmacc_f16_ime_op vfqwmmacc_f16_obj;
+
+class vfqwmmacc_bf16_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vfqwmmacc_bf16 (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vfqwmmacc_bf16_ime_op vfqwmmacc_bf16_obj;
+
+template<int UNSPEC>
+class vfqwmmacc_ofp8_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  /* OFP8 E4M3 and E5M2 share RVVM1QI mode; the overloaded-dispatch
+     hash cannot distinguish them, so disable overloading.  */
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (
+      code_for_pred_vfqwmmacc_ofp8 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E4M3>
+  vfqwmmacc_f8e4m3_obj;
+static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E5M2>
+  vfqwmmacc_f8e5m2_obj;
+
+/* Zvvfmm FP matrix multiply-accumulate, W=8 (vf8wmmacc.vv).  */
+template<int UNSPEC>
+class vf8wmmacc_ofp8_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (
+      code_for_pred_vf8wmmacc_ofp8 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E4M3>
+  vf8wmmacc_f8e4m3_obj;
+static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E5M2>
+  vf8wmmacc_f8e5m2_obj;
+
+class vf8wmmacc_f4e2m1_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_pred_vf8wmmacc_f4e2m1 (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vf8wmmacc_f4e2m1_ime_op vf8wmmacc_f4e2m1_obj;
+
 /* Zvvmtls order-preserving tile load (vmtl.v), MVP: LMUL=1, unmasked,
    dynamic lambda (no immediate Lλ override).  The intrinsic signature
    is (const T *base, ptrdiff_t ld, size_t vl) -> vector, where ld is
@@ -3467,6 +3624,18 @@ BASE (v8wmmacc_s)
 BASE (v8wmmacc_u)
 BASE (v8wmmacc_su)
 BASE (v8wmmacc_us)
+/* Zvvfmm */
+BASE (vfmmacc)
+BASE (vfwmmacc_f16)
+BASE (vfwmmacc_bf16)
+BASE (vfwmmacc_f32)
+BASE (vfqwmmacc_f16)
+BASE (vfqwmmacc_bf16)
+BASE (vfqwmmacc_f8e4m3)
+BASE (vfqwmmacc_f8e5m2)
+BASE (vf8wmmacc_f8e4m3)
+BASE (vf8wmmacc_f8e5m2)
+BASE (vf8wmmacc_f4e2m1)
 BASE (vmtl)
 BASE (vmts)
 BASE (vmttl)
