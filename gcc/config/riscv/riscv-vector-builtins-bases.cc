@@ -2941,6 +2941,108 @@ static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L16> vmtl_L16_obj;
 static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L32> vmtl_L32_obj;
 static CONSTEXPR const vmtl_L_ime<UNSPEC_VMTL_L64> vmtl_L64_obj;
 
+/* Zvvmtls vmts.v with immediate "Lλ" override.  */
+template <int UNSPEC>
+class vmts_L_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_WRITE_MEMORY;
+  }
+
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return true;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmts (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmts_L_ime<UNSPEC_VMTS_L1>  vmts_L1_obj;
+static CONSTEXPR const vmts_L_ime<UNSPEC_VMTS_L2>  vmts_L2_obj;
+static CONSTEXPR const vmts_L_ime<UNSPEC_VMTS_L4>  vmts_L4_obj;
+static CONSTEXPR const vmts_L_ime<UNSPEC_VMTS_L8>  vmts_L8_obj;
+static CONSTEXPR const vmts_L_ime<UNSPEC_VMTS_L16> vmts_L16_obj;
+static CONSTEXPR const vmts_L_ime<UNSPEC_VMTS_L32> vmts_L32_obj;
+static CONSTEXPR const vmts_L_ime<UNSPEC_VMTS_L64> vmts_L64_obj;
+
+/* Zvvmttls vmttl.v with immediate "Lλ" override.  */
+template <int UNSPEC>
+class vmttl_L_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  {
+    return pred != PRED_TYPE_none;
+  }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_READ_MEMORY;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmttl (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmttl_L_ime<UNSPEC_VMTTL_L1>  vmttl_L1_obj;
+static CONSTEXPR const vmttl_L_ime<UNSPEC_VMTTL_L2>  vmttl_L2_obj;
+static CONSTEXPR const vmttl_L_ime<UNSPEC_VMTTL_L4>  vmttl_L4_obj;
+static CONSTEXPR const vmttl_L_ime<UNSPEC_VMTTL_L8>  vmttl_L8_obj;
+static CONSTEXPR const vmttl_L_ime<UNSPEC_VMTTL_L16> vmttl_L16_obj;
+static CONSTEXPR const vmttl_L_ime<UNSPEC_VMTTL_L32> vmttl_L32_obj;
+static CONSTEXPR const vmttl_L_ime<UNSPEC_VMTTL_L64> vmttl_L64_obj;
+
+/* Zvvmttls vmtts.v with immediate "Lλ" override.  */
+template <int UNSPEC>
+class vmtts_L_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_WRITE_MEMORY;
+  }
+
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return true;
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmtts (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L1>  vmtts_L1_obj;
+static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L2>  vmtts_L2_obj;
+static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L4>  vmtts_L4_obj;
+static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L8>  vmtts_L8_obj;
+static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L16> vmtts_L16_obj;
+static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L32> vmtts_L32_obj;
+static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L64> vmtts_L64_obj;
+
 /* Zvvmtls order-preserving tile store (vmts.v), MVP: LMUL=1,
    unmasked, dynamic lambda.  Intrinsic signature is
    (T *base, ptrdiff_t ld, vector_t data, size_t vl) -> void.  */
@@ -3376,4 +3478,25 @@ BASE (vmtl_L8)
 BASE (vmtl_L16)
 BASE (vmtl_L32)
 BASE (vmtl_L64)
+BASE (vmts_L1)
+BASE (vmts_L2)
+BASE (vmts_L4)
+BASE (vmts_L8)
+BASE (vmts_L16)
+BASE (vmts_L32)
+BASE (vmts_L64)
+BASE (vmttl_L1)
+BASE (vmttl_L2)
+BASE (vmttl_L4)
+BASE (vmttl_L8)
+BASE (vmttl_L16)
+BASE (vmttl_L32)
+BASE (vmttl_L64)
+BASE (vmtts_L1)
+BASE (vmtts_L2)
+BASE (vmtts_L4)
+BASE (vmtts_L8)
+BASE (vmtts_L16)
+BASE (vmtts_L32)
+BASE (vmtts_L64)
 } // end namespace riscv_vector
