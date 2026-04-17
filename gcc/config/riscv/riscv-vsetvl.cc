@@ -1014,7 +1014,21 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
      now we only support same-sign (ss, uu); mixed-sign (su, us)
      will be added with the widening mmacc variants.  */
   r.altfmt = false;
-  r.bs = false;
+
+  /* Read the block-scale size from the ime_bs attribute.  */
+  switch (get_attr_ime_bs (rinsn))
+    {
+    case IME_BS_BS32:
+      r.bs = true;
+      break;
+    case IME_BS_BS16:
+    case IME_BS_NONE:
+      r.bs = false;
+      break;
+    default:
+      gcc_unreachable ();
+    }
+
   switch (get_attr_ime_altfmt (rinsn))
     {
     case IME_ALTFMT_SS:
@@ -4169,7 +4183,23 @@ pre_vsetvl::remove_avl_operand ()
 		  rtx set = single_set (rinsn);
 		  rtx src
 		    = simplify_replace_rtx (SET_SRC (set), avl, const0_rtx);
-		  new_pat = gen_rtx_SET (SET_DEST (set), src);
+		  rtx new_set = gen_rtx_SET (SET_DEST (set), src);
+		  /* If the pattern is a PARALLEL (e.g. microscaled IME
+		     patterns with a (use ...) side-effect), preserve the
+		     PARALLEL structure and replace only the SET inside.  */
+		  rtx pat = PATTERN (rinsn);
+		  if (GET_CODE (pat) == PARALLEL)
+		    {
+		      rtvec vec = rtvec_alloc (XVECLEN (pat, 0));
+		      for (int i = 0; i < XVECLEN (pat, 0); i++)
+			{
+			  rtx elt = XVECEXP (pat, 0, i);
+			  RTVEC_ELT (vec, i) = (elt == set) ? new_set : elt;
+			}
+		      new_pat = gen_rtx_PARALLEL (VOIDmode, vec);
+		    }
+		  else
+		    new_pat = new_set;
 		}
 	      if (dump_file)
 		{

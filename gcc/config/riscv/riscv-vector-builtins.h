@@ -950,6 +950,8 @@ public:
   machine_mode ret_mode (void) const;
 
   rtx use_exact_insn (insn_code);
+  rtx use_microscaled_insn (insn_code, int scales_argno);
+  void add_microscaled_tail_and_avl ();
   int prepare_contiguous_load_insn ();
   rtx use_contiguous_load_insn (insn_code);
   rtx use_fof_load_insn ();
