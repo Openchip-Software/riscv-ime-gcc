@@ -423,3 +423,10 @@ Specifies whether the fence.tso instruction should be used.
 mautovec-segment
 Target Integer Var(riscv_mautovec_segment) Init(1)
 Enable (default) or disable generation of vector segment load/store instructions.
+
+mrvv-ime-lambda=
+Target RejectNegative Joined Var(riscv_ime_lambda_str) Init(0)
+Comma-separated list of supported IME lambda values (subset of 1,2,4,8,16,32,64).
+
+TargetVariable
+int riscv_ime_lambda_mask = RISCV_IME_LAMBDA_MASK_ALL

@@ -184,6 +184,9 @@ enum
   EXT_FLAG_MACRO = 1 << 0,
 };
 
+/* Default IME lambda mask: all seven values (1,2,4,8,16,32,64) allowed.  */
+#define RISCV_IME_LAMBDA_MASK_ALL 0x7F
+
 #define BITMASK_NOT_YET_ALLOCATED -1
 
 #endif /* ! GCC_RISCV_OPTS_H */

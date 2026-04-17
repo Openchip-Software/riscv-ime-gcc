@@ -12367,6 +12367,18 @@ riscv_override_options_internal (struct gcc_options *opts)
     }
 }
 
+/* Return true if the given IME lambda value is in the set allowed by
+   -mrvv-ime-lambda=.  LAMBDA must be a power of 2 in [1, 64].  */
+
+bool
+riscv_ime_lambda_supported_p (int lambda)
+{
+  if (lambda < 1 || lambda > 64 || (lambda & (lambda - 1)) != 0)
+    return false;
+  int bit = exact_log2 (lambda);
+  return (riscv_ime_lambda_mask & (1 << bit)) != 0;
+}
+
 /* Implement TARGET_OPTION_OVERRIDE.  */
 
 void
@@ -12549,6 +12561,31 @@ riscv_option_override (void)
   SET_OPTION_IF_UNSET (&global_options, &global_options_set,
 		       param_cycle_accurate_model,
 		       0);
+
+  /* Parse -mrvv-ime-lambda=LIST.  */
+  if (riscv_ime_lambda_str != NULL)
+    {
+      riscv_ime_lambda_mask = 0;
+      char *str = xstrdup (riscv_ime_lambda_str);
+      char *saveptr = NULL;
+      for (char *tok = strtok_r (str, ",", &saveptr); tok != NULL;
+	   tok = strtok_r (NULL, ",", &saveptr))
+	{
+	  char *end;
+	  long val = strtol (tok, &end, 10);
+	  if (*end != '\0' || val < 1 || val > 64
+	      || (val & (val - 1)) != 0)
+	    {
+	      error ("invalid value %qs in %<-mrvv-ime-lambda=%>; "
+		     "valid values are 1, 2, 4, 8, 16, 32, 64", tok);
+	      break;
+	    }
+	  riscv_ime_lambda_mask |= (1 << exact_log2 (val));
+	}
+      free (str);
+      if (riscv_ime_lambda_mask == 0)
+	riscv_ime_lambda_mask = RISCV_IME_LAMBDA_MASK_ALL;
+    }
 
   /* Function to allocate machine-dependent function status.  */
   init_machine_status = &riscv_init_machine_status;
