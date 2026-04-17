@@ -1529,16 +1529,39 @@ struct ime_mmacc_def : public build_base
   static constexpr const char *fp_format_tokens[] = {
     "_f8e4m3", "_f8e5m2", "_f4e2m1",
     "_bf16", "_f16", "_f32",
+    "_i8",
+    nullptr
+  };
+
+  /* Block-scale suffix tokens for microscaled (section 8) variants.  */
+  static constexpr const char *bs_tokens[] = {
+    "_bs32", "_bs16",
     nullptr
   };
 
   static void
   decode_base_and_sign (const char *internal, char *base_buf,
-			size_t base_buf_sz, const char *&sign_suffix)
+			size_t base_buf_sz, const char *&sign_suffix,
+			const char *&bs_suffix)
   {
     size_t ilen = strlen (internal);
     size_t base_len = ilen;
     sign_suffix = "";
+    bs_suffix = "";
+
+    /* First strip any trailing "_bs32" / "_bs16" block-scale suffix.  */
+    for (const char *const *bp = bs_tokens; *bp; ++bp)
+      {
+	size_t tlen = strlen (*bp);
+	if (ilen > tlen
+	    && memcmp (internal + ilen - tlen, *bp, tlen) == 0)
+	  {
+	    bs_suffix = *bp;
+	    ilen -= tlen;
+	    base_len = ilen;
+	    break;
+	  }
+      }
 
     /* Mixed-sign: "_su" or "_us".  */
     if (ilen >= 3 && internal[ilen - 3] == '_'
@@ -1555,9 +1578,10 @@ struct ime_mmacc_def : public build_base
       base_len = ilen - 2;
     else
       {
-	/* FP format token: "_f16", "_bf16", "_f32", "_f8e4m3", etc.
-	   These are stripped from the user-visible base name; the input
-	   type suffix is emitted separately by get_name().  */
+	/* FP/integer format token: "_f16", "_bf16", "_f32", "_f8e4m3",
+	   "_i8", etc.  These are stripped from the user-visible base
+	   name; the input type suffix is emitted separately by
+	   get_name().  */
 	for (const char *const *fp = fp_format_tokens; *fp; ++fp)
 	  {
 	    size_t tlen = strlen (*fp);
@@ -1607,6 +1631,7 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_f8e4m3_lmul1_vector:
       case RVV_BASE_ime_f8e5m2_lmul1_vector:
       case RVV_BASE_ime_f4e2m1_lmul1_vector:
+      case RVV_BASE_ime_i8_lmul1_vector:
 	return 1;
       default:
 	gcc_unreachable ();
@@ -1621,8 +1646,9 @@ struct ime_mmacc_def : public build_base
 
     char base_buf[32];
     const char *sign_suffix;
+    const char *bs_suffix;
     decode_base_and_sign (instance.base_name, base_buf, sizeof (base_buf),
-			  sign_suffix);
+			  sign_suffix, bs_suffix);
 
     /* "__riscv_" + <base>.  */
     b.append_base_name (base_buf);
@@ -1660,6 +1686,9 @@ struct ime_mmacc_def : public build_base
 	    case RVV_BASE_ime_f4e2m1_lmul1_vector:
 	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat4e2m1m1_t].vector);
 	      break;
+	    case RVV_BASE_ime_i8_lmul1_vector:
+	      b.append_name (type_suffixes[VECTOR_TYPE_vint8m1_t].vector);
+	      break;
 	    default:
 	      /* Integer / same-format FP: no input suffix needed.  */
 	      break;
@@ -1681,7 +1710,10 @@ struct ime_mmacc_def : public build_base
 	    b.append_name (buf);
 	  }
 
-	/* TODO (§8): append "_bs16" / "_bs32" for microscaled variants.  */
+	/* Block-scale suffix ("_bs16" / "_bs32") for microscaled variants.  */
+	if (*bs_suffix)
+	  b.append_name (bs_suffix);
+
 	/* TODO (§6): append "_L{N}" for tile load/store immediate lambda.  */
       }
 

@@ -821,6 +821,31 @@ static CONSTEXPR const rvv_arg_type_info ime_fwvss_f4e2m1_args[]
      rvv_arg_type_info (RVV_BASE_ime_f4e2m1_lmul1_vector),
      rvv_arg_type_info_end};
 
+/* Args for microscaled FP-input scaled variants (section 8): same as
+   the non-scaled variant but with an extra vuint16m1_t scales operand.  */
+static CONSTEXPR const rvv_arg_type_info ime_scaled_fwvss_f16_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp16_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp16_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_scales_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_scaled_fwvss_f8e4m3_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_f8e4m3_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_f8e4m3_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_scales_vector),
+     rvv_arg_type_info_end};
+
+/* Args for microscaled integer-input variants (section 8): FP accumulator,
+   two int8 inputs, plus vuint16m1_t scales.  */
+static CONSTEXPR const rvv_arg_type_info ime_immacc_i8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_i8_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_i8_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_scales_vector),
+     rvv_arg_type_info_end};
+
 /* A list of args for vector_type func (vector_type, vector_type, vector_type)
  * function.  */
 static CONSTEXPR const rvv_arg_type_info vqq_args[]
@@ -3609,6 +3634,40 @@ static CONSTEXPR const rvv_op_info f32_ime_8wvss_f4e2m1_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f4e2m1_args};
 
+/* Microscaled (section 8) FP-input scaled op_info structs.  */
+
+/* vfwmmacc_scaled_f16: FP16 -> FP32 accumulator, with scales.  */
+static CONSTEXPR const rvv_op_info f32_ime_scaled_wvss_f16_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f16_args};
+
+/* vfqwmmacc_scaled_f8e4m3: OFP8_E4M3 -> FP32 accumulator, with scales.  */
+static CONSTEXPR const rvv_op_info f32_ime_scaled_qwvss_f8e4m3_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f8e4m3_args};
+
+/* vf8wmmacc_scaled_f8e4m3: OFP8_E4M3 -> FP64 accumulator, with scales.  */
+static CONSTEXPR const rvv_op_info f64_ime_scaled_8wvss_f8e4m3_ops
+  = {f64_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f8e4m3_args};
+
+/* Microscaled (section 8) integer-input op_info structs.  */
+
+/* vfwimmacc_i8: Int8 -> FP16 accumulator, with scales.  */
+static CONSTEXPR const rvv_op_info f16_ime_immacc_i8_ops
+  = {f16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_immacc_i8_args};
+
+/* vfqwimmacc_i8: Int8 -> FP32 accumulator, with scales.  */
+static CONSTEXPR const rvv_op_info f32_ime_immacc_i8_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_immacc_i8_args};
+
+/* vf8wimmacc_i8: Int8 -> FP64 accumulator, with scales.  */
+static CONSTEXPR const rvv_op_info f64_ime_immacc_i8_ops
+  = {f64_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_immacc_i8_args};
+
 static CONSTEXPR const rvv_op_info sf_vc_x_ops
   = {full_v_u_ops,					     /* Types */
      OP_TYPE_x,					     /* Suffix */
@@ -5424,6 +5483,49 @@ function_expander::use_exact_insn (insn_code icode)
     add_input_operand (Pmode, gen_int_mode (riscv_vector::FRM_DYN, Pmode));
 
   return generate_insn (icode);
+}
+
+/* Implement the call using instruction ICODE for a microscaled (section 8)
+   IME intrinsic.  SCALES_ARGNO is the index of the block-scale argument
+   (vuint16m1_t v0) in the call expression.  This argument is moved into
+   the v0 register before the instruction is emitted, and is skipped when
+   building the pattern operands (the RTL pattern uses an implicit
+   (use (reg:RVVM1HI V0_REGNUM)) instead of a match_operand).  */
+rtx
+function_expander::use_microscaled_insn (insn_code icode, int scales_argno)
+{
+  /* Move the scales vector into v0.  */
+  rtx scales_rtx = expand_normal (CALL_EXPR_ARG (exp, scales_argno));
+  rtx v0 = gen_rtx_REG (GET_MODE (scales_rtx), V_REG_FIRST);
+  emit_move_insn (v0, scales_rtx);
+
+  machine_mode mode = TYPE_MODE (TREE_TYPE (exp));
+
+  /* No mask/merge for IME microscaled.  */
+
+  /* Add all call args except the scales argument.  */
+  for (int argno = 0; argno < call_expr_nargs (exp); argno++)
+    {
+      if (argno == scales_argno)
+	continue;
+      add_input_operand (argno);
+    }
+
+  /* Tail policy and AVL type.  */
+  add_input_operand (Pmode, get_tail_policy_for_pred (pred));
+  add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
+
+  return generate_insn (icode);
+}
+
+/* Helper for microscaled expanders that bypasses use_microscaled_insn
+   by adding just the tail-policy and avl-type operands.  Called from
+   function base expand() methods that build the operand list manually.  */
+void
+function_expander::add_microscaled_tail_and_avl ()
+{
+  add_input_operand (Pmode, get_tail_policy_for_pred (pred));
+  add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
 }
 
 int

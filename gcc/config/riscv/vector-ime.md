@@ -83,6 +83,23 @@
   UNSPEC_VF8WMMACC_F8E5M2		;; vf8wmmacc.vv (W=8, OFP8_E5M2->FP64)
   UNSPEC_VF8WMMACC_F4E2M1		;; vf8wmmacc.vv (W=8, OFP4_E2M1->FP32)
 
+  ;; Microscaled (§8) FP-input scaled variants: same mnemonic as §7 but
+  ;; with block-scale operand in v0 and the bs vtype bit set.
+  UNSPEC_VFWMMACC_F16_BS32	;; vfwmmacc.vv scaled, FP16->FP32, BS=32
+  UNSPEC_VFWMMACC_F16_BS16	;; vfwmmacc.vv scaled, FP16->FP32, BS=16
+  UNSPEC_VFQWMMACC_F8E4M3_BS32	;; vfqwmmacc.vv scaled, OFP8_E4M3->FP32, BS=32
+  UNSPEC_VFQWMMACC_F8E4M3_BS16	;; vfqwmmacc.vv scaled, OFP8_E4M3->FP32, BS=16
+  UNSPEC_VF8WMMACC_F8E4M3_BS32	;; vf8wmmacc.vv scaled, OFP8_E4M3->FP64, BS=32
+  UNSPEC_VF8WMMACC_F8E4M3_BS16	;; vf8wmmacc.vv scaled, OFP8_E4M3->FP64, BS=16
+
+  ;; Microscaled (§8) integer-input variants: new instruction mnemonics.
+  UNSPEC_VFWIMMACC_I8_BS32	;; vfwimmacc.vv, Int8->FP16, BS=32
+  UNSPEC_VFWIMMACC_I8_BS16	;; vfwimmacc.vv, Int8->FP16, BS=16
+  UNSPEC_VFQWIMMACC_I8_BS32	;; vfqwimmacc.vv, Int8->FP32, BS=32
+  UNSPEC_VFQWIMMACC_I8_BS16	;; vfqwimmacc.vv, Int8->FP32, BS=16
+  UNSPEC_VF8WIMMACC_I8_BS32	;; vf8wimmacc.vv, Int8->FP64, BS=32
+  UNSPEC_VF8WIMMACC_I8_BS16	;; vf8wimmacc.vv, Int8->FP64, BS=16
+
   ;; Register-form vsetvl used to establish the full vtype value for IME
   ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
   ;; standard SEW/LMUL/ta/ma).  A plain vsetvli/vsetivli cannot encode these
@@ -98,6 +115,12 @@
 ;; with the widening variants.
 (define_attr "ime_altfmt" "ss,uu,su,us"
   (const_string "ss"))
+
+;; Block scale size for microscaled (§8) variants.
+;; "none" means not a microscaled instruction (bs bit irrelevant).
+;; "bs16" and "bs32" set the bs vtype bit accordingly.
+(define_attr "ime_bs" "none,bs16,bs32"
+  (const_string "none"))
 
 (define_int_iterator VMMACC_SU [UNSPEC_VMMACC_S UNSPEC_VMMACC_U])
 
@@ -937,6 +960,7 @@
    (set_attr "mode" "<MODE>")])
 
 ;; vf8wmmacc OFP4_E2M1 -> FP32
+
 (define_insn "@pred_vf8wmmacc_f4e2m1<mode>"
   [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
 	(if_then_else:VF32_ACC
@@ -957,4 +981,244 @@
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
+;; Microscaled (section 8) FP-input scaled variants
+;; ---------------------------------------------------------------------------
+;;
+;; These are microscaled versions of the section 7 FP mmacc instructions.
+;; They use the same assembly mnemonic but with a ",v0.t" suffix to
+;; indicate the block-scale vector is present in v0.  The vtype bs bit
+;; encodes the block-scale size (BS=16 or BS=32).
+;;
+;; The block-scale vector (vuint16m1_t) must be in v0.  The expander
+;; emits a move into v0 before the instruction; the pattern references
+;; v0 implicitly via (use (reg:RVVM1HI V0_REGNUM)).
+
+;; Int iterators for microscaled FP-input scaled variants.
+(define_int_iterator VFWMMACC_F16_BS
+  [UNSPEC_VFWMMACC_F16_BS32 UNSPEC_VFWMMACC_F16_BS16])
+
+(define_int_attr vfwmmacc_f16_bs_name
+  [(UNSPEC_VFWMMACC_F16_BS32 "_bs32")
+   (UNSPEC_VFWMMACC_F16_BS16 "_bs16")])
+
+(define_int_attr vfwmmacc_f16_bs_attr
+  [(UNSPEC_VFWMMACC_F16_BS32 "bs32")
+   (UNSPEC_VFWMMACC_F16_BS16 "bs16")])
+
+(define_int_iterator VFQWMMACC_F8E4M3_BS
+  [UNSPEC_VFQWMMACC_F8E4M3_BS32 UNSPEC_VFQWMMACC_F8E4M3_BS16])
+
+(define_int_attr vfqwmmacc_f8e4m3_bs_name
+  [(UNSPEC_VFQWMMACC_F8E4M3_BS32 "_bs32")
+   (UNSPEC_VFQWMMACC_F8E4M3_BS16 "_bs16")])
+
+(define_int_attr vfqwmmacc_f8e4m3_bs_attr
+  [(UNSPEC_VFQWMMACC_F8E4M3_BS32 "bs32")
+   (UNSPEC_VFQWMMACC_F8E4M3_BS16 "bs16")])
+
+(define_int_iterator VF8WMMACC_F8E4M3_BS
+  [UNSPEC_VF8WMMACC_F8E4M3_BS32 UNSPEC_VF8WMMACC_F8E4M3_BS16])
+
+(define_int_attr vf8wmmacc_f8e4m3_bs_name
+  [(UNSPEC_VF8WMMACC_F8E4M3_BS32 "_bs32")
+   (UNSPEC_VF8WMMACC_F8E4M3_BS16 "_bs16")])
+
+(define_int_attr vf8wmmacc_f8e4m3_bs_attr
+  [(UNSPEC_VF8WMMACC_F8E4M3_BS32 "bs32")
+   (UNSPEC_VF8WMMACC_F8E4M3_BS16 "bs16")])
+
+;; Int iterators for microscaled integer-input variants.
+(define_int_iterator VFWIMMACC_I8_BS
+  [UNSPEC_VFWIMMACC_I8_BS32 UNSPEC_VFWIMMACC_I8_BS16])
+
+(define_int_attr vfwimmacc_i8_bs_name
+  [(UNSPEC_VFWIMMACC_I8_BS32 "_bs32")
+   (UNSPEC_VFWIMMACC_I8_BS16 "_bs16")])
+
+(define_int_attr vfwimmacc_i8_bs_attr
+  [(UNSPEC_VFWIMMACC_I8_BS32 "bs32")
+   (UNSPEC_VFWIMMACC_I8_BS16 "bs16")])
+
+(define_int_iterator VFQWIMMACC_I8_BS
+  [UNSPEC_VFQWIMMACC_I8_BS32 UNSPEC_VFQWIMMACC_I8_BS16])
+
+(define_int_attr vfqwimmacc_i8_bs_name
+  [(UNSPEC_VFQWIMMACC_I8_BS32 "_bs32")
+   (UNSPEC_VFQWIMMACC_I8_BS16 "_bs16")])
+
+(define_int_attr vfqwimmacc_i8_bs_attr
+  [(UNSPEC_VFQWIMMACC_I8_BS32 "bs32")
+   (UNSPEC_VFQWIMMACC_I8_BS16 "bs16")])
+
+(define_int_iterator VF8WIMMACC_I8_BS
+  [UNSPEC_VF8WIMMACC_I8_BS32 UNSPEC_VF8WIMMACC_I8_BS16])
+
+(define_int_attr vf8wimmacc_i8_bs_name
+  [(UNSPEC_VF8WIMMACC_I8_BS32 "_bs32")
+   (UNSPEC_VF8WIMMACC_I8_BS16 "_bs16")])
+
+(define_int_attr vf8wimmacc_i8_bs_attr
+  [(UNSPEC_VF8WIMMACC_I8_BS32 "bs32")
+   (UNSPEC_VF8WIMMACC_I8_BS16 "bs16")])
+
+;; FP16 accumulator modes at LMUL >= 1 (for vfwimmacc Int8->FP16).
+(define_mode_iterator VF16_ACC
+  [(RVVM1HF "TARGET_ZVFH") (RVVM2HF "TARGET_ZVFH")
+   (RVVM4HF "TARGET_ZVFH") (RVVM8HF "TARGET_ZVFH")])
+
+;; vfwmmacc_scaled FP16 -> FP32, BS=32/BS=16
+(define_insn "@pred_vfwmmacc_scaled_f16<vfwmmacc_f16_bs_name><mode>"
+  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+	(if_then_else:VF32_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VF32_ACC
+	    [(match_operand:VF32_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1HF  2 "register_operand" " vr")
+	     (match_operand:RVVM1HF  3 "register_operand" " vr")]
+	    VFWMMACC_F16_BS)
+	  (match_dup 1)))
+   (use (reg:RVVM1HI V0_REGNUM))]
+  "TARGET_ZVVFMM"
+  "vfwmmacc.vv\t%0,%2,%3,v0.t"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_bs" "<vfwmmacc_f16_bs_attr>")
+   (set_attr "mode" "<MODE>")])
+
+;; vfqwmmacc_scaled OFP8_E4M3 -> FP32, BS=32/BS=16
+(define_insn "@pred_vfqwmmacc_scaled_f8e4m3<vfqwmmacc_f8e4m3_bs_name><mode>"
+  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+	(if_then_else:VF32_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VF32_ACC
+	    [(match_operand:VF32_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1QI  2 "register_operand" " vr")
+	     (match_operand:RVVM1QI  3 "register_operand" " vr")]
+	    VFQWMMACC_F8E4M3_BS)
+	  (match_dup 1)))
+   (use (reg:RVVM1HI V0_REGNUM))]
+  "TARGET_ZVVFMM"
+  "vfqwmmacc.vv\t%0,%2,%3,v0.t"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_bs" "<vfqwmmacc_f8e4m3_bs_attr>")
+   (set_attr "mode" "<MODE>")])
+
+;; vf8wmmacc_scaled OFP8_E4M3 -> FP64, BS=32/BS=16
+(define_insn "@pred_vf8wmmacc_scaled_f8e4m3<vf8wmmacc_f8e4m3_bs_name><mode>"
+  [(set (match_operand:VF64_ACC 0 "register_operand"              "=vr")
+	(if_then_else:VF64_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VF64_ACC
+	    [(match_operand:VF64_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1QI  2 "register_operand" " vr")
+	     (match_operand:RVVM1QI  3 "register_operand" " vr")]
+	    VF8WMMACC_F8E4M3_BS)
+	  (match_dup 1)))
+   (use (reg:RVVM1HI V0_REGNUM))]
+  "TARGET_ZVVFMM"
+  "vf8wmmacc.vv\t%0,%2,%3,v0.t"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_bs" "<vf8wmmacc_f8e4m3_bs_attr>")
+   (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
+;; Microscaled (section 8) integer-input variants (NEW instructions)
+;; ---------------------------------------------------------------------------
+
+;; vfwimmacc.vv Int8 -> FP16, BS=32/BS=16
+(define_insn "@pred_vfwimmacc_i8<vfwimmacc_i8_bs_name><mode>"
+  [(set (match_operand:VF16_ACC 0 "register_operand"              "=vr")
+	(if_then_else:VF16_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VF16_ACC
+	    [(match_operand:VF16_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1QI  2 "register_operand" " vr")
+	     (match_operand:RVVM1QI  3 "register_operand" " vr")]
+	    VFWIMMACC_I8_BS)
+	  (match_dup 1)))
+   (use (reg:RVVM1HI V0_REGNUM))]
+  "TARGET_ZVVFMM"
+  "vfwimmacc.vv\t%0,%2,%3,v0.t"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_bs" "<vfwimmacc_i8_bs_attr>")
+   (set_attr "mode" "<MODE>")])
+
+;; vfqwimmacc.vv Int8 -> FP32, BS=32/BS=16
+(define_insn "@pred_vfqwimmacc_i8<vfqwimmacc_i8_bs_name><mode>"
+  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+	(if_then_else:VF32_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VF32_ACC
+	    [(match_operand:VF32_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1QI  2 "register_operand" " vr")
+	     (match_operand:RVVM1QI  3 "register_operand" " vr")]
+	    VFQWIMMACC_I8_BS)
+	  (match_dup 1)))
+   (use (reg:RVVM1HI V0_REGNUM))]
+  "TARGET_ZVVFMM"
+  "vfqwimmacc.vv\t%0,%2,%3,v0.t"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_bs" "<vfqwimmacc_i8_bs_attr>")
+   (set_attr "mode" "<MODE>")])
+
+;; vf8wimmacc.vv Int8 -> FP64, BS=32/BS=16
+(define_insn "@pred_vf8wimmacc_i8<vf8wimmacc_i8_bs_name><mode>"
+  [(set (match_operand:VF64_ACC 0 "register_operand"              "=vr")
+	(if_then_else:VF64_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VF64_ACC
+	    [(match_operand:VF64_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1QI  2 "register_operand" " vr")
+	     (match_operand:RVVM1QI  3 "register_operand" " vr")]
+	    VF8WIMMACC_I8_BS)
+	  (match_dup 1)))
+   (use (reg:RVVM1HI V0_REGNUM))]
+  "TARGET_ZVVFMM"
+  "vf8wimmacc.vv\t%0,%2,%3,v0.t"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_bs" "<vf8wimmacc_i8_bs_attr>")
    (set_attr "mode" "<MODE>")])

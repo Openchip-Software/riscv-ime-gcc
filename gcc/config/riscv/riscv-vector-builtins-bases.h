@@ -379,6 +379,20 @@ extern const function_base *const vfqwmmacc_f8e5m2;
 extern const function_base *const vf8wmmacc_f8e4m3;
 extern const function_base *const vf8wmmacc_f8e5m2;
 extern const function_base *const vf8wmmacc_f4e2m1;
+/* Microscaled (section 8) FP-input scaled variants */
+extern const function_base *const vfwmmacc_scaled_f16_bs32;
+extern const function_base *const vfwmmacc_scaled_f16_bs16;
+extern const function_base *const vfqwmmacc_scaled_f8e4m3_bs32;
+extern const function_base *const vfqwmmacc_scaled_f8e4m3_bs16;
+extern const function_base *const vf8wmmacc_scaled_f8e4m3_bs32;
+extern const function_base *const vf8wmmacc_scaled_f8e4m3_bs16;
+/* Microscaled (section 8) integer-input variants */
+extern const function_base *const vfwimmacc_i8_bs32;
+extern const function_base *const vfwimmacc_i8_bs16;
+extern const function_base *const vfqwimmacc_i8_bs32;
+extern const function_base *const vfqwimmacc_i8_bs16;
+extern const function_base *const vf8wimmacc_i8_bs32;
+extern const function_base *const vf8wimmacc_i8_bs16;
 extern const function_base *const vmtl;
 extern const function_base *const vmts;
 extern const function_base *const vmttl;

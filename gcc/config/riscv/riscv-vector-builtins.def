@@ -821,6 +821,16 @@ DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul1_vector,
 DEF_RVV_BASE_TYPE (ime_f4e2m1_lmul1_vector,
 		   builtin_types[VECTOR_TYPE_vfloat4e2m1m1_t].vector)
 
+/* IME scales vector: always vuint16m1_t, used for the block-scale operand
+   of microscaled (section 8) intrinsics.  */
+DEF_RVV_BASE_TYPE (ime_scales_vector,
+		   builtin_types[VECTOR_TYPE_vuint16m1_t].vector)
+
+/* IME integer-input base types: always LMUL=1 signed/unsigned int8,
+   used for the integer-input microscaled variants (vfwimmacc etc.).  */
+DEF_RVV_BASE_TYPE (ime_i8_lmul1_vector,
+		   builtin_types[VECTOR_TYPE_vint8m1_t].vector)
+
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)
