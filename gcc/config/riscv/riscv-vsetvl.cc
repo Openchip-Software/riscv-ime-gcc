@@ -1768,6 +1768,13 @@ emit_ime_vtype_build (const vsetvl_info &info)
 
   if (r.lambda_log2 >= 0)
     {
+      int lambda_val = 1 << r.lambda_log2;
+      if (!riscv_ime_lambda_supported_p (lambda_val))
+	{
+	  error ("IME intrinsic requires %<lambda=%d%> which is not in the "
+		 "set allowed by %<-mrvv-ime-lambda=%>", lambda_val);
+	  return NULL_RTX;
+	}
       /* Static lambda: the full vtype is a compile-time constant.  */
       int lambda_enc = r.lambda_log2 + 1;
       static_val |= (HOST_WIDE_INT) lambda_enc << (xlen - 4);
