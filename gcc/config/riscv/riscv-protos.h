@@ -858,6 +858,7 @@ riscv_process_target_version_str (string_slice, location_t *);
 extern void
 riscv_override_options_internal (struct gcc_options *);
 extern void riscv_option_override (void);
+extern bool riscv_ime_lambda_supported_p (int);
 extern void riscv_reset_previous_fndecl (void);
 extern rtx riscv_prefetch_cookie (rtx, rtx);
 extern bool riscv_prefetch_offset_address_p (rtx, machine_mode);

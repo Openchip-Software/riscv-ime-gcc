@@ -1349,6 +1349,7 @@ See RS/6000 and PowerPC Options.
 -mstringop-strategy=@var{strategy}
 -mtls-dialect=desc  -mtls-dialect=trad
 -mrvv-vector-bits=@var{value}  -mrvv-max-lmul=@var{value}
+-mrvv-ime-lambda=@var{list}
 -madjust-lmul-cost  -mmax-vectorization  -mno-autovec-segment}
 
 @emph{RL78 Options} (@ref{RL78 Options})
@@ -31447,6 +31448,19 @@ support the other options.
 This option adjusts the cost model used to schedule vector instructions to
 multiply the latency of instructions by the RVV length multiplier, LMUL.
 It is disabled by default.
+
+@opindex mrvv-ime-lambda
+@item -mrvv-ime-lambda=@var{list}
+Specify the set of supported IME (Integer Matrix Extension) lambda values
+as a comma-separated list.  Each value must be a power of two in the range
+1 to 64 (i.e., a subset of @samp{1,2,4,8,16,32,64}).  The default is all
+seven values.
+
+When @option{-mrvv-vector-bits=zvl} is also given, the compiler computes
+the required lambda at compile time and emits an error if it is not in the
+listed set.  In runtime-dispatch mode (the default), the list acts as a
+hint for future optimization: when a single lambda value is the only
+candidate in the set, the compiler can skip the runtime verification branch.
 
 @opindex mautovec-segment
 @opindex mno-autovec-segment
