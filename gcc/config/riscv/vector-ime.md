@@ -260,13 +260,32 @@
   [(UNSPEC_VF8WMMACC_F8E4M3 "_f8e4m3")
    (UNSPEC_VF8WMMACC_F8E5M2 "_f8e5m2")])
 
-;; Integer modes at LMUL >= 1 for the tile load/store patterns.  The
+;; Element modes at LMUL >= 1 for the tile load/store patterns.  The
 ;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not
 ;; expressible in the tile register-group geometry and are excluded.
+;; Includes FP modes as well: vmtl/vmts/vmttl/vmtts treat memory as
+;; opaque bytes, so loading/storing FP data is bit-identical to the
+;; integer case and differs only in the C-level type.
 (define_mode_iterator VI_LMUL1 [RVVM1QI RVVM2QI RVVM4QI RVVM8QI
 				RVVM1HI RVVM2HI RVVM4HI RVVM8HI
 				RVVM1SI RVVM2SI RVVM4SI RVVM8SI
-				RVVM1DI RVVM2DI RVVM4DI RVVM8DI])
+				RVVM1DI RVVM2DI RVVM4DI RVVM8DI
+				(RVVM1HF "TARGET_VECTOR_ELEN_FP_16")
+				(RVVM2HF "TARGET_VECTOR_ELEN_FP_16")
+				(RVVM4HF "TARGET_VECTOR_ELEN_FP_16")
+				(RVVM8HF "TARGET_VECTOR_ELEN_FP_16")
+				(RVVM1BF "TARGET_VECTOR_ELEN_BF_16")
+				(RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
+				(RVVM4BF "TARGET_VECTOR_ELEN_BF_16")
+				(RVVM8BF "TARGET_VECTOR_ELEN_BF_16")
+				(RVVM1SF "TARGET_VECTOR_ELEN_FP_32")
+				(RVVM2SF "TARGET_VECTOR_ELEN_FP_32")
+				(RVVM4SF "TARGET_VECTOR_ELEN_FP_32")
+				(RVVM8SF "TARGET_VECTOR_ELEN_FP_32")
+				(RVVM1DF "TARGET_VECTOR_ELEN_FP_64")
+				(RVVM2DF "TARGET_VECTOR_ELEN_FP_64")
+				(RVVM4DF "TARGET_VECTOR_ELEN_FP_64")
+				(RVVM8DF "TARGET_VECTOR_ELEN_FP_64")])
 
 ;; ---------------------------------------------------------------------------
 ;; Register-form vsetvl for IME instructions
