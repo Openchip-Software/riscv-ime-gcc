@@ -3512,6 +3512,53 @@ static const rvv_type_info iu_lmul_ge1_ops[]
      {VECTOR_TYPE_vuint64m8_t, RVV_REQUIRE_ELEN_64},
      {NUM_VECTOR_TYPES, 0}};
 
+/* Type set used by the IME tile load/store, combining integer + FP
+   element types at LMUL in {1, 2, 4, 8}.  The tile load/store
+   instructions treat memory as opaque bytes, so they support all
+   element types uniformly; the element-type distinction is purely
+   for C front-end type checking.  Sub-byte element types (Int4,
+   OFP4) are not included -- they would require a new scalar pointer
+   base type and are less common in practice.  */
+static const rvv_type_info fiu_lmul_ge1_ops[]
+  = {{VECTOR_TYPE_vint8m1_t, 0},   {VECTOR_TYPE_vint8m2_t, 0},
+     {VECTOR_TYPE_vint8m4_t, 0},   {VECTOR_TYPE_vint8m8_t, 0},
+     {VECTOR_TYPE_vint16m1_t, 0},  {VECTOR_TYPE_vint16m2_t, 0},
+     {VECTOR_TYPE_vint16m4_t, 0},  {VECTOR_TYPE_vint16m8_t, 0},
+     {VECTOR_TYPE_vint32m1_t, 0},  {VECTOR_TYPE_vint32m2_t, 0},
+     {VECTOR_TYPE_vint32m4_t, 0},  {VECTOR_TYPE_vint32m8_t, 0},
+     {VECTOR_TYPE_vint64m1_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vint64m2_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vint64m4_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vint64m8_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint8m1_t, 0},  {VECTOR_TYPE_vuint8m2_t, 0},
+     {VECTOR_TYPE_vuint8m4_t, 0},  {VECTOR_TYPE_vuint8m8_t, 0},
+     {VECTOR_TYPE_vuint16m1_t, 0}, {VECTOR_TYPE_vuint16m2_t, 0},
+     {VECTOR_TYPE_vuint16m4_t, 0}, {VECTOR_TYPE_vuint16m8_t, 0},
+     {VECTOR_TYPE_vuint32m1_t, 0}, {VECTOR_TYPE_vuint32m2_t, 0},
+     {VECTOR_TYPE_vuint32m4_t, 0}, {VECTOR_TYPE_vuint32m8_t, 0},
+     {VECTOR_TYPE_vuint64m1_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint64m2_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint64m4_t, RVV_REQUIRE_ELEN_64},
+     {VECTOR_TYPE_vuint64m8_t, RVV_REQUIRE_ELEN_64},
+     /* FP types.  */
+     {VECTOR_TYPE_vfloat16m1_t, RVV_REQUIRE_ELEN_FP_16},
+     {VECTOR_TYPE_vfloat16m2_t, RVV_REQUIRE_ELEN_FP_16},
+     {VECTOR_TYPE_vfloat16m4_t, RVV_REQUIRE_ELEN_FP_16},
+     {VECTOR_TYPE_vfloat16m8_t, RVV_REQUIRE_ELEN_FP_16},
+     {VECTOR_TYPE_vbfloat16m1_t, RVV_REQUIRE_ELEN_BF_16},
+     {VECTOR_TYPE_vbfloat16m2_t, RVV_REQUIRE_ELEN_BF_16},
+     {VECTOR_TYPE_vbfloat16m4_t, RVV_REQUIRE_ELEN_BF_16},
+     {VECTOR_TYPE_vbfloat16m8_t, RVV_REQUIRE_ELEN_BF_16},
+     {VECTOR_TYPE_vfloat32m1_t, RVV_REQUIRE_ELEN_FP_32},
+     {VECTOR_TYPE_vfloat32m2_t, RVV_REQUIRE_ELEN_FP_32},
+     {VECTOR_TYPE_vfloat32m4_t, RVV_REQUIRE_ELEN_FP_32},
+     {VECTOR_TYPE_vfloat32m8_t, RVV_REQUIRE_ELEN_FP_32},
+     {VECTOR_TYPE_vfloat64m1_t, RVV_REQUIRE_ELEN_FP_64},
+     {VECTOR_TYPE_vfloat64m2_t, RVV_REQUIRE_ELEN_FP_64},
+     {VECTOR_TYPE_vfloat64m4_t, RVV_REQUIRE_ELEN_FP_64},
+     {VECTOR_TYPE_vfloat64m8_t, RVV_REQUIRE_ELEN_FP_64},
+     {NUM_VECTOR_TYPES, 0}};
+
 /* FP type sets at LMUL >= 1 for IME FP matrix multiply-accumulate.  */
 static const rvv_type_info fp_lmul_ge1_ops[]
   = {
@@ -3546,7 +3593,7 @@ static const rvv_type_info f64_lmul_ge1_ops[]
 /* Op-info for vmtl.v tile load: (const T *base, ptrdiff_t ld) -> vector.
    The ld operand is the leading dimension measured in elements.  */
 static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops
-  = {iu_lmul_ge1_ops,
+  = {fiu_lmul_ge1_ops,
      OP_TYPE_v,
      rvv_arg_type_info (RVV_BASE_vector),
      scalar_const_ptr_ptrdiff_args};
@@ -3554,7 +3601,7 @@ static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops
 /* Op-info for vmts.v tile store: (T *base, ptrdiff_t ld, vector_t) -> void.
    The ld operand is the leading dimension measured in elements.  */
 static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops
-  = {iu_lmul_ge1_ops,
+  = {fiu_lmul_ge1_ops,
      OP_TYPE_v,
      rvv_arg_type_info (RVV_BASE_void),
      scalar_ptr_ptrdiff_args};

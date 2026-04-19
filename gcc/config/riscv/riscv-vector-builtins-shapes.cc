@@ -97,7 +97,9 @@ supports_vectype_p (const function_group_info &group, unsigned int vec_type_idx)
       || *group.shape == shapes::fault_load
       || *group.shape == shapes::seg_loadstore
       || *group.shape == shapes::seg_indexed_loadstore
-      || *group.shape == shapes::seg_fault_load)
+      || *group.shape == shapes::seg_fault_load
+      || *group.shape == shapes::ime_mmacc
+      || *group.shape == shapes::ime_tile)
     return true;
   return false;
 }
