@@ -1781,16 +1781,10 @@ emit_ime_vtype_build (const vsetvl_info &info)
       return gen_int_mode (static_val, Pmode);
     }
 
-  /* Runtime lambda: the value depends on VLEN read at runtime.  Not
-     supported yet -- the vsetvl pass runs post-reload and cannot emit
-     the multi-instruction compute sequence (csrr vlenb + ctz + shifts
-     + or) without creating fresh pseudos.  A follow-up commit will
-     address this, either by lowering the IME setup during intrinsic
-     expand (pre-reload) or by teaching the pass to emit
-     hard-register-only sequences.  */
-  sorry ("IME intrinsic with runtime %<lambda%> is not yet supported; "
-	 "use %<-mrvv-vector-bits=zvl%> with a %<zvl*b%> that makes VLEN "
-	 "compile-time known");
+  /* Runtime lambda: the intrinsic expander (pre-reload) has already
+     emitted the multi-instruction vtype setup sequence (csrr vlenb +
+     ctz + shifts + vsetvl + WARL check).  Return NULL_RTX so the
+     vsetvl pass skips its own insertion for this instruction.  */
   return NULL_RTX;
 }
 
