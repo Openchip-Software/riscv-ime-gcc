@@ -3255,6 +3255,111 @@ static CONSTEXPR const microscaled_ime_op<code_for_pred_vf8wimmacc_i8,
 static CONSTEXPR const microscaled_ime_op<code_for_pred_vf8wimmacc_i8,
   UNSPEC_VF8WIMMACC_I8_BS16> vf8wimmacc_i8_bs16_obj;
 
+/* Implements __riscv_ime_vlen(): returns VLEN in bits.
+   Compile-time constant when VLEN is known, otherwise csrr vlenb << 3.  */
+class ime_vlen : public function_base
+{
+public:
+  bool apply_vl_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    machine_mode mode = GET_MODE (e.target);
+    rtx vlenb = gen_reg_rtx (mode);
+    emit_move_insn (vlenb, gen_int_mode (BYTES_PER_RISCV_VECTOR, mode));
+    rtx vlen_bits = expand_simple_binop (mode, ASHIFT, vlenb, GEN_INT (3),
+					 e.target, 1, OPTAB_DIRECT);
+    if (vlen_bits != e.target)
+      emit_move_insn (e.target, vlen_bits);
+    return e.target;
+  }
+};
+
+static CONSTEXPR const ime_vlen ime_vlen_obj;
+
+/* Implements __riscv_ime_lambda(): returns the IME lambda value.
+   When VLEN is compile-time known and -mrvv-ime-lambda= has a single
+   value, returns that constant.  Otherwise computes at runtime:
+   lambda = 1 << (ctz(VLEN / 8) - log2(SEW_min * 1) ... but lambda
+   depends on the instruction's SEW and MUL_C which aren't known here.
+
+   For a geometry-query builtin, we return VLEN-derived lambda for the
+   minimum configuration (SEW=8, MUL_C=1): lambda = sqrt(VLEN/8).
+   User code typically uses this in loop bounds where the exact lambda
+   for their SEW/MUL_C is implicit from the intrinsic they call.
+
+   Actually, the most useful definition is: lambda is an intrinsic
+   property of the hardware, not dependent on SEW/MUL_C.  The hardware
+   supports a SET of lambda values.  For __riscv_ime_lambda() we return
+   the maximum supported lambda: sqrt(VLEN / min_SEW) where min_SEW=8.
+   This gives the user the tile dimension for the largest possible tiles.
+
+   Simpler approach: just return sqrt(VLEN/8) = sqrt(VLEN) / sqrt(8).
+   Since VLEN is a power of 2, sqrt(VLEN) = 1 << (log2(VLEN) / 2).
+   VLEN in bits = vlenb * 8.  log2(vlenb*8) = log2(vlenb) + 3.
+   sqrt(VLEN) = 1 << ((log2(vlenb) + 3) / 2).
+
+   But this is complex.  Simplest: return vlenb, shift, ctz, shift.  */
+class ime_lambda : public function_base
+{
+public:
+  bool apply_vl_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    machine_mode mode = GET_MODE (e.target);
+
+    if (BYTES_PER_RISCV_VECTOR.is_constant ())
+      {
+	/* Static path: compute lambda at compile time.
+	   lambda = sqrt(VLEN / 8) for the default SEW=8, MUL_C=1.
+	   More precisely: VLEN_bits = vlenb * 8; lambda_sq = VLEN_bits / 8
+	   = vlenb; lambda = sqrt(vlenb).  */
+	HOST_WIDE_INT vlenb_val = BYTES_PER_RISCV_VECTOR.to_constant ();
+	HOST_WIDE_INT vlen_bits = vlenb_val * 8;
+	/* For the default query (SEW=8, MUL_C=1):
+	   lambda_sq = vlen_bits / (8 * 1) = vlen_bits / 8 = vlenb.  */
+	HOST_WIDE_INT lambda_sq = vlenb_val;
+	int log_sq = exact_log2 (lambda_sq);
+	if (log_sq >= 0 && (log_sq & 1) == 0)
+	  {
+	    int lambda = 1 << (log_sq >> 1);
+	    emit_move_insn (e.target, gen_int_mode (lambda, mode));
+	    return e.target;
+	  }
+	/* Fallback: vlenb is not a perfect square power of 2.
+	   Just compute at runtime.  */
+      }
+
+    /* Runtime path: lambda = 1 << (ctz(vlenb) / 2)
+       where vlenb = VLEN/8, and lambda_sq = vlenb (for SEW=8, MUL_C=1).  */
+    rtx vlenb = gen_reg_rtx (mode);
+    emit_move_insn (vlenb, gen_int_mode (BYTES_PER_RISCV_VECTOR, mode));
+
+    /* ctz(vlenb) = log2(lambda^2)  */
+    rtx log2_lsq = gen_reg_rtx (mode);
+    if (TARGET_64BIT)
+      emit_insn (gen_ctzdi2 (log2_lsq, vlenb));
+    else
+      emit_insn (gen_ctzsi2 (log2_lsq, vlenb));
+
+    /* log2_lsq >> 1 = log2(lambda)  */
+    rtx log2_lambda = expand_simple_binop (mode, LSHIFTRT, log2_lsq,
+					   GEN_INT (1), NULL_RTX, 1,
+					   OPTAB_DIRECT);
+
+    /* 1 << log2(lambda) = lambda  */
+    rtx lambda = expand_simple_binop (mode, ASHIFT, const1_rtx,
+				      log2_lambda, e.target, 1,
+				      OPTAB_DIRECT);
+    if (lambda != e.target)
+      emit_move_insn (e.target, lambda);
+    return e.target;
+  }
+};
+
+static CONSTEXPR const ime_lambda ime_lambda_obj;
+
 /* Zvvmtls order-preserving tile load (vmtl.v), MVP: LMUL=1, unmasked,
    dynamic lambda (no immediate Lλ override).  The intrinsic signature
    is (const T *base, ptrdiff_t ld, size_t vl) -> vector, where ld is
@@ -3890,6 +3995,8 @@ BASE (vfqwimmacc_i8_bs32)
 BASE (vfqwimmacc_i8_bs16)
 BASE (vf8wimmacc_i8_bs32)
 BASE (vf8wimmacc_i8_bs16)
+BASE (ime_vlen)
+BASE (ime_lambda)
 BASE (vmtl)
 BASE (vmts)
 BASE (vmttl)
