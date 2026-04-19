@@ -425,6 +425,8 @@ extern const function_base *const vmtts_L8;
 extern const function_base *const vmtts_L16;
 extern const function_base *const vmtts_L32;
 extern const function_base *const vmtts_L64;
+extern const function_base *const ime_vlen;
+extern const function_base *const ime_lambda;
 }
 
 } // end namespace riscv_vector
