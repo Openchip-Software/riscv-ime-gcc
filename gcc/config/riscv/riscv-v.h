@@ -84,6 +84,12 @@ private:
 };
 
 extern bool valid_vec_immediate_p(rtx);
+extern void emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
+					  vlmul_type vlmul_enc,
+					  bool altfmt_a, bool altfmt_b,
+					  bool altfmt, bool bs,
+					  bool ta, bool ma,
+					  rtx avl);
 
 } // namespace riscv_vector
 
