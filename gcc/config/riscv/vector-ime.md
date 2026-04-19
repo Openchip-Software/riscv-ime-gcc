@@ -106,6 +106,9 @@
   ;; upper vtype bits; they require a register source containing the full
   ;; vtype value.
   UNSPEC_VSETVL_IME
+
+  ;; Read back the hardware vtype CSR (for WARL verification).
+  UNSPEC_READ_VTYPE
 ])
 
 ;; Signedness encoding for the two integer-input operands of IME
@@ -309,6 +312,44 @@
   "TARGET_VECTOR"
   "li\t%0,%2\n\tvsetvl\t%0,%z1,%0"
   [(set_attr "type" "vsetvl")
+   (set_attr "mode" "<MODE>")])
+
+;; Register-form vsetvl for IME with a register vtype operand.
+;;
+;; Unlike @vsetvl_ime<mode> (which takes a const_int vtype that it loads
+;; via "li"), this variant takes the full vtype value already in a
+;; register.  It is used by the pre-reload runtime-lambda expansion path:
+;; the intrinsic expander computes the vtype value (including the
+;; lambda field derived from a runtime csrr vlenb) into a pseudo, then
+;; emits this pattern to execute the register-form vsetvl.
+;;
+;; Operands:
+;;   0: destination VL register
+;;   1: AVL -- register or zero for VLMAX
+;;   2: full vtype value in a register
+(define_insn "@vsetvl_ime_reg<mode>"
+  [(set (match_operand:P 0 "register_operand"             "=r")
+	(unspec:P [(match_operand:P 1 "pmode_reg_or_0_operand" "rJ")
+		   (match_operand:P 2 "register_operand"  "r")]
+	      UNSPEC_VSETVL_IME))
+   (set (reg:SI VL_REGNUM)
+	(unspec:SI [(match_dup 1) (match_dup 2)] UNSPEC_VSETVL_IME))
+   (set (reg:SI VTYPE_REGNUM)
+	(unspec:SI [(match_dup 2)] UNSPEC_VSETVL_IME))]
+  "TARGET_VECTOR"
+  "vsetvl\t%0,%z1,%2"
+  [(set_attr "type" "rdvl")
+   (set_attr "mode" "<MODE>")])
+
+;; Read back the hardware vtype CSR.  Used by the runtime-lambda WARL
+;; verification sequence to compare the written vtype against what the
+;; hardware actually accepted.
+(define_insn "@read_vtype<mode>"
+  [(set (match_operand:P 0 "register_operand" "=r")
+	(unspec:P [(reg:SI VTYPE_REGNUM)] UNSPEC_READ_VTYPE))]
+  "TARGET_VECTOR"
+  "csrr\t%0,vtype"
+  [(set_attr "type" "rdvl")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------

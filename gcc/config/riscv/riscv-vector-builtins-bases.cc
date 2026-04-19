@@ -43,6 +43,7 @@
 #include "riscv-vector-builtins.h"
 #include "riscv-vector-builtins-shapes.h"
 #include "riscv-vector-builtins-bases.h"
+#include "riscv-v.h"
 
 using namespace riscv_vector;
 
@@ -2782,6 +2783,100 @@ static CONSTEXPR const vfwcvtbf16_f vfwcvtbf16_f_obj;
 static CONSTEXPR const vfwmaccbf16<NO_FRM> vfwmaccbf16_obj;
 static CONSTEXPR const vfwmaccbf16<HAS_FRM> vfwmaccbf16_frm_obj;
 
+/* Emit the runtime IME vtype setup sequence when VLEN is not
+   compile-time known.  Called by IME intrinsic expanders before
+   emitting the IME instruction.  If VLEN IS known at compile time,
+   this is a no-op (the vsetvl pass handles the static path).
+
+   ACC_MODE is the accumulator vector mode (determines SEW and LMUL).
+   IS_TILE_OP should be true for tile load/store instructions where
+   MUL_C is always 1 regardless of LMUL.
+   ALTFMT_A, ALTFMT_B, ALTFMT, BS are the IME-specific vtype fields.
+   E is the function_expander, used to extract the AVL argument.  */
+
+/* Return the altfmt_A value for an integer IME UNSPEC.  altfmt_A
+   encodes the signedness of the A operand: false = signed, true =
+   unsigned.  */
+
+static bool
+ime_unspec_altfmt_a (int unspec)
+{
+  switch (unspec)
+    {
+    case UNSPEC_VMMACC_U:
+    case UNSPEC_VWMMACC_U:
+    case UNSPEC_VWMMACC_US:
+    case UNSPEC_VQWMMACC_U:
+    case UNSPEC_VQWMMACC_US:
+    case UNSPEC_V8WMMACC_U:
+    case UNSPEC_V8WMMACC_US:
+      return true;
+    default:
+      return false;
+    }
+}
+
+/* Return the altfmt_B value for an integer IME UNSPEC.  */
+
+static bool
+ime_unspec_altfmt_b (int unspec)
+{
+  switch (unspec)
+    {
+    case UNSPEC_VMMACC_U:
+    case UNSPEC_VWMMACC_U:
+    case UNSPEC_VWMMACC_SU:
+    case UNSPEC_VQWMMACC_U:
+    case UNSPEC_VQWMMACC_SU:
+    case UNSPEC_V8WMMACC_U:
+    case UNSPEC_V8WMMACC_SU:
+      return true;
+    default:
+      return false;
+    }
+}
+
+static void
+maybe_emit_ime_runtime_vtype (function_expander &e,
+			      machine_mode acc_mode,
+			      bool is_tile_op,
+			      bool altfmt_a, bool altfmt_b,
+			      bool altfmt_val, bool bs_val)
+{
+  if (BYTES_PER_RISCV_VECTOR.is_constant ())
+    return;  /* Static path: vsetvl pass handles it.  */
+
+  int sew_bits = GET_MODE_UNIT_BITSIZE (acc_mode);
+  vlmul_type vlmul = get_vlmul (acc_mode);
+
+  /* For mmacc, MUL_C equals the LMUL of the accumulator register group.
+     For tile loads/stores, MUL_C is always 1.  */
+  int mul_c;
+  if (is_tile_op)
+    mul_c = 1;
+  else
+    switch (vlmul)
+      {
+      case LMUL_1: mul_c = 1; break;
+      case LMUL_2: mul_c = 2; break;
+      case LMUL_4: mul_c = 4; break;
+      case LMUL_8: mul_c = 8; break;
+      default:
+	/* Fractional LMUL: invalid for IME accumulators.  */
+	gcc_unreachable ();
+      }
+
+  /* The VL argument is always the last call argument.  */
+  int vl_argno = call_expr_nargs (e.exp) - 1;
+  rtx avl = expand_normal (CALL_EXPR_ARG (e.exp, vl_argno));
+
+  emit_ime_runtime_vtype_setup (sew_bits, mul_c, vlmul,
+				altfmt_a, altfmt_b,
+				altfmt_val, bs_val,
+				/* ta = */ true, /* ma = */ true,
+				avl);
+}
+
 /* IME vector integer matrix multiply-accumulate (W=1).  Expands to
    @pred_vmmacc_s<mode> or @pred_vmmacc_u<mode>, templated on the
    UNSPEC code.  The mode iterator is the accumulator mode (operand 0)
@@ -2800,6 +2895,12 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  /* is_tile_op = */ false,
+				  ime_unspec_altfmt_a (UNSPEC),
+				  ime_unspec_altfmt_b (UNSPEC),
+				  /* altfmt = */ false,
+				  /* bs = */ false);
     return e.use_exact_insn (code_for_pred_vmmacc (UNSPEC, e.vector_mode ()));
   }
 };
@@ -2820,6 +2921,12 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  /* is_tile_op = */ false,
+				  ime_unspec_altfmt_a (UNSPEC),
+				  ime_unspec_altfmt_b (UNSPEC),
+				  /* altfmt = */ false,
+				  /* bs = */ false);
     return e.use_exact_insn (code_for_pred_vwmmacc (UNSPEC, e.vector_mode ()));
   }
 };
@@ -2840,6 +2947,12 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  /* is_tile_op = */ false,
+				  ime_unspec_altfmt_a (UNSPEC),
+				  ime_unspec_altfmt_b (UNSPEC),
+				  /* altfmt = */ false,
+				  /* bs = */ false);
     return e.use_exact_insn (code_for_pred_vqwmmacc (UNSPEC, e.vector_mode ()));
   }
 };
@@ -2860,6 +2973,12 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  /* is_tile_op = */ false,
+				  ime_unspec_altfmt_a (UNSPEC),
+				  ime_unspec_altfmt_b (UNSPEC),
+				  /* altfmt = */ false,
+				  /* bs = */ false);
     return e.use_exact_insn (code_for_pred_v8wmmacc (UNSPEC, e.vector_mode ()));
   }
 };
@@ -2879,6 +2998,12 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  /* is_tile_op = */ false,
+				  /* altfmt_a = */ false,
+				  /* altfmt_b = */ false,
+				  /* altfmt = */ false,
+				  /* bs = */ false);
     return e.use_exact_insn (code_for_pred_vfmmacc (e.vector_mode ()));
   }
 };
@@ -2895,6 +3020,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
     return e.use_exact_insn (code_for_pred_vfwmmacc_f16 (e.vector_mode ()));
   }
 };
@@ -2910,6 +3037,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
     return e.use_exact_insn (code_for_pred_vfwmmacc_bf16 (e.vector_mode ()));
   }
 };
@@ -2925,6 +3054,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
     return e.use_exact_insn (code_for_pred_vfwmmacc_f32 (e.vector_mode ()));
   }
 };
@@ -2941,6 +3072,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
     return e.use_exact_insn (code_for_pred_vfqwmmacc_f16 (e.vector_mode ()));
   }
 };
@@ -2956,6 +3089,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
     return e.use_exact_insn (code_for_pred_vfqwmmacc_bf16 (e.vector_mode ()));
   }
 };
@@ -2976,6 +3111,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
     return e.use_exact_insn (
       code_for_pred_vfqwmmacc_ofp8 (UNSPEC, e.vector_mode ()));
   }
@@ -2999,6 +3136,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
     return e.use_exact_insn (
       code_for_pred_vf8wmmacc_ofp8 (UNSPEC, e.vector_mode ()));
   }
@@ -3020,6 +3159,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
     return e.use_exact_insn (code_for_pred_vf8wmmacc_f4e2m1 (e.vector_mode ()));
   }
 };
@@ -3037,6 +3178,26 @@ static CONSTEXPR const vf8wmmacc_f4e2m1_ime_op vf8wmmacc_f4e2m1_obj;
    function_expander::use_microscaled_insn() helper, which moves the
    scales into v0 and builds the pattern operands skipping the scales
    argument.  */
+/* Return true if the microscaled UNSPEC uses BS=32 (bs vtype bit = 1).
+   BS=16 variants have bs=0.  */
+
+static bool
+ime_unspec_bs32_p (int unspec)
+{
+  switch (unspec)
+    {
+    case UNSPEC_VFWMMACC_F16_BS32:
+    case UNSPEC_VFQWMMACC_F8E4M3_BS32:
+    case UNSPEC_VF8WMMACC_F8E4M3_BS32:
+    case UNSPEC_VFWIMMACC_I8_BS32:
+    case UNSPEC_VFQWIMMACC_I8_BS32:
+    case UNSPEC_VF8WIMMACC_I8_BS32:
+      return true;
+    default:
+      return false;
+    }
+}
+
 template<insn_code (*CODE_FOR)(int, machine_mode), int UNSPEC>
 class microscaled_ime_op : public function_base
 {
@@ -3049,6 +3210,12 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  /* is_tile_op = */ false,
+				  /* altfmt_a = */ false,
+				  /* altfmt_b = */ false,
+				  /* altfmt = */ false,
+				  /* bs = */ ime_unspec_bs32_p (UNSPEC));
     /* The scales argument is the second-to-last (before vl).  */
     int scales_idx = call_expr_nargs (e.exp) - 2;
     insn_code icode = CODE_FOR (UNSPEC, e.vector_mode ());
@@ -3099,12 +3266,6 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
 
-  /* Unmasked tile loads return a vector whose LMUL cannot be
-     inferred from the scalar pointer / stride argument types, so
-     different LMUL variants cannot coexist as overloads of the
-     same short name.  Disable overloaded-form registration in
-     this case (matching the loadstore shape's treatment of
-     non-masked plain loads).  */
   bool can_be_overloaded_p (enum predication_type_index pred) const override
   {
     return pred != PRED_TYPE_none;
@@ -3117,6 +3278,9 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  /* is_tile_op = */ true,
+				  false, false, false, false);
     return e.use_contiguous_load_insn (code_for_pred_vmtl (e.vector_mode ()));
   }
 };
@@ -3147,6 +3311,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  true, false, false, false, false);
     return e.use_contiguous_load_insn (
       code_for_pred_vmtl (UNSPEC, e.vector_mode ()));
   }
@@ -3181,6 +3347,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  true, false, false, false, false);
     return e.use_contiguous_store_insn (
       code_for_pred_vmts (UNSPEC, e.vector_mode ()));
   }
@@ -3215,6 +3383,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  true, false, false, false, false);
     return e.use_contiguous_load_insn (
       code_for_pred_vmttl (UNSPEC, e.vector_mode ()));
   }
@@ -3249,6 +3419,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  true, false, false, false, false);
     return e.use_contiguous_store_insn (
       code_for_pred_vmtts (UNSPEC, e.vector_mode ()));
   }
@@ -3284,6 +3456,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  true, false, false, false, false);
     return e.use_contiguous_store_insn (code_for_pred_vmts (e.vector_mode ()));
   }
 };
@@ -3311,6 +3485,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  true, false, false, false, false);
     return e.use_contiguous_load_insn (code_for_pred_vmttl (e.vector_mode ()));
   }
 };
@@ -3338,6 +3514,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  true, false, false, false, false);
     return e.use_contiguous_store_insn (code_for_pred_vmtts (e.vector_mode ()));
   }
 };
