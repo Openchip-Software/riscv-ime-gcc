@@ -393,7 +393,7 @@
 ;; No mask, no merge operand: IME multiply-accumulate instructions do not
 ;; support element-level masking or tail policies in the standard RVV sense.
 (define_insn "@pred_vmmacc<vmmacc_su_name><mode>"
-  [(set (match_operand:VI 0 "register_operand"              "=vr")
+  [(set (match_operand:VI 0 "register_operand" "=&vr")
 	(if_then_else:VI
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -422,7 +422,7 @@
 ;; the same assembly mnemonic; the distinction lives in vtype altfmt_A and
 ;; altfmt_B, which the vsetvl pass reads from the ime_altfmt attribute.
 (define_insn "@pred_vwmmacc<vwmmacc_su_name><mode>"
-  [(set (match_operand:VWMMACC_ACC 0 "register_operand"        "=vr")
+  [(set (match_operand:VWMMACC_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VWMMACC_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -451,7 +451,7 @@
 ;; LMUL=1.  Four sign combinations share the same assembly mnemonic;
 ;; altfmt_A / altfmt_B in vtype encode the per-side signedness.
 (define_insn "@pred_vqwmmacc<vqwmmacc_su_name><mode>"
-  [(set (match_operand:VQWMMACC_ACC 0 "register_operand"        "=vr")
+  [(set (match_operand:VQWMMACC_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VQWMMACC_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -795,7 +795,7 @@
    (set (attr "avl_type_idx") (const_int 5))])
 
 (define_insn "@pred_v8wmmacc<v8wmmacc_su_name><mode>"
-  [(set (match_operand:V8WMMACC_ACC 0 "register_operand"        "=vr")
+  [(set (match_operand:V8WMMACC_ACC 0 "register_operand" "=&vr")
 	(if_then_else:V8WMMACC_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -825,7 +825,7 @@
 ;; Accumulator and inputs share the same FP type (HF, BF, SF, DF).
 ;; Inputs always at LMUL=1.
 (define_insn "@pred_vfmmacc<mode>"
-  [(set (match_operand:VFMMACC_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VFMMACC_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VFMMACC_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -853,7 +853,7 @@
 
 ;; vfwmmacc FP16 -> FP32
 (define_insn "@pred_vfwmmacc_f16<mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF32_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -877,7 +877,7 @@
 
 ;; vfwmmacc BF16 -> FP32
 (define_insn "@pred_vfwmmacc_bf16<mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF32_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -901,7 +901,7 @@
 
 ;; vfwmmacc FP32 -> FP64
 (define_insn "@pred_vfwmmacc_f32<mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF64_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -929,7 +929,7 @@
 
 ;; vfqwmmacc FP16 -> FP64
 (define_insn "@pred_vfqwmmacc_f16<mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF64_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -953,7 +953,7 @@
 
 ;; vfqwmmacc BF16 -> FP64
 (define_insn "@pred_vfqwmmacc_bf16<mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF64_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -977,7 +977,7 @@
 
 ;; vfqwmmacc OFP8 (E4M3/E5M2) -> FP32: two variants via int iterator.
 (define_insn "@pred_vfqwmmacc_ofp8<vfqwmmacc_ofp8_name><mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF32_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1005,7 +1005,7 @@
 
 ;; vf8wmmacc OFP8 (E4M3/E5M2) -> FP64: two variants via int iterator.
 (define_insn "@pred_vf8wmmacc_ofp8<vf8wmmacc_ofp8_name><mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF64_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1030,7 +1030,7 @@
 ;; vf8wmmacc OFP4_E2M1 -> FP32
 
 (define_insn "@pred_vf8wmmacc_f4e2m1<mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF32_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1140,7 +1140,7 @@
 
 ;; vfwmmacc_scaled FP16 -> FP32, BS=32/BS=16
 (define_insn "@pred_vfwmmacc_scaled_f16<vfwmmacc_f16_bs_name><mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF32_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1166,7 +1166,7 @@
 
 ;; vfqwmmacc_scaled OFP8_E4M3 -> FP32, BS=32/BS=16
 (define_insn "@pred_vfqwmmacc_scaled_f8e4m3<vfqwmmacc_f8e4m3_bs_name><mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF32_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1192,7 +1192,7 @@
 
 ;; vf8wmmacc_scaled OFP8_E4M3 -> FP64, BS=32/BS=16
 (define_insn "@pred_vf8wmmacc_scaled_f8e4m3<vf8wmmacc_f8e4m3_bs_name><mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF64_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1222,7 +1222,7 @@
 
 ;; vfwimmacc.vv Int8 -> FP16, BS=32/BS=16
 (define_insn "@pred_vfwimmacc_i8<vfwimmacc_i8_bs_name><mode>"
-  [(set (match_operand:VF16_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF16_ACC 0 "register_operand"              "=&vr")
 	(if_then_else:VF16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1248,7 +1248,7 @@
 
 ;; vfqwimmacc.vv Int8 -> FP32, BS=32/BS=16
 (define_insn "@pred_vfqwimmacc_i8<vfqwimmacc_i8_bs_name><mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF32_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1274,7 +1274,7 @@
 
 ;; vf8wimmacc.vv Int8 -> FP64, BS=32/BS=16
 (define_insn "@pred_vf8wimmacc_i8<vf8wimmacc_i8_bs_name><mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand"              "=vr")
+  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VF64_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
