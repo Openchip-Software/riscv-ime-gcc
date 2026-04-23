@@ -34,8 +34,10 @@ us (vint16m2_t vd, vuint8m1_t a, vint8m1_t b, size_t vl)
 }
 
 /* Four distinct vtype constants -> four distinct 'li t0,<big imm>'
-   instructions feeding the register-form vsetvl.  */
-/* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541129\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4323455642275676361\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,3746994889972252873\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4035225266123964617\n} 1 } } */
+   instructions feeding the register-form vsetvl.  The constants encode
+   SEW=16, LMUL=m1 (source LMUL, NOT accumulator MUL_C), lambda=4, and
+   the four distinct altfmt_A/altfmt_B combinations.  */
+/* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541128\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,4323455642275676360\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3746994889972252872\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,4035225266123964616\n} 1 } } */
