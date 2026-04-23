@@ -6557,6 +6557,24 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   if (ctz_op != log2_lsq)
     emit_move_insn (log2_lsq, ctz_op);
 
+  /* Perfect-square check: lambda is an integer iff log2(lambda^2) is
+     even.  lambda_sq is always a power of 2 (VLEN is a power of 2 and
+     we right-shifted by a constant), so checking log2(lambda_sq) & 1
+     == 0 is sufficient.  If lambda_sq is not a perfect square (e.g.
+     VLEN=128, SEW=32, MUL_C=2 gives lambda_sq=2), the arithmetic
+     `log2_lsq >> 1` below would silently truncate to a smaller valid
+     lambda whose MUL_C does NOT match the accumulator type.  The WARL
+     probe would then pass for the wrong geometry.  Trap here instead.
+     */
+  rtx log_parity = expand_simple_binop (xmode, AND, log2_lsq,
+					const1_rtx, NULL_RTX,
+					1, OPTAB_DIRECT);
+  rtx sq_ok_label = gen_label_rtx ();
+  emit_cmp_and_jump_insns (log_parity, const0_rtx, EQ, NULL_RTX,
+			   xmode, 1, sq_ok_label);
+  emit_insn (gen_trap ());
+  emit_label (sq_ok_label);
+
   /* log2_lambda = log2_lambda_sq >> 1.  */
   rtx log2_lambda = expand_simple_binop (xmode, LSHIFTRT, log2_lsq,
 					 GEN_INT (1), NULL_RTX,
