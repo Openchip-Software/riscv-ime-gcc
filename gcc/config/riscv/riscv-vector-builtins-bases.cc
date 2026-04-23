@@ -2847,15 +2847,16 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
     return;  /* Static path: vsetvl pass handles it.  */
 
   int sew_bits = GET_MODE_UNIT_BITSIZE (acc_mode);
-  vlmul_type vlmul = get_vlmul (acc_mode);
+  vlmul_type acc_vlmul = get_vlmul (acc_mode);
 
-  /* For mmacc, MUL_C equals the LMUL of the accumulator register group.
-     For tile loads/stores, MUL_C is always 1.  */
+  /* MUL_C equals the accumulator's register-group multiplier for mmacc,
+     and 1 for tile load/store.  Used to compute lambda = sqrt(VLEN /
+     (SEW * MUL_C)) at runtime.  */
   int mul_c;
   if (is_tile_op)
     mul_c = 1;
   else
-    switch (vlmul)
+    switch (acc_vlmul)
       {
       case LMUL_1: mul_c = 1; break;
       case LMUL_2: mul_c = 2; break;
@@ -2866,11 +2867,19 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 	gcc_unreachable ();
       }
 
+  /* The vtype LMUL field encodes the SOURCE register-group size, not
+     the accumulator's MUL_C (MUL_C is derived in hardware from VLEN,
+     SEW, and lambda).  For mmacc, sources are always LMUL=1 in the
+     current implementation (no _lm{N} variants yet).  For tile
+     load/store, the data vector is the source and its LMUL equals the
+     acc_mode's LMUL.  */
+  vlmul_type src_vlmul = is_tile_op ? acc_vlmul : LMUL_1;
+
   /* The VL argument is always the last call argument.  */
   int vl_argno = call_expr_nargs (e.exp) - 1;
   rtx avl = expand_normal (CALL_EXPR_ARG (e.exp, vl_argno));
 
-  emit_ime_runtime_vtype_setup (sew_bits, mul_c, vlmul,
+  emit_ime_runtime_vtype_setup (sew_bits, mul_c, src_vlmul,
 				altfmt_a, altfmt_b,
 				altfmt_val, bs_val,
 				/* ta = */ true, /* ma = */ true,

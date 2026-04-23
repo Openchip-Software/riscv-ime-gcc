@@ -1722,14 +1722,27 @@ static HOST_WIDE_INT
 compute_static_vtype_without_lambda (const vsetvl_info &info, int xlen)
 {
   HOST_WIDE_INT val = 0;
-  val |= (unsigned) info.get_vlmul ();
+  const ime_vtype_req &r = info.get_ime_req ();
+
+  /* The vtype LMUL field encodes the source register-group size for IME
+     mmacc instructions (i.e. the vs1/vs2 LMUL), NOT the accumulator's
+     MUL_C.  MUL_C is derived in hardware from VLEN/(SEW*lambda^2) and
+     is independent of LMUL -- see IME spec section "Integer matrix
+     multiply-accumulate".  For an intrinsic like
+     __riscv_vmmacc_vv_i32m2 with m1 sources (default LMUL=1), vtype
+     must carry LMUL=m1 even though the accumulator type is m2.  For
+     non-IME and for tile load/store, info.get_vlmul() already returns
+     the correct LMUL (the data vector's LMUL).  */
+  if (info.ime_required_p ())
+    val |= (unsigned) r.lmul;
+  else
+    val |= (unsigned) info.get_vlmul ();
   val |= (HOST_WIDE_INT) ime_vsew_encoding (info.get_sew ()) << 3;
   if (info.get_ta ())
     val |= (HOST_WIDE_INT) 1 << 6;
   if (info.get_ma ())
     val |= (HOST_WIDE_INT) 1 << 7;
 
-  const ime_vtype_req &r = info.get_ime_req ();
   if (r.altfmt)
     val |= (HOST_WIDE_INT) 1 << 8;
   if (r.bs)
