@@ -6573,6 +6573,11 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   emit_cmp_and_jump_insns (log_parity, const0_rtx, EQ, NULL_RTX,
 			   xmode, 1, sq_ok_label);
   emit_insn (gen_trap ());
+  /* A barrier tells the CFG builder the trap does not fall through;
+     without it later passes (e.g. bbro) complain "flow control insn
+     inside a basic block" when the trap is merged with surrounding
+     code.  */
+  emit_barrier ();
   emit_label (sq_ok_label);
 
   /* log2_lambda = log2_lambda_sq >> 1.  */
@@ -6619,6 +6624,11 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   emit_cmp_and_jump_insns (lambda_got, lambda_enc, EQ, NULL_RTX,
 			   xmode, 1, ok_label);
   emit_insn (gen_trap ());
+  /* A barrier tells the CFG builder the trap does not fall through;
+     without it later passes (e.g. bbro) complain "flow control insn
+     inside a basic block" when the trap is merged with surrounding
+     code.  */
+  emit_barrier ();
   emit_label (ok_label);
 }
 
