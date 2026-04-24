@@ -1823,6 +1823,82 @@ emit_ime_vtype_build (const vsetvl_info &info)
   return NULL_RTX;
 }
 
+/* Per-function cache mapping (SEW, source-LMUL) -> MUL_C for specific
+   (non-wildcard) IME demands.  Built once per function and consulted
+   by find_matching_specific_ime_mul_c when resolving wildcard tile
+   ops.  Using a cache avoids repeated calls to
+   riscv_extract_ime_requirements (which invokes extract_insn_cached
+   and mutates global recog_data mid-pass).  */
+
+struct ime_specific_entry {
+  uint8_t sew;
+  uint8_t lmul;
+  vlmul_type mul_c;
+};
+static vec<ime_specific_entry> *ime_specific_cache;
+
+static void
+build_ime_specific_cache ()
+{
+  vec_free (ime_specific_cache);
+  vec_alloc (ime_specific_cache, 16);
+  for (rtx_insn *insn = get_insns (); insn; insn = NEXT_INSN (insn))
+    {
+      if (!NONDEBUG_INSN_P (insn))
+	continue;
+      if (!has_vtype_op (insn))
+	continue;
+      if (get_attr_requires_ime_vtype (insn) != REQUIRES_IME_VTYPE_YES)
+	continue;
+      ime_vtype_req r = riscv_extract_ime_requirements (insn);
+      if (r.lambda_wildcard)
+	continue;
+      ime_specific_entry e = { r.sew, r.lmul, r.mul_c };
+      ime_specific_cache->safe_push (e);
+    }
+}
+
+/* Look up the MUL_C of any specific (non-wildcard) IME demand in the
+   current function that is "compatible" with WILD.  Returns
+   LMUL_RESERVED if no such demand exists.
+
+   Two cases of compatibility for wildcard tile load/store ops feeding
+   mmaccs:
+
+   (a) Tile load feeding an mmacc input: the tile's data LMUL matches
+       the mmacc's source LMUL (m_ime_req.lmul).  E.g. a vmtl_v_f32m1
+       feeding vfmmacc_vv_f32m2 with m1 sources.
+
+   (b) Tile store storing an mmacc accumulator: the tile's data LMUL
+       corresponds to the mmacc's accumulator register group, which
+       equals MUL_C -- NOT the mmacc's source LMUL.  E.g. vmts_v_f32m2
+       after vfmmacc_vv_f32m2 (acc is m2 = MUL_C=2).
+
+   We scan for both.  */
+
+static vlmul_type
+find_matching_specific_ime_mul_c (const ime_vtype_req &wild)
+{
+  if (!ime_specific_cache)
+    return LMUL_RESERVED;
+  /* First pass: match SEW and source LMUL (case a).  */
+  for (unsigned i = 0; i < ime_specific_cache->length (); ++i)
+    {
+      const ime_specific_entry &e = (*ime_specific_cache)[i];
+      if (e.sew == wild.sew && e.lmul == wild.lmul)
+	return e.mul_c;
+    }
+  /* Second pass: the wildcard's LMUL matches the mmacc's MUL_C (case
+     b, tile store of an accumulator).  */
+  for (unsigned i = 0; i < ime_specific_cache->length (); ++i)
+    {
+      const ime_specific_entry &e = (*ime_specific_cache)[i];
+      if (e.sew == wild.sew && (unsigned) e.mul_c == (unsigned) wild.lmul)
+	return e.mul_c;
+    }
+  return LMUL_RESERVED;
+}
+
 /* Build the runtime-lambda @vsetvl_ime_runtime<mode> instruction for
    INFO.  Returns the insn pattern (to be passed to emit_insn / etc.)
    or NULL_RTX if the runtime path cannot be emitted (a diagnostic has
@@ -1843,7 +1919,20 @@ emit_ime_vtype_runtime_pat (const vsetvl_info &info, rtx dest_vl, rtx avl)
       return NULL_RTX;
     }
 
-  int mul_c_val = ime_mul_c_int (r.mul_c);
+  /* If this is a wildcard demand (non-_L tile load/store) that did
+     not fuse with a specific-lambda mmacc, scan the function for a
+     compatible specific demand and adopt its MUL_C.  This makes the
+     tile op use the surrounding mmacc's tile geometry rather than a
+     standalone geometry that might have a different (truncated or
+     invalid) lambda.  */
+  vlmul_type effective_mul_c = r.mul_c;
+  if (r.lambda_wildcard)
+    {
+      vlmul_type specific_mul_c = find_matching_specific_ime_mul_c (r);
+      if (specific_mul_c != LMUL_RESERVED)
+	effective_mul_c = specific_mul_c;
+    }
+  int mul_c_val = ime_mul_c_int (effective_mul_c);
   if (mul_c_val == 0 || r.sew == 0)
     {
       sorry ("IME intrinsic: invalid %<(SEW, MUL_C)%> configuration "
@@ -4636,10 +4725,17 @@ pass_vsetvl::execute (function *)
   if (!has_vector_insn (cfun))
     return 0;
 
+  /* Build the specific-IME-demand cache so wildcard tile loads/stores
+     can look up a surrounding mmacc's MUL_C at emission time.  */
+  build_ime_specific_cache ();
+
   if (!optimize || vsetvl_strategy == VSETVL_SIMPLE)
     simple_vsetvl ();
   else
     lazy_vsetvl ();
+
+  vec_free (ime_specific_cache);
+  ime_specific_cache = nullptr;
 
   return 0;
 }
