@@ -107,8 +107,10 @@
   ;; vtype value.
   UNSPEC_VSETVL_IME
 
-  ;; Read back the hardware vtype CSR (for WARL verification).
-  UNSPEC_READ_VTYPE
+  ;; Multi-insn runtime-lambda IME vtype setup (csrr vlenb / ctz /
+  ;; vsetvl / WARL readback / trap).  Emitted by the vsetvl pass when
+  ;; VLEN is not compile-time known.
+  UNSPEC_VSETVL_IME_RUNTIME
 ])
 
 ;; Signedness encoding for the two integer-input operands of IME
@@ -124,6 +126,20 @@
 ;; "bs16" and "bs32" set the bs vtype bit accordingly.
 (define_attr "ime_bs" "none,bs16,bs32"
   (const_string "none"))
+
+;; How the IME instruction treats vtype.lambda:
+;;   "specific" -- the instruction has a single lambda value that must
+;;      be encoded in vtype (mmacc family, and tile load/store with
+;;      an explicit _L<N> suffix that must still match vtype.lambda's
+;;      compatible range).  This is the common case.
+;;   "wildcard" -- the instruction's 3-bit lambda-select field encodes
+;;      0b000 ("fall back to vtype.lambda"); it runs with whatever
+;;      vtype.lambda the surrounding context has set up.  Used for the
+;;      bare (non-_L) tile load/store patterns, which must inherit a
+;;      specific lambda from a surrounding mmacc demand rather than
+;;      try to pin their own.
+(define_attr "ime_lambda" "specific,wildcard"
+  (const_string "specific"))
 
 (define_int_iterator VMMACC_SU [UNSPEC_VMMACC_S UNSPEC_VMMACC_U])
 
@@ -333,42 +349,59 @@
   [(set_attr "type" "vsetvl")
    (set_attr "mode" "<MODE>")])
 
-;; Register-form vsetvl for IME with a register vtype operand.
+;; Runtime-lambda IME vsetvl setup.
 ;;
-;; Unlike @vsetvl_ime<mode> (which takes a const_int vtype that it loads
-;; via "li"), this variant takes the full vtype value already in a
-;; register.  It is used by the pre-reload runtime-lambda expansion path:
-;; the intrinsic expander computes the vtype value (including the
-;; lambda field derived from a runtime csrr vlenb) into a pseudo, then
-;; emits this pattern to execute the register-form vsetvl.
+;; Emitted by the vsetvl pass when VLEN is not compile-time known.
+;; This instruction expands to a multi-instruction asm sequence that
+;; computes lambda = sqrt(VLEN / (SEW * MUL_C)) at run time, encodes
+;; the full vtype, executes vsetvl, and then uses a WARL readback to
+;; trap if the hardware rejected the requested lambda.
+;;
+;; The sequence runs post-reload (inside the vsetvl pass) and must
+;; not corrupt any caller's live registers.  Three scratches are
+;; required: the destination VL register (which the vsetvl pass picks
+;; as RISCV_PROLOGUE_TEMP t0, since downstream RVV insns read VL via
+;; VL_REGNUM and not the GPR) plus two more.  We save the two extras
+;; onto the stack and restore them at the end of the sequence so the
+;; insn looks like a pure function of AVL/VTYPE/VL from the outside.
 ;;
 ;; Operands:
-;;   0: destination VL register
-;;   1: AVL -- register or zero for VLMAX
-;;   2: full vtype value in a register
-(define_insn "@vsetvl_ime_reg<mode>"
-  [(set (match_operand:P 0 "register_operand"             "=r")
-	(unspec:P [(match_operand:P 1 "pmode_reg_or_0_operand" "rJ")
-		   (match_operand:P 2 "register_operand"  "r")]
-	      UNSPEC_VSETVL_IME))
-   (set (reg:SI VL_REGNUM)
-	(unspec:SI [(match_dup 1) (match_dup 2)] UNSPEC_VSETVL_IME))
-   (set (reg:SI VTYPE_REGNUM)
-	(unspec:SI [(match_dup 2)] UNSPEC_VSETVL_IME))]
-  "TARGET_VECTOR"
-  "vsetvl\t%0,%z1,%2"
-  [(set_attr "type" "rdvl")
-   (set_attr "mode" "<MODE>")])
+;;   0: destination VL register (scratch #1).  The new VL from vsetvl
+;;      lands here; downstream reads VL via the CSR, not via this GPR.
+;;   1: AVL -- register or zero for VLMAX.
+;;   2: static vtype bits (const_int): the compile-time-known portion
+;;      of vtype, with the lambda field zero'd.
+;;   3: shift amount = log2(SEW * MUL_C) (const_int).  Derives
+;;      lambda^2 from VLEN-in-bits.
+;;   4: scratch #2 -- ctz result, csrr vtype readback, static vtype.
+;;      Must be a GPR that the pattern saves and restores via the
+;;      stack.
+;;   5: scratch #3 -- lambda_enc.  Same save/restore treatment.
+;;
+;; The sequence requires Zbb (for ctz) and is guarded on TARGET_ZBB.
+;; When Zbb is unavailable the vsetvl pass falls back to a `sorry ()`.
+(define_mode_attr xlen_minus_4 [(SI "28") (DI "60")])
+(define_mode_attr pmode_store  [(SI "sw") (DI "sd")])
+(define_mode_attr pmode_load   [(SI "lw") (DI "ld")])
+(define_mode_attr pmode_bytes  [(SI "4")  (DI "8")])
 
-;; Read back the hardware vtype CSR.  Used by the runtime-lambda WARL
-;; verification sequence to compare the written vtype against what the
-;; hardware actually accepted.
-(define_insn "@read_vtype<mode>"
-  [(set (match_operand:P 0 "register_operand" "=r")
-	(unspec:P [(reg:SI VTYPE_REGNUM)] UNSPEC_READ_VTYPE))]
-  "TARGET_VECTOR"
-  "csrr\t%0,vtype"
-  [(set_attr "type" "rdvl")
+(define_insn "@vsetvl_ime_runtime<mode>"
+  [(set (match_operand:P 0 "register_operand"             "=&r")
+	(unspec:P [(match_operand:P 1 "pmode_reg_or_0_operand" "rJ")
+		   (match_operand 2 "const_int_operand"    " i")
+		   (match_operand 3 "const_int_operand"    " i")]
+		  UNSPEC_VSETVL_IME_RUNTIME))
+   (set (reg:SI VL_REGNUM)
+	(unspec:SI [(match_dup 1) (match_dup 2) (match_dup 3)]
+		   UNSPEC_VSETVL_IME_RUNTIME))
+   (set (reg:SI VTYPE_REGNUM)
+	(unspec:SI [(match_dup 2) (match_dup 3)]
+		   UNSPEC_VSETVL_IME_RUNTIME))
+   (use (match_operand:P 4 "register_operand" "r"))
+   (use (match_operand:P 5 "register_operand" "r"))]
+  "TARGET_VECTOR && TARGET_ZBB"
+  "addi\tsp,sp,-16\n\t<pmode_store>\t%4,0(sp)\n\t<pmode_store>\t%5,<pmode_bytes>(sp)\n\tcsrr\t%0,vlenb\n\tslli\t%0,%0,3\n\tsrli\t%0,%0,%3\n\tctz\t%4,%0\n\tandi\t%0,%4,1\n\tbne\t%0,zero,.Ltrap%=\n\tsrli\t%4,%4,1\n\taddi\t%5,%4,1\n\tli\t%4,%2\n\tslli\t%0,%5,<xlen_minus_4>\n\tor\t%0,%0,%4\n\tvsetvl\t%0,%z1,%0\n\tcsrr\t%4,vtype\n\tsrli\t%4,%4,<xlen_minus_4>\n\tandi\t%4,%4,7\n\tbeq\t%4,%5,.Lok%=\n.Ltrap%=:\n\tebreak\n.Lok%=:\n\t<pmode_load>\t%4,0(sp)\n\t<pmode_load>\t%5,<pmode_bytes>(sp)\n\taddi\tsp,sp,16"
+  [(set_attr "type" "vsetvl")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
@@ -514,6 +547,7 @@
   [(set_attr "type" "vlds")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_lambda" "wildcard")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
@@ -665,6 +699,7 @@
   [(set_attr "type" "vsts")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_lambda" "wildcard")
    (set_attr "mode" "<MODE>")
    (set (attr "avl_type_idx") (const_int 5))])
 
@@ -721,6 +756,7 @@
   [(set_attr "type" "vlds")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_lambda" "wildcard")
    (set_attr "mode" "<MODE>")])
 
 ;; vmttl.v with immediate "Lλ" override.
@@ -769,6 +805,7 @@
   [(set_attr "type" "vsts")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_lambda" "wildcard")
    (set_attr "mode" "<MODE>")
    (set (attr "avl_type_idx") (const_int 5))])
 

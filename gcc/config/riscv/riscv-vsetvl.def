@@ -193,7 +193,8 @@ DEF_AVL_RULE (ignore_avl, ignore_avl, ignore_avl, always_true, always_true, nop)
    next IME instruction will see ignore_ime and re-establish the
    tuple via rule 3.  */
 
-DEF_IME_RULE (ime_vtype, ime_vtype, ime_vtype, ime_eq_p, ime_eq_p, nop)
+DEF_IME_RULE (ime_vtype, ime_vtype, ime_vtype, ime_eq_p, ime_eq_p,
+	      use_next_ime)
 DEF_IME_RULE (ime_vtype, ignore_ime, ignore_ime, always_true, always_true,
 	      use_next_ime)
 /* A plain vsetvli (ignore_ime) cannot be rewritten in place into an IME
