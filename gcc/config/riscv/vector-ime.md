@@ -389,9 +389,12 @@
 ;; (emit_ime_vtype_runtime_pat) emits a (set (reg:P 28) avl) insn
 ;; before this one.  Declaring (use (reg:P 28)) in the PARALLEL keeps
 ;; that copy alive across RTL passes (propagation cannot fold it).
-;; Using a fixed register sidesteps register-allocation conflicts
-;; between the AVL and the pattern's internal scratches (%0, %4, %5
-;; hardcoded to t0/t1/t2 via the asm template and scratch clobbers).
+;; The pattern declares t1 and t2 as match_scratch register clobbers
+;; so that GCC spills any values it might have placed in those regs
+;; rather than us having to save/restore them on the stack.  Keeping
+;; the asm template free of sp manipulation is important -- a stack
+;; push/pop invisible to GCC's analysis can interact badly with
+;; IPA-inlined code that references caller-frame locals via sp.
 (define_insn "@vsetvl_ime_runtime<mode>"
   [(set (match_operand:P 0 "register_operand"             "=&r")
 	(unspec:P [(match_operand 1 "const_int_operand"    " i")
@@ -404,10 +407,10 @@
 	(unspec:SI [(match_dup 1) (match_dup 2)]
 		   UNSPEC_VSETVL_IME_RUNTIME))
    (use (reg:P 28))                            ;; t3 holds AVL
-   (use (match_operand:P 3 "register_operand" "r"))
-   (use (match_operand:P 4 "register_operand" "r"))]
+   (clobber (match_operand:P 3 "register_operand" "=&r"))
+   (clobber (match_operand:P 4 "register_operand" "=&r"))]
   "TARGET_VECTOR && TARGET_ZBB"
-  "addi\tsp,sp,-16\n\t<pmode_store>\t%3,0(sp)\n\t<pmode_store>\t%4,<pmode_bytes>(sp)\n\tcsrr\t%0,vlenb\n\tslli\t%0,%0,3\n\tsrli\t%0,%0,%2\n\tctz\t%3,%0\n\tandi\t%0,%3,1\n\tbne\t%0,zero,.Ltrap%=\n\tsrli\t%3,%3,1\n\taddi\t%4,%3,1\n\tli\t%3,%1\n\tslli\t%0,%4,<xlen_minus_4>\n\tor\t%0,%0,%3\n\tvsetvl\t%0,t3,%0\n\tcsrr\t%3,vtype\n\tsrli\t%3,%3,<xlen_minus_4>\n\tandi\t%3,%3,7\n\tbeq\t%3,%4,.Lok%=\n.Ltrap%=:\n\tebreak\n.Lok%=:\n\t<pmode_load>\t%3,0(sp)\n\t<pmode_load>\t%4,<pmode_bytes>(sp)\n\taddi\tsp,sp,16"
+  "csrr\t%0,vlenb\n\tslli\t%0,%0,3\n\tsrli\t%0,%0,%2\n\tctz\t%3,%0\n\tandi\t%0,%3,1\n\tbne\t%0,zero,.Ltrap%=\n\tsrli\t%3,%3,1\n\taddi\t%4,%3,1\n\tli\t%3,%1\n\tslli\t%0,%4,<xlen_minus_4>\n\tor\t%0,%0,%3\n\tvsetvl\t%0,t3,%0\n\tcsrr\t%3,vtype\n\tsrli\t%3,%3,<xlen_minus_4>\n\tandi\t%3,%3,7\n\tbeq\t%3,%4,.Lok%=\n.Ltrap%=:\n\tebreak\n.Lok%=:"
   [(set_attr "type" "vsetvl")
    (set_attr "mode" "<MODE>")])
 

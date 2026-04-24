@@ -1950,19 +1950,13 @@ emit_ime_vtype_runtime_pat (const vsetvl_info &info, rtx dest_vl, rtx avl)
   rtx static_rtx = gen_int_mode (static_val, Pmode);
   rtx shift_rtx = GEN_INT (shift);
 
-  /* The vsetvl pass runs post-reload; we cannot allocate fresh
-     pseudos.  Use three caller-saved GP temporaries (t0/t1/t2) as
-     explicit scratches.  The IME insn that follows this sequence is
-     an RVV insn using v-registers (plus AVL, already passed in), so
-     t0/t1/t2 are safe.  */
+  /* Pass specific caller-saved hard registers for the scratches.  The
+     pattern clobbers them, so GCC will spill any live values in
+     t1/t2.  Operand 0 (dest_vl = t0) is also =&r and internally-used.
+     AVL is delivered via t3 (reg 28) by the caller.  */
   rtx scratch1 = dest_vl;
   rtx scratch2 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM);
   rtx scratch3 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM + 1);
-
-  /* Caller is expected to have ensured avl is in t3 (reg 28) via an
-     explicit (set (reg:P 28) avl) emitted just before this pattern.
-     The pattern declares (use (reg:P 28)) so that copy is kept alive
-     by RTL passes.  */
   return gen_vsetvl_ime_runtime (Pmode, scratch1, static_rtx, shift_rtx,
 				 scratch2, scratch3);
 }
