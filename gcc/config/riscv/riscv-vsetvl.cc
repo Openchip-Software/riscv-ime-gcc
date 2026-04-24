@@ -1950,15 +1950,9 @@ emit_ime_vtype_runtime_pat (const vsetvl_info &info, rtx dest_vl, rtx avl)
   rtx static_rtx = gen_int_mode (static_val, Pmode);
   rtx shift_rtx = GEN_INT (shift);
 
-  /* Pass specific caller-saved hard registers for the scratches.  The
-     pattern clobbers them, so GCC will spill any live values in
-     t1/t2.  Operand 0 (dest_vl = t0) is also =&r and internally-used.
-     AVL is delivered via t3 (reg 28) by the caller.  */
-  rtx scratch1 = dest_vl;
-  rtx scratch2 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM);
-  rtx scratch3 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM + 1);
-  return gen_vsetvl_ime_runtime (Pmode, scratch1, static_rtx, shift_rtx,
-				 scratch2, scratch3);
+  /* The pattern hardcodes t0/t1/t2/t3 internally and preserves t1/t2
+     via a 16-byte stack slot.  AVL comes via t3, set by the caller.  */
+  return gen_vsetvl_ime_runtime (Pmode, dest_vl, static_rtx, shift_rtx);
 }
 
 class vsetvl_block_info
