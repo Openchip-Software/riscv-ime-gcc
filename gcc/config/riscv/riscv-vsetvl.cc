@@ -891,20 +891,12 @@ struct ime_vtype_req
   bool altfmt_b;
   bool altfmt;
   bool bs;
-  /* True when this instruction treats vtype.lambda as a wildcard -- it
-     encodes 0b000 ("fall back to vtype.lambda") in its own lambda-
-     select field.  Non-_L tile loads/stores set this.  When a wildcard
-     demand is fused with a specific-lambda demand (e.g. a surrounding
-     mmacc), the specific lambda wins.  When a wildcard demand stands
-     alone, its own lambda_log2 (computed from SEW and MUL_C=1) is
-     used.  */
-  bool lambda_wildcard;
   int8_t lambda_log2;
 
   ime_vtype_req ()
     : sew (0), mul_c (LMUL_RESERVED), lmul (0), widen_w (0),
       altfmt_a (false), altfmt_b (false), altfmt (false), bs (false),
-      lambda_wildcard (false), lambda_log2 (-1)
+      lambda_log2 (-1)
   {}
 
   bool operator== (const ime_vtype_req &o) const
@@ -912,7 +904,6 @@ struct ime_vtype_req
     return sew == o.sew && mul_c == o.mul_c && lmul == o.lmul
 	   && widen_w == o.widen_w && altfmt_a == o.altfmt_a
 	   && altfmt_b == o.altfmt_b && altfmt == o.altfmt && bs == o.bs
-	   && lambda_wildcard == o.lambda_wildcard
 	   && lambda_log2 == o.lambda_log2;
   }
   bool operator!= (const ime_vtype_req &o) const { return !(*this == o); }
@@ -1060,15 +1051,6 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
       gcc_unreachable ();
     }
 
-  /* A "wildcard" IME pattern (non-_L tile load/store) encodes 0b000 in
-     its own lambda-select field; it reads vtype.lambda rather than
-     overriding it.  In demand fusion the wildcard can accept any
-     specific lambda; standing alone it computes its own fallback
-     lambda from SEW and MUL_C=1 (tile loads/stores have no
-     accumulator).  */
-  if (get_attr_ime_lambda (rinsn) == IME_LAMBDA_WILDCARD)
-    r.lambda_wildcard = true;
-
   /* Static lambda if VLEN is known; runtime otherwise.  */
   int mul_c_val;
   switch (r.mul_c)
@@ -1091,8 +1073,6 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
    definitions come right after the class, below.  */
 class vsetvl_info;
 static rtx emit_ime_vtype_build (const vsetvl_info &info);
-static rtx emit_ime_vtype_runtime_pat (const vsetvl_info &info,
-				       rtx dest_vl, rtx avl);
 
 /* Go through all uses of INSN looking for a single use of register REG.
    Return true if we find
@@ -1436,16 +1416,6 @@ public:
       {
 	m_ime_required = true;
 	m_ime_req = riscv_extract_ime_requirements (insn->rtl ());
-	/* For IME mmacc instructions, the vtype.LMUL field encodes the
-	   SOURCE register-group size (vs1/vs2), not the accumulator's
-	   MUL_C.  get_vlmul() read the accumulator's mode (operand 0),
-	   which produces the wrong LMUL for mmacc (e.g. m2 for
-	   vfmmacc_vv_f32m2 with m1 sources).  Override with the source
-	   LMUL so demand-system sew/lmul fusion lines up with what the
-	   emitted vsetvl actually writes.  */
-	m_vlmul = (vlmul_type) m_ime_req.lmul;
-	/* Re-derive m_ratio from the corrected VLMUL.  */
-	m_ratio = calculate_ratio (m_sew, m_vlmul);
       }
 
     /* If merge operand is undef value, we prefer agnostic.  */
@@ -1701,10 +1671,9 @@ public:
 	const ime_vtype_req &r = get_ime_req ();
 	fprintf (file,
 		 "%sIME: sew=%u mul_c=%s lmul=%u W=%u altfmt_a=%d altfmt_b=%d"
-		 " altfmt=%d bs=%d lambda_log2=%d wildcard=%d\n",
+		 " altfmt=%d bs=%d lambda_log2=%d\n",
 		 indent, r.sew, vlmul_to_str (r.mul_c), r.lmul, r.widen_w,
-		 r.altfmt_a, r.altfmt_b, r.altfmt, r.bs, (int) r.lambda_log2,
-		 r.lambda_wildcard);
+		 r.altfmt_a, r.altfmt_b, r.altfmt, r.bs, (int) r.lambda_log2);
       }
   }
 };
@@ -1761,34 +1730,16 @@ compute_static_vtype_without_lambda (const vsetvl_info &info, int xlen)
   return val;
 }
 
-/* Convert MUL_C (vlmul_type) to the integer multiplier for the
-   accumulator register group.  Returns 0 for fractional / reserved
-   encodings (invalid for IME).  */
-
-static int
-ime_mul_c_int (vlmul_type m)
-{
-  switch (m)
-    {
-    case LMUL_1: return 1;
-    case LMUL_2: return 2;
-    case LMUL_4: return 4;
-    case LMUL_8: return 8;
-    default: return 0;
-    }
-}
-
 /* Return a const_int rtx holding the full vtype value for an IME
-   instruction when lambda is known at compile time.  Returns NULL_RTX
-   if a runtime sequence is required (lambda_log2 == -1), in which
-   case the caller must emit @vsetvl_ime_runtime<mode> instead.  Also
-   returns NULL_RTX (after a diagnostic) when the requested
-   (VLEN, SEW, MUL_C) combination is invalid.
+   instruction, or NULL_RTX if the value cannot be computed at compile
+   time (runtime lambda dispatch required -- NYI).
 
    The vsetvl pass runs post-reload and cannot create fresh pseudos,
    so the IME setup pattern (@vsetvl_ime<mode>) takes a const_int
    vtype operand and synthesises the load in its own asm template.
-   This helper's job is to compute that constant.  */
+   This helper's job is to compute that constant.  Runtime lambda
+   support will be added once we have a post-reload-safe way to emit
+   the csrr/ctz sequence.  */
 
 static rtx
 emit_ime_vtype_build (const vsetvl_info &info)
@@ -1819,59 +1770,11 @@ emit_ime_vtype_build (const vsetvl_info &info)
       return gen_int_mode (static_val, Pmode);
     }
 
-  /* Runtime lambda path: caller dispatches to @vsetvl_ime_runtime.  */
+  /* Runtime lambda: the intrinsic expander (pre-reload) has already
+     emitted the multi-instruction vtype setup sequence (csrr vlenb +
+     ctz + shifts + vsetvl + WARL check).  Return NULL_RTX so the
+     vsetvl pass skips its own insertion for this instruction.  */
   return NULL_RTX;
-}
-
-/* Build the runtime-lambda @vsetvl_ime_runtime<mode> instruction for
-   INFO.  Returns the insn pattern (to be passed to emit_insn / etc.)
-   or NULL_RTX if the runtime path cannot be emitted (a diagnostic has
-   already been reported).  */
-
-static rtx
-emit_ime_vtype_runtime_pat (const vsetvl_info &info, rtx dest_vl, rtx avl)
-{
-  const ime_vtype_req &r = info.get_ime_req ();
-  int xlen = GET_MODE_BITSIZE (Pmode);
-
-  if (!TARGET_ZBB)
-    {
-      sorry ("IME intrinsic with runtime %<lambda%> requires the "
-	     "%<Zbb%> extension; use %<-mrvv-vector-bits=zvl%> with a "
-	     "%<zvl*b%> that makes VLEN compile-time known, or enable "
-	     "%<Zbb%>");
-      return NULL_RTX;
-    }
-
-  int mul_c_val = ime_mul_c_int (r.mul_c);
-  if (mul_c_val == 0 || r.sew == 0)
-    {
-      sorry ("IME intrinsic: invalid %<(SEW, MUL_C)%> configuration "
-	     "for runtime lambda");
-      return NULL_RTX;
-    }
-  int shift = exact_log2 (r.sew * mul_c_val);
-  if (shift < 0)
-    {
-      sorry ("IME intrinsic: %<SEW * MUL_C%> is not a power of two");
-      return NULL_RTX;
-    }
-
-  HOST_WIDE_INT static_val = compute_static_vtype_without_lambda (info, xlen);
-  rtx static_rtx = gen_int_mode (static_val, Pmode);
-  rtx shift_rtx = GEN_INT (shift);
-
-  /* The vsetvl pass runs post-reload; we cannot allocate fresh
-     pseudos.  Use three caller-saved GP temporaries (t0/t1/t2) as
-     explicit scratches.  The IME insn that follows this sequence is
-     an RVV insn using v-registers (plus AVL, already passed in), so
-     t0/t1/t2 are safe.  */
-  rtx scratch1 = dest_vl;
-  rtx scratch2 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM);
-  rtx scratch3 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM + 1);
-
-  return gen_vsetvl_ime_runtime (Pmode, scratch1, avl, static_rtx,
-				 shift_rtx, scratch2, scratch3);
 }
 
 class vsetvl_block_info
@@ -2400,61 +2303,16 @@ private:
   inline bool ime_eq_p (const vsetvl_info &prev, const vsetvl_info &next)
   {
     /* Only called via the (ime_vtype, ime_vtype) rule, where both sides
-       have m_ime_required=true and a populated m_ime_req.
-
-       A non-_L tile load/store carries lambda_wildcard=true: its own
-       lambda-select field is 0b000 ("fall back to vtype.lambda").  The
-       tile still reads vtype.sew, vtype.lmul, vtype.ta / vtype.ma from
-       the CSR, but its lambda encoding is a don't-care from the
-       tile's perspective.  So when exactly one side is a wildcard, we
-       ignore MUL_C (which only affects the wildcard's standalone
-       fallback-lambda computation, not the emitted vtype) and lambda
-       (since the wildcard accepts any lambda from the other side).
-       When both sides are wildcards -- or both specific -- we require
-       an exact match so semantically distinct tile demands
-       (e.g. different SEW) still get separate vsetvls.  */
-    const ime_vtype_req &p = prev.get_ime_req ();
-    const ime_vtype_req &n = next.get_ime_req ();
-    bool common_eq
-      = p.sew == n.sew
-	&& p.lmul == n.lmul
-	&& p.widen_w == n.widen_w
-	&& p.altfmt_a == n.altfmt_a
-	&& p.altfmt_b == n.altfmt_b
-	&& p.altfmt == n.altfmt
-	&& p.bs == n.bs;
-    if (!common_eq)
-      return false;
-    if (p.lambda_wildcard != n.lambda_wildcard)
-      /* Exactly one side is a wildcard: compatible regardless of the
-	 other's specific lambda / mul_c.  */
-      return true;
-    /* Both specific, or both wildcard: require identical lambda
-       and mul_c.  */
-    return p.mul_c == n.mul_c && p.lambda_log2 == n.lambda_log2;
+       have m_ime_required=true and a populated m_ime_req.  */
+    return prev.get_ime_req () == next.get_ime_req ();
   }
 
-  /* modifier for IME vtype dimension: copy next's IME state into prev.
-     If one side carries a specific lambda and the other is a wildcard,
-     the specific lambda wins so the emitted vsetvl pins it.  */
+  /* modifier for IME vtype dimension: copy next's IME state into prev.  */
 
   inline void use_next_ime (vsetvl_info &prev, const vsetvl_info &next)
   {
-    const ime_vtype_req &p = prev.get_ime_req ();
-    const ime_vtype_req &n = next.get_ime_req ();
     prev.set_ime_required (next.ime_required_p ());
-    /* Prev is specific, next is wildcard: keep prev's lambda_log2
-       but adopt next's other metadata (they are geometry-equal per
-       ime_eq_p).  */
-    if (!p.lambda_wildcard && n.lambda_wildcard)
-      {
-	ime_vtype_req merged = n;
-	merged.lambda_wildcard = false;
-	merged.lambda_log2 = p.lambda_log2;
-	prev.set_ime_req (merged);
-	return;
-      }
-    prev.set_ime_req (n);
+    prev.set_ime_req (next.get_ime_req ());
   }
 
 public:
@@ -2975,6 +2833,10 @@ private:
   void insert_ime_vsetvl_insn (enum emit_type emit_type,
 			       const vsetvl_info &info)
   {
+    rtx vtype_const = emit_ime_vtype_build (info);
+    if (vtype_const == NULL_RTX)
+      return;  /* sorry() already reported.  */
+
     rtx avl = info.get_avl ();
     if (!avl)
       avl = const0_rtx;
@@ -2993,21 +2855,7 @@ private:
 		    ? info.get_vl ()
 		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
 
-    rtx pat;
-    if (info.get_ime_req ().lambda_log2 == -1)
-      {
-	pat = emit_ime_vtype_runtime_pat (info, dest_vl, avl);
-	if (pat == NULL_RTX)
-	  return;  /* sorry() already reported.  */
-      }
-    else
-      {
-	rtx vtype_const = emit_ime_vtype_build (info);
-	if (vtype_const == NULL_RTX)
-	  return;  /* sorry() / error() already reported.  */
-	pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
-      }
-
+    rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
     rtx_insn *rinsn = info.get_insn ()->rtl ();
     rtx_insn *inserted = NULL;
 
@@ -4477,25 +4325,15 @@ pass_vsetvl::simple_vsetvl ()
 	      const auto &info = vsetvl_info (rinsn);
 	      if (info.ime_required_p ())
 		{
+		  rtx vtype_const = emit_ime_vtype_build (info);
+		  if (vtype_const == NULL_RTX)
+		    continue;  /* sorry() already reported.  */
 		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
 		  rtx dest_vl
 		    = info.has_vl ()
 			? info.get_vl ()
 			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-		  rtx pat;
-		  if (info.get_ime_req ().lambda_log2 == -1)
-		    {
-		      pat = emit_ime_vtype_runtime_pat (info, dest_vl, avl);
-		      if (pat == NULL_RTX)
-			continue;  /* sorry() already reported.  */
-		    }
-		  else
-		    {
-		      rtx vtype_const = emit_ime_vtype_build (info);
-		      if (vtype_const == NULL_RTX)
-			continue;  /* sorry() / error() already reported.  */
-		      pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
-		    }
+		  rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
 		  emit_insn_before (pat, rinsn);
 		  if (dump_file)
 		    fprintf (dump_file,
