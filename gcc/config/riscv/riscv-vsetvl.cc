@@ -2979,29 +2979,6 @@ private:
     if (!avl)
       avl = const0_rtx;
 
-    /* The @vsetvl_ime* patterns require AVL to be either a register or
-       const_int 0 (pmode_reg_or_0_operand).  A non-zero const_int AVL
-       (e.g. from a literal `vl` argument in the user's intrinsic call)
-       must be materialised into a register first.  Running post-reload
-       we cannot create fresh pseudos -- emit an explicit `li` into a
-       caller-saved scratch (PROLOGUE_TEMP2) that we know is free at
-       the insertion site.  */
-    if (CONST_INT_P (avl) && avl != const0_rtx)
-      {
-	/* Use t3 (x28): outside the {t0, t1, t2} scratch set used by
-	   the runtime vsetvl sequence AND outside typical dest_vl
-	   allocations.  */
-	rtx avl_reg = gen_rtx_REG (Pmode, GP_REG_FIRST + 28);
-	rtx li_insn = gen_rtx_SET (avl_reg, avl);
-	if (emit_type == EMIT_DIRECT)
-	  emit_insn (li_insn);
-	else if (emit_type == EMIT_BEFORE)
-	  emit_insn_before (li_insn, info.get_insn ()->rtl ());
-	else
-	  emit_insn_after (li_insn, info.get_insn ()->rtl ());
-	avl = avl_reg;
-      }
-
     /* Pick a destination/scratch register for the vsetvl_ime insn.  The
        @vsetvl_ime pattern reuses its dest register as the scratch for
        the "li" that loads the vtype constant.  If the IME instruction
@@ -3012,14 +2989,9 @@ private:
        the register-form vsetvl is dead in the latter case, which is
        fine because downstream RVV insns read VL via VL_REGNUM, not via
        a GPR.  */
-    /* For the IME runtime path, dest_vl is used both as the vsetvl
-       destination AND as an internal scratch in the asm template.
-       The template also hardcodes scratch2/scratch3 to TEMP2/TEMP2+1
-       (t1/t2).  To avoid register conflicts when info.has_vl() is
-       true (e.g. the VL pseudo got allocated to t1), always pick
-       PROLOGUE_TEMP (t0) for dest_vl.  VL is delivered via VL_REGNUM
-       anyway; the pseudo is typically dead at the use site.  */
-    rtx dest_vl = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+    rtx dest_vl = info.has_vl ()
+		    ? info.get_vl ()
+		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
 
     rtx pat;
     if (info.get_ime_req ().lambda_log2 == -1)
@@ -4506,20 +4478,10 @@ pass_vsetvl::simple_vsetvl ()
 	      if (info.ime_required_p ())
 		{
 		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
-		  /* Normalise const_int AVL into a register -- same
-		     fix as in insert_ime_vsetvl_insn above.  */
-		  if (CONST_INT_P (avl) && avl != const0_rtx)
-		    {
-		      /* Use t3 (x28): outside the scratch set used by
-			 the runtime vsetvl sequence.  */
-		      rtx avl_reg = gen_rtx_REG (Pmode, GP_REG_FIRST + 28);
-		      emit_insn_before (gen_rtx_SET (avl_reg, avl), rinsn);
-		      avl = avl_reg;
-		    }
-		  /* Same reason as in insert_ime_vsetvl_insn -- force
-		     PROLOGUE_TEMP (t0) for dest_vl.  */
 		  rtx dest_vl
-		    = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+		    = info.has_vl ()
+			? info.get_vl ()
+			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
 		  rtx pat;
 		  if (info.get_ime_req ().lambda_log2 == -1)
 		    {
