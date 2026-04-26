@@ -1541,15 +1541,25 @@ struct ime_mmacc_def : public build_base
     nullptr
   };
 
+  /* Source-LMUL suffix tokens for the W=1 mmacc _lm{N} variants.  These
+     are stripped from the internal base name and re-appended to the
+     user-visible name after the accumulator type suffix; see the
+     canonical ordering in get_name() below.  */
+  static constexpr const char *lm_tokens[] = {
+    "_lm2", "_lm4", "_lm8",
+    nullptr
+  };
+
   static void
   decode_base_and_sign (const char *internal, char *base_buf,
 			size_t base_buf_sz, const char *&sign_suffix,
-			const char *&bs_suffix)
+			const char *&bs_suffix, const char *&lm_suffix)
   {
     size_t ilen = strlen (internal);
     size_t base_len = ilen;
     sign_suffix = "";
     bs_suffix = "";
+    lm_suffix = "";
 
     /* First strip any trailing "_bs32" / "_bs16" block-scale suffix.  */
     for (const char *const *bp = bs_tokens; *bp; ++bp)
@@ -1559,6 +1569,22 @@ struct ime_mmacc_def : public build_base
 	    && memcmp (internal + ilen - tlen, *bp, tlen) == 0)
 	  {
 	    bs_suffix = *bp;
+	    ilen -= tlen;
+	    base_len = ilen;
+	    break;
+	  }
+      }
+
+    /* Then strip any trailing "_lm2" / "_lm4" / "_lm8" source-LMUL
+       suffix.  The token is recorded for re-emission in the canonical
+       user-visible name.  */
+    for (const char *const *lp = lm_tokens; *lp; ++lp)
+      {
+	size_t tlen = strlen (*lp);
+	if (ilen > tlen
+	    && memcmp (internal + ilen - tlen, *lp, tlen) == 0)
+	  {
+	    lm_suffix = *lp;
 	    ilen -= tlen;
 	    base_len = ilen;
 	    break;
@@ -1603,13 +1629,13 @@ struct ime_mmacc_def : public build_base
 
   /* Return the LMUL (1, 2, 4 or 8) of the vs1 input operand of an IME
      multiply-accumulate instance.  Used to decide whether to emit the
-     "_lm{N}" canonical suffix.  All IME integer multiply-accumulate
-     intrinsics shipped so far use LMUL=1 inputs, so this helper maps
-     each currently supported input kind to 1.  When LMUL>1 input
-     variants land (a follow-up commit), new RVV_BASE kinds or a tree
-     inspection of the operand type will extend this mapping.  The
-     default gcc_unreachable () ensures any new input kind is caught
-     loudly rather than silently emitting the wrong canonical name.  */
+     "_lm{N}" canonical suffix.  Most IME multiply-accumulate intrinsics
+     use LMUL=1 inputs (the spec's default Convention 1).  The W=1 mmacc
+     family also offers _lm{N} variants where vs1/vs2 use LMUL=N at the
+     same SEW as the accumulator (Convention 2): those route through the
+     RVV_BASE_lmul{2,4,8}_vector base types.  The default
+     gcc_unreachable () ensures any new input kind is caught loudly
+     rather than silently emitting the wrong canonical name.  */
   static unsigned
   ime_input_lmul (const function_instance &instance)
   {
@@ -1635,6 +1661,12 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_f4e2m1_lmul1_vector:
       case RVV_BASE_ime_i8_lmul1_vector:
 	return 1;
+      case RVV_BASE_lmul2_vector:
+	return 2;
+      case RVV_BASE_lmul4_vector:
+	return 4;
+      case RVV_BASE_lmul8_vector:
+	return 8;
       default:
 	gcc_unreachable ();
       }
@@ -1649,8 +1681,11 @@ struct ime_mmacc_def : public build_base
     char base_buf[32];
     const char *sign_suffix;
     const char *bs_suffix;
+    const char *lm_suffix;
     decode_base_and_sign (instance.base_name, base_buf, sizeof (base_buf),
-			  sign_suffix, bs_suffix);
+			  sign_suffix, bs_suffix, lm_suffix);
+    (void) lm_suffix;  /* Consumed via the args base type in
+			  ime_input_lmul ().  */
 
     /* "__riscv_" + <base>.  */
     b.append_base_name (base_buf);

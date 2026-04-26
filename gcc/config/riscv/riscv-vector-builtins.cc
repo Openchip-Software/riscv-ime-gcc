@@ -707,12 +707,28 @@ static CONSTEXPR const rvv_arg_type_info vvv_args[]
                                            vint32m1_t vs2,
                                            size_t vl);
 
-   where m2 on vd denotes MUL_C=2 and the m1 on vs1/vs2 denotes LMUL=1.
-   The _lm{N} variants for LMUL > 1 will get their own args arrays.  */
+   where m2 on vd denotes MUL_C=2 and the m1 on vs1/vs2 denotes LMUL=1.  */
 static CONSTEXPR const rvv_arg_type_info ime_vss_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_lmul1_vector), rvv_arg_type_info_end};
+
+/* Args for the W=1 mmacc _lm{N} variants: vs1/vs2 use LMUL=N at the same
+   SEW as the accumulator, independent of the accumulator's MUL_C.  */
+static CONSTEXPR const rvv_arg_type_info ime_vss_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul2_vector),
+     rvv_arg_type_info (RVV_BASE_lmul2_vector), rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul4_vector),
+     rvv_arg_type_info (RVV_BASE_lmul4_vector), rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul8_vector),
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), rvv_arg_type_info_end};
 
 /* Args for the W=2 widening IME multiply-accumulate (vwmmacc.vv).  The
    accumulator sits at SEW with MUL_C; the two inputs are SEW/2 and
@@ -3439,6 +3455,32 @@ static CONSTEXPR const rvv_op_info u_ime_vss_ops
      rvv_arg_type_info (RVV_BASE_vector),
      ime_vss_args};
 
+/* Op-info structs for the W=1 mmacc _lm{N} variants: same accumulator
+   type sets as the default LMUL=1 ops, but vs1/vs2 are at LMUL=N.  */
+static CONSTEXPR const rvv_op_info i_ime_vss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_ime_vss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_ime_vss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
+
+static CONSTEXPR const rvv_op_info u_ime_vss_lm2_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
+
+static CONSTEXPR const rvv_op_info u_ime_vss_lm4_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
+
+static CONSTEXPR const rvv_op_info u_ime_vss_lm8_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
+
 /* Op-info structs for vwmmacc.vv (W=2) -- same-sign (ss, uu) and
    mixed-sign (su, us).  Signed accumulator is mandated by the spec
    for both _su and _us.  */
@@ -3630,6 +3672,19 @@ static CONSTEXPR const rvv_op_info i_us_ime_8wvss_ops
 static CONSTEXPR const rvv_op_info f_ime_vss_ops
   = {fp_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
+
+/* Op-info structs for the W=1 vfmmacc _lm{N} variants.  */
+static CONSTEXPR const rvv_op_info f_ime_vss_lm2_ops
+  = {fp_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
+
+static CONSTEXPR const rvv_op_info f_ime_vss_lm4_ops
+  = {fp_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
+
+static CONSTEXPR const rvv_op_info f_ime_vss_lm8_ops
+  = {fp_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
 
 /* vfwmmacc_f16: FP16 -> FP32 accumulator.  */
 static CONSTEXPR const rvv_op_info f32_ime_wvss_f16_ops
@@ -4885,6 +4940,77 @@ get_ime_widening_input_type (vector_type_index type_idx, rvv_base_type kind)
   return builtin_types[idx].vector;
 }
 
+/* Compute the vector_type_index for an IME source-LMUL input type, i.e. a
+   type with the same SEW as the accumulator's element type but with a
+   register-group multiplier of N (independent of the accumulator's MUL_C).
+   This is used by the W=1 mmacc family's _lm{N} variants where vs1/vs2 use
+   LMUL=N rather than the spec-default LMUL=1.
+
+   Returns NUM_VECTOR_TYPES if the accumulator type does not have a valid
+   sibling at the requested LMUL (e.g. because the SEW does not exist as a
+   standard integer/FP element, or the resulting register group would
+   overflow).  Element-type/signedness identity is preserved across the
+   mapping; only the LMUL changes.  */
+
+static vector_type_index
+ime_lmul_input_idx (vector_type_index type_idx, rvv_base_type kind)
+{
+  if (type_idx == VECTOR_TYPE_INVALID)
+    return NUM_VECTOR_TYPES;
+
+  vector_type_index target = NUM_VECTOR_TYPES;
+  switch (type_idx)
+    {
+#define IME_LMUL_MAP(ELEM_M1, ELEM_M2, ELEM_M4, ELEM_M8)		\
+      case VECTOR_TYPE_##ELEM_M1: case VECTOR_TYPE_##ELEM_M2:		\
+      case VECTOR_TYPE_##ELEM_M4: case VECTOR_TYPE_##ELEM_M8:		\
+	switch (kind)							\
+	  {								\
+	  case RVV_BASE_lmul2_vector:					\
+	    target = VECTOR_TYPE_##ELEM_M2; break;			\
+	  case RVV_BASE_lmul4_vector:					\
+	    target = VECTOR_TYPE_##ELEM_M4; break;			\
+	  case RVV_BASE_lmul8_vector:					\
+	    target = VECTOR_TYPE_##ELEM_M8; break;			\
+	  default:							\
+	    return NUM_VECTOR_TYPES;					\
+	  }								\
+	break;
+      IME_LMUL_MAP (vint8m1_t, vint8m2_t, vint8m4_t, vint8m8_t)
+      IME_LMUL_MAP (vuint8m1_t, vuint8m2_t, vuint8m4_t, vuint8m8_t)
+      IME_LMUL_MAP (vint16m1_t, vint16m2_t, vint16m4_t, vint16m8_t)
+      IME_LMUL_MAP (vuint16m1_t, vuint16m2_t, vuint16m4_t, vuint16m8_t)
+      IME_LMUL_MAP (vint32m1_t, vint32m2_t, vint32m4_t, vint32m8_t)
+      IME_LMUL_MAP (vuint32m1_t, vuint32m2_t, vuint32m4_t, vuint32m8_t)
+      IME_LMUL_MAP (vint64m1_t, vint64m2_t, vint64m4_t, vint64m8_t)
+      IME_LMUL_MAP (vuint64m1_t, vuint64m2_t, vuint64m4_t, vuint64m8_t)
+      IME_LMUL_MAP (vfloat16m1_t, vfloat16m2_t, vfloat16m4_t, vfloat16m8_t)
+      IME_LMUL_MAP (vbfloat16m1_t, vbfloat16m2_t, vbfloat16m4_t,
+		    vbfloat16m8_t)
+      IME_LMUL_MAP (vfloat32m1_t, vfloat32m2_t, vfloat32m4_t, vfloat32m8_t)
+      IME_LMUL_MAP (vfloat64m1_t, vfloat64m2_t, vfloat64m4_t, vfloat64m8_t)
+#undef IME_LMUL_MAP
+      default:
+	return NUM_VECTOR_TYPES;
+    }
+  return target;
+}
+
+/* Helper used from DEF_RVV_BASE_TYPE expansions in get_tree_type() for the
+   IME source-LMUL base types (lmul2_vector, lmul4_vector, lmul8_vector).
+   Returns the tree for the computed vector type, or NULL_TREE if no
+   sibling exists or the target type is not registered for the current
+   -march.  */
+
+static tree
+get_ime_lmul_input_type (vector_type_index type_idx, rvv_base_type kind)
+{
+  vector_type_index idx = ime_lmul_input_idx (type_idx, kind);
+  if (idx == NUM_VECTOR_TYPES)
+    return NULL_TREE;
+  return builtin_types[idx].vector;
+}
+
 vector_type_index
 rvv_arg_type_info::get_function_type_index (vector_type_index type_idx) const
 {
@@ -4899,6 +5025,15 @@ rvv_arg_type_info::get_function_type_index (vector_type_index type_idx) const
       || base_type == RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector)
     {
       vector_type_index idx = ime_widening_input_idx (type_idx, base_type);
+      if (idx == NUM_VECTOR_TYPES || !builtin_types[idx].vector)
+	return NUM_VECTOR_TYPES;
+      return idx;
+    }
+  if (base_type == RVV_BASE_lmul2_vector
+      || base_type == RVV_BASE_lmul4_vector
+      || base_type == RVV_BASE_lmul8_vector)
+    {
+      vector_type_index idx = ime_lmul_input_idx (type_idx, base_type);
       if (idx == NUM_VECTOR_TYPES || !builtin_types[idx].vector)
 	return NUM_VECTOR_TYPES;
       return idx;
