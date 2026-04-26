@@ -186,16 +186,18 @@ DEF_AVL_RULE (ignore_avl, ignore_avl, ignore_avl, always_true, always_true, nop)
    altfmt_B, altfmt, bs) established and, when it does, the concrete
    tuple in vsetvl_info::m_ime_req.
 
-   When prev is already IME and next is not, we clear IME from the
-   fused state but still keep prev available to next: the actual
-   hardware state might or might not still carry the IME bits (a
-   vsetvli driven by the other dimensions would zero them), and the
-   next IME instruction will see ignore_ime and re-establish the
-   tuple via rule 3.  */
+   When prev is IME and next is a plain vector op (ignore_ime), the
+   IME vtype already covers next's needs: the standard vtype fields
+   (sew, lmul, vta, vma) are populated by the IME setup, and the
+   IME-specific bits (lambda etc.) are ignored by non-IME insns.
+   Keep the merged demand at ime_vtype with prev's tuple so a single
+   IME setup at the head of the fused range serves the whole region;
+   if we fused down to ignore_ime, the pass would emit a plain
+   vsetvli for that region and the lambda field of vtype would be
+   zeroed -- breaking the IME insns that the IME setup belongs to.  */
 
 DEF_IME_RULE (ime_vtype, ime_vtype, ime_vtype, ime_eq_p, ime_eq_p, nop)
-DEF_IME_RULE (ime_vtype, ignore_ime, ignore_ime, always_true, always_true,
-	      use_next_ime)
+DEF_IME_RULE (ime_vtype, ignore_ime, ime_vtype, always_true, always_true, nop)
 /* A plain vsetvli (ignore_ime) cannot be rewritten in place into an IME
    setup (which is a multi-insn sequence: constant load + register-form
    vsetvl).  Mark the pair as incompatible so the two infos stay
