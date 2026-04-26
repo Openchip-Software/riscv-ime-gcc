@@ -32,11 +32,18 @@ along with GCC; see the file COPYING3. If not see
    signed internal base (vmmacc_s) and "__riscv_vmmacc_vv_u*" from the
    unsigned one (vmmacc_u).  The two internal bases route to different
    UNSPECs at RTL level so the vsetvl pass can set altfmt_A/altfmt_B
-   correctly in vtype.  The _lm{N} variants for LMUL > 1 and the
-   _su / _us mixed-sign variants will be added in follow-ups.  */
+   correctly in vtype.  The _lm{N} variants below give vs1/vs2 LMUL=N
+   at the same SEW as the accumulator (independent of MUL_C); _su/_us
+   mixed-sign variants will be added in a follow-up.  */
 #define REQUIRED_EXTENSIONS ZVVMM_EXT
-DEF_RVV_FUNCTION (vmmacc_s,   ime_mmacc, none_tu_preds, i_ime_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_u,   ime_mmacc, none_tu_preds, u_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_s,     ime_mmacc, none_tu_preds, i_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_u,     ime_mmacc, none_tu_preds, u_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_s_lm2, ime_mmacc, none_tu_preds, i_ime_vss_lm2_ops)
+DEF_RVV_FUNCTION (vmmacc_s_lm4, ime_mmacc, none_tu_preds, i_ime_vss_lm4_ops)
+DEF_RVV_FUNCTION (vmmacc_s_lm8, ime_mmacc, none_tu_preds, i_ime_vss_lm8_ops)
+DEF_RVV_FUNCTION (vmmacc_u_lm2, ime_mmacc, none_tu_preds, u_ime_vss_lm2_ops)
+DEF_RVV_FUNCTION (vmmacc_u_lm4, ime_mmacc, none_tu_preds, u_ime_vss_lm4_ops)
+DEF_RVV_FUNCTION (vmmacc_u_lm8, ime_mmacc, none_tu_preds, u_ime_vss_lm8_ops)
 /* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2 LMUL=1.
    Four sign combinations.  Mixed-sign variants share the signed
    accumulator ops (i_ops) since the spec mandates a signed
@@ -63,7 +70,10 @@ DEF_RVV_FUNCTION (v8wmmacc_us, ime_mmacc, none_tu_preds, i_us_ime_8wvss_ops)
 
 /* Zvvfmm - FP matrix multiply-accumulate.  */
 #define REQUIRED_EXTENSIONS ZVVFMM_EXT
-DEF_RVV_FUNCTION (vfmmacc, ime_mmacc, none_tu_preds, f_ime_vss_ops)
+DEF_RVV_FUNCTION (vfmmacc,     ime_mmacc, none_tu_preds, f_ime_vss_ops)
+DEF_RVV_FUNCTION (vfmmacc_lm2, ime_mmacc, none_tu_preds, f_ime_vss_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_lm4, ime_mmacc, none_tu_preds, f_ime_vss_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_lm8, ime_mmacc, none_tu_preds, f_ime_vss_lm8_ops)
 /* vfwmmacc.vv (W=2) */
 DEF_RVV_FUNCTION (vfwmmacc_f16, ime_mmacc, none_tu_preds, f32_ime_wvss_f16_ops)
 DEF_RVV_FUNCTION (vfwmmacc_bf16, ime_mmacc, none_tu_preds, f32_ime_wvss_bf16_ops)

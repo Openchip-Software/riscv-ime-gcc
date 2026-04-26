@@ -3027,7 +3027,7 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
    which UNSPEC is on the RTL, so the vsetvl pass can read the
    ime_altfmt attribute to populate altfmt_A/altfmt_B correctly.  No
    mask/merge/policy operands.  */
-template<int UNSPEC>
+template<int UNSPEC, insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_vmmacc>
 class vmmacc_ime_op : public function_base
 {
 public:
@@ -3043,12 +3043,24 @@ public:
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (code_for_pred_vmmacc (UNSPEC, e.vector_mode ()));
+    return e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
   }
 };
 
 static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S> vmmacc_s_obj;
 static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U> vmmacc_u_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S, code_for_pred_vmmacc_lm2>
+  vmmacc_s_lm2_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S, code_for_pred_vmmacc_lm4>
+  vmmacc_s_lm4_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S, code_for_pred_vmmacc_lm8>
+  vmmacc_s_lm8_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_lm2>
+  vmmacc_u_lm2_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_lm4>
+  vmmacc_u_lm4_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_lm8>
+  vmmacc_u_lm8_obj;
 
 /* IME vector widening integer matrix multiply-accumulate (W=2).  Same
    structure as vmmacc_ime_op but dispatches to @pred_vwmmacc*<mode>.
@@ -3130,7 +3142,10 @@ static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_U>  v8wmmacc_u_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU> v8wmmacc_su_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_US> v8wmmacc_us_obj;
 
-/* Zvvfmm FP matrix multiply-accumulate, W=1 (vfmmacc.vv).  */
+/* Zvvfmm FP matrix multiply-accumulate, W=1 (vfmmacc.vv).  Parametrised
+   on the icode-getter so the same class drives the default LMUL=1
+   variant (vfmmacc) and the source-LMUL _lm{N} variants.  */
+template<insn_code (*CODE_FOR)(machine_mode) = code_for_pred_vfmmacc>
 class vfmmacc_ime_op : public function_base
 {
 public:
@@ -3146,11 +3161,17 @@ public:
 				  /* altfmt_b = */ false,
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (code_for_pred_vfmmacc (e.vector_mode ()));
+    return e.use_exact_insn (CODE_FOR (e.vector_mode ()));
   }
 };
 
-static CONSTEXPR const vfmmacc_ime_op vfmmacc_obj;
+static CONSTEXPR const vfmmacc_ime_op<> vfmmacc_obj;
+static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm2>
+  vfmmacc_lm2_obj;
+static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm4>
+  vfmmacc_lm4_obj;
+static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm8>
+  vfmmacc_lm8_obj;
 
 /* Zvvfmm FP matrix multiply-accumulate, W=2 (vfwmmacc.vv).  */
 class vfwmmacc_f16_ime_op : public function_base
@@ -4099,6 +4120,12 @@ BASE (vfwmaccbf16_frm)
 /* Zvvmm */
 BASE (vmmacc_s)
 BASE (vmmacc_u)
+BASE (vmmacc_s_lm2)
+BASE (vmmacc_s_lm4)
+BASE (vmmacc_s_lm8)
+BASE (vmmacc_u_lm2)
+BASE (vmmacc_u_lm4)
+BASE (vmmacc_u_lm8)
 BASE (vwmmacc_s)
 BASE (vwmmacc_u)
 BASE (vwmmacc_su)
@@ -4113,6 +4140,9 @@ BASE (v8wmmacc_su)
 BASE (v8wmmacc_us)
 /* Zvvfmm */
 BASE (vfmmacc)
+BASE (vfmmacc_lm2)
+BASE (vfmmacc_lm4)
+BASE (vfmmacc_lm8)
 BASE (vfwmmacc_f16)
 BASE (vfwmmacc_bf16)
 BASE (vfwmmacc_f32)

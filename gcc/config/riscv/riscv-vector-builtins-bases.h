@@ -355,6 +355,12 @@ extern const function_base *const vfwmaccbf16_frm;
 /* Zvvmm */
 extern const function_base *const vmmacc_s;
 extern const function_base *const vmmacc_u;
+extern const function_base *const vmmacc_s_lm2;
+extern const function_base *const vmmacc_s_lm4;
+extern const function_base *const vmmacc_s_lm8;
+extern const function_base *const vmmacc_u_lm2;
+extern const function_base *const vmmacc_u_lm4;
+extern const function_base *const vmmacc_u_lm8;
 extern const function_base *const vwmmacc_s;
 extern const function_base *const vwmmacc_u;
 extern const function_base *const vwmmacc_su;
@@ -369,6 +375,9 @@ extern const function_base *const v8wmmacc_su;
 extern const function_base *const v8wmmacc_us;
 /* Zvvfmm */
 extern const function_base *const vfmmacc;
+extern const function_base *const vfmmacc_lm2;
+extern const function_base *const vfmmacc_lm4;
+extern const function_base *const vfmmacc_lm8;
 extern const function_base *const vfwmmacc_f16;
 extern const function_base *const vfwmmacc_bf16;
 extern const function_base *const vfwmmacc_f32;
