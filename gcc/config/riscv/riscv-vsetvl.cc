@@ -1051,6 +1051,32 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
       gcc_unreachable ();
     }
 
+  /* For FP mmacc, the altfmt bits select the alternative IEEE format at
+     the relevant SEW: BFmode at SEW=16 selects bf16, HFmode selects fp16.
+     Per the IME spec / QEMU dispatch fns[altfmt_a][altfmt_b][altfmt][sew]:
+       altfmt_a -- vs1 input format (per-operand)
+       altfmt_b -- vs2 input format (per-operand)
+       altfmt   -- accumulator/output format
+     W=1 same-format bf16 requires all three set; widening bf16->fp32
+     sets altfmt_{a,b} only.  Mixed-format intrinsics (e.g. fp16 x bf16)
+     would set altfmt_a and altfmt_b differently -- inspect each input
+     operand independently so the same code handles them when added.
+     OFP8 (E4M3 vs E5M2) at SEW=8 cannot be told apart from the mode
+     alone -- those go through dedicated UNSPECs and will need
+     attribute-driven dispatch in a follow-up.  */
+  if (GET_MODE_INNER (acc_mode) == E_BFmode)
+    r.altfmt = true;
+  if (recog_data.n_operands > 2
+      && REG_P (recog_data.operand[2])
+      && VECTOR_MODE_P (GET_MODE (recog_data.operand[2]))
+      && GET_MODE_INNER (GET_MODE (recog_data.operand[2])) == E_BFmode)
+    r.altfmt_a = true;
+  if (recog_data.n_operands > 3
+      && REG_P (recog_data.operand[3])
+      && VECTOR_MODE_P (GET_MODE (recog_data.operand[3]))
+      && GET_MODE_INNER (GET_MODE (recog_data.operand[3])) == E_BFmode)
+    r.altfmt_b = true;
+
   /* Static lambda if VLEN is known; runtime otherwise.  */
   int mul_c_val;
   switch (r.mul_c)
