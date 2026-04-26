@@ -1959,12 +1959,8 @@ emit_ime_vtype_runtime_pat (const vsetvl_info &info, rtx dest_vl, rtx avl)
   rtx scratch2 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM);
   rtx scratch3 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM + 1);
 
-  /* Caller is expected to have ensured avl is in t3 (reg 28) via an
-     explicit (set (reg:P 28) avl) emitted just before this pattern.
-     The pattern declares (use (reg:P 28)) so that copy is kept alive
-     by RTL passes.  */
-  return gen_vsetvl_ime_runtime (Pmode, scratch1, static_rtx, shift_rtx,
-				 scratch2, scratch3);
+  return gen_vsetvl_ime_runtime (Pmode, scratch1, avl, static_rtx,
+				 shift_rtx, scratch2, scratch3);
 }
 
 class vsetvl_block_info
@@ -3072,18 +3068,28 @@ private:
     if (!avl)
       avl = const0_rtx;
 
-    /* The @vsetvl_ime_runtime pattern takes AVL via a hardcoded t3.
-       Emit an explicit move of AVL into t3 just before the pattern.
-       The pattern's (use (reg:P 28)) clause keeps this move alive
-       across RTL passes (propagation cannot fold it).  */
-    rtx avl_reg = gen_rtx_REG (Pmode, GP_REG_FIRST + 28);
-    rtx t3_set = gen_rtx_SET (avl_reg, avl);
-    if (emit_type == EMIT_DIRECT)
-      emit_insn (t3_set);
-    else if (emit_type == EMIT_BEFORE)
-      emit_insn_before (t3_set, info.get_insn ()->rtl ());
-    else
-      emit_insn_after (t3_set, info.get_insn ()->rtl ());
+    /* The @vsetvl_ime* patterns require AVL to be either a register or
+       const_int 0 (pmode_reg_or_0_operand).  A non-zero const_int AVL
+       (e.g. from a literal `vl` argument in the user's intrinsic call)
+       must be materialised into a register first.  Running post-reload
+       we cannot create fresh pseudos -- emit an explicit `li` into a
+       caller-saved scratch (PROLOGUE_TEMP2) that we know is free at
+       the insertion site.  */
+    if (CONST_INT_P (avl) && avl != const0_rtx)
+      {
+	/* Use t3 (x28): outside the {t0, t1, t2} scratch set used by
+	   the runtime vsetvl sequence AND outside typical dest_vl
+	   allocations.  */
+	rtx avl_reg = gen_rtx_REG (Pmode, GP_REG_FIRST + 28);
+	rtx li_insn = gen_rtx_SET (avl_reg, avl);
+	if (emit_type == EMIT_DIRECT)
+	  emit_insn (li_insn);
+	else if (emit_type == EMIT_BEFORE)
+	  emit_insn_before (li_insn, info.get_insn ()->rtl ());
+	else
+	  emit_insn_after (li_insn, info.get_insn ()->rtl ());
+	avl = avl_reg;
+      }
 
     /* Pick a destination/scratch register for the vsetvl_ime insn.  The
        @vsetvl_ime pattern reuses its dest register as the scratch for
@@ -4591,12 +4597,14 @@ pass_vsetvl::simple_vsetvl ()
 		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
 		  /* Normalise const_int AVL into a register -- same
 		     fix as in insert_ime_vsetvl_insn above.  */
-		  /* Emit the t3=AVL copy kept alive by the pattern's
-		     (use (reg:P 28)) clause.  */
-		  {
-		    rtx avl_reg = gen_rtx_REG (Pmode, GP_REG_FIRST + 28);
-		    emit_insn_before (gen_rtx_SET (avl_reg, avl), rinsn);
-		  }
+		  if (CONST_INT_P (avl) && avl != const0_rtx)
+		    {
+		      /* Use t3 (x28): outside the scratch set used by
+			 the runtime vsetvl sequence.  */
+		      rtx avl_reg = gen_rtx_REG (Pmode, GP_REG_FIRST + 28);
+		      emit_insn_before (gen_rtx_SET (avl_reg, avl), rinsn);
+		      avl = avl_reg;
+		    }
 		  /* Same reason as in insert_ime_vsetvl_insn -- force
 		     PROLOGUE_TEMP (t0) for dest_vl.  */
 		  rtx dest_vl
