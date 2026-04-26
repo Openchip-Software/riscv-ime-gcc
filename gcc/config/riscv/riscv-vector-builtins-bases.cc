@@ -37,6 +37,7 @@
 #include "gimple.h"
 #include "gimple-iterator.h"
 #include "gimplify.h"
+#include "bitmap.h"
 #include "ssa.h"
 #include "explow.h"
 #include "emit-rtl.h"
@@ -3024,19 +3025,53 @@ find_mmacc_geometry_via_ssa (gimple *stmt, ime_function_geometry &geo)
       tree lhs = gimple_call_lhs (stmt);
       if (!lhs || TREE_CODE (lhs) != SSA_NAME)
 	return false;
+      /* Walk uses transitively through copies and PHIs; an mmacc
+	 consumer reached via any path determines the geometry.  Bound
+	 the worklist depth and dedupe to handle loop-carried PHIs.  */
       ime_function_geometry found = {0, 0};
-      use_operand_p use_p;
-      imm_use_iterator iter;
-      gimple *use_stmt;
-      FOR_EACH_IMM_USE_STMT (use_stmt, iter, lhs)
+      auto_vec<tree, 8> worklist;
+      auto_bitmap visited;
+      worklist.safe_push (lhs);
+      bitmap_set_bit (visited, SSA_NAME_VERSION (lhs));
+      int budget = 32;
+      while (!worklist.is_empty () && budget-- > 0)
 	{
-	  ime_function_geometry g = {0, 0};
-	  if (!mmacc_call_geometry (use_stmt, g))
-	    continue;
-	  if (found.mul_c == 0)
-	    found = g;
-	  else if (found.sew_bits != g.sew_bits || found.mul_c != g.mul_c)
-	    return false;  /* Ambiguous: feeds multiple geometries.  */
+	  tree val = worklist.pop ();
+	  use_operand_p use_p;
+	  imm_use_iterator iter;
+	  gimple *use_stmt;
+	  FOR_EACH_IMM_USE_STMT (use_stmt, iter, val)
+	    {
+	      ime_function_geometry g = {0, 0};
+	      if (mmacc_call_geometry (use_stmt, g))
+		{
+		  if (found.mul_c == 0)
+		    found = g;
+		  else if (found.sew_bits != g.sew_bits
+			   || found.mul_c != g.mul_c)
+		    return false;  /* Multiple distinct consumers.  */
+		  continue;
+		}
+	      /* Trivial copy: recurse into the lhs.  */
+	      if (gimple_code (use_stmt) == GIMPLE_ASSIGN
+		  && gimple_assign_single_p (use_stmt))
+		{
+		  tree dst = gimple_assign_lhs (use_stmt);
+		  if (dst && TREE_CODE (dst) == SSA_NAME
+		      && bitmap_set_bit (visited, SSA_NAME_VERSION (dst)))
+		    worklist.safe_push (dst);
+		  continue;
+		}
+	      /* PHI: recurse into the result.  */
+	      if (gimple_code (use_stmt) == GIMPLE_PHI)
+		{
+		  tree dst = gimple_phi_result (use_stmt);
+		  if (dst && TREE_CODE (dst) == SSA_NAME
+		      && bitmap_set_bit (visited, SSA_NAME_VERSION (dst)))
+		    worklist.safe_push (dst);
+		  continue;
+		}
+	    }
 	}
       if (found.mul_c == 0)
 	return false;
