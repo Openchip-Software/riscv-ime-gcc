@@ -388,14 +388,13 @@
 ;; AVL is delivered via hardcoded register t3 (reg 28) -- the caller
 ;; emits (set (reg:P 28) avl) before this insn.
 ;;
-;; Post-reload register preservation: t1 and t2 are used internally as
-;; scratches; we save/restore them by spilling to t4 and t5.  This
-;; avoids any stack/sp manipulation entirely, which is essential for
-;; correctness with IPA-inlined callers.  t4/t5 are declared as
-;; clobbers.  Total scratch set used: t0, t1, t2, t4, t5 (with t3 as
-;; the AVL input).  Five caller-saved temporaries are typically dead
-;; at IME insn insertion points; if the allocator placed live values
-;; in t4 or t5, the clobber tells GCC.
+;; Post-reload register preservation: we save/restore t1 and t2 to/from
+;; a 16-byte temporary stack slot allocated with addi sp,-16 / addi
+;; sp,16.  Declaring (clobber (reg:P SP)) tells later passes not to
+;; schedule sp-relative accesses across this insn, avoiding silent
+;; frame-offset confusion with IPA-inlined callers.  We cannot rely
+;; on GCC to spill t1/t2 for us because this insn is emitted
+;; post-reload, after register allocation is complete.
 (define_insn "@vsetvl_ime_runtime<mode>"
   [(set (match_operand:P 0 "register_operand"             "=&r")
 	(unspec:P [(match_operand 1 "const_int_operand"    " i")
@@ -408,12 +407,11 @@
 	(unspec:SI [(match_dup 1) (match_dup 2)]
 		   UNSPEC_VSETVL_IME_RUNTIME))
    (use (reg:P 28))                            ;; t3 holds AVL
-   (clobber (reg:P 6))                         ;; t1
-   (clobber (reg:P 7))                         ;; t2
-   (clobber (reg:P 29))                        ;; t4 (save slot for t1)
-   (clobber (reg:P 30))]                       ;; t5 (save slot for t2)
+   (clobber (reg:P 2))                         ;; sp (temporarily modified)
+   (use (reg:P 6))                             ;; t1 preserved via stack
+   (use (reg:P 7))]                            ;; t2 preserved via stack
   "TARGET_VECTOR && TARGET_ZBB"
-  "mv\tt4,t1\n\tmv\tt5,t2\n\tcsrr\t%0,vlenb\n\tslli\t%0,%0,3\n\tsrli\t%0,%0,%2\n\tctz\tt1,%0\n\tandi\t%0,t1,1\n\tbne\t%0,zero,.Ltrap%=\n\tsrli\tt1,t1,1\n\taddi\tt2,t1,1\n\tli\tt1,%1\n\tslli\t%0,t2,<xlen_minus_4>\n\tor\t%0,%0,t1\n\tvsetvl\t%0,t3,%0\n\tcsrr\tt1,vtype\n\tsrli\tt1,t1,<xlen_minus_4>\n\tandi\tt1,t1,7\n\tbeq\tt1,t2,.Lok%=\n.Ltrap%=:\n\tebreak\n.Lok%=:\n\tmv\tt1,t4\n\tmv\tt2,t5"
+  "addi\tsp,sp,-16\n\t<pmode_store>\tt1,0(sp)\n\t<pmode_store>\tt2,<pmode_bytes>(sp)\n\tcsrr\t%0,vlenb\n\tslli\t%0,%0,3\n\tsrli\t%0,%0,%2\n\tctz\tt1,%0\n\tandi\t%0,t1,1\n\tbne\t%0,zero,.Ltrap%=\n\tsrli\tt1,t1,1\n\taddi\tt2,t1,1\n\tli\tt1,%1\n\tslli\t%0,t2,<xlen_minus_4>\n\tor\t%0,%0,t1\n\tvsetvl\t%0,t3,%0\n\tcsrr\tt1,vtype\n\tsrli\tt1,t1,<xlen_minus_4>\n\tandi\tt1,t1,7\n\tbeq\tt1,t2,.Lok%=\n.Ltrap%=:\n\tebreak\n.Lok%=:\n\t<pmode_load>\tt1,0(sp)\n\t<pmode_load>\tt2,<pmode_bytes>(sp)\n\taddi\tsp,sp,16"
   [(set_attr "type" "vsetvl")
    (set_attr "mode" "<MODE>")])
 
