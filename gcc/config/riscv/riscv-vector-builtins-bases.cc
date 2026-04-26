@@ -37,6 +37,7 @@
 #include "gimple.h"
 #include "gimple-iterator.h"
 #include "gimplify.h"
+#include "ssa.h"
 #include "explow.h"
 #include "emit-rtl.h"
 #include "tree-vector-builder.h"
@@ -2889,6 +2890,45 @@ is_ime_mmacc_builtin_name (const char *name)
   return false;
 }
 
+/* If STMT is a call to an ime mmacc builtin, fill GEO with its
+   accumulator's (sew, mul_c) and return true; otherwise return false.  */
+
+static bool
+mmacc_call_geometry (gimple *stmt, ime_function_geometry &geo)
+{
+  if (!stmt || !is_gimple_call (stmt))
+    return false;
+  tree fndecl = gimple_call_fndecl (stmt);
+  if (!fndecl)
+    return false;
+  const char *name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+  if (!is_ime_mmacc_builtin_name (name))
+    return false;
+  if (gimple_call_num_args (stmt) < 1)
+    return false;
+  tree acc = gimple_call_arg (stmt, 0);
+  tree acc_type = TREE_TYPE (acc);
+  if (!acc_type || !VECTOR_TYPE_P (acc_type))
+    return false;
+  machine_mode acc_mode = TYPE_MODE (acc_type);
+  if (!VECTOR_MODE_P (acc_mode))
+    return false;
+  int sew = GET_MODE_UNIT_BITSIZE (acc_mode);
+  vlmul_type vlmul = get_vlmul (acc_mode);
+  int mul_c;
+  switch (vlmul)
+    {
+    case LMUL_1: mul_c = 1; break;
+    case LMUL_2: mul_c = 2; break;
+    case LMUL_4: mul_c = 4; break;
+    case LMUL_8: mul_c = 8; break;
+    default: return false;
+    }
+  geo.sew_bits = sew;
+  geo.mul_c = mul_c;
+  return true;
+}
+
 /* Scan one BB for ime mmacc calls and accumulate the (sew, mul_c) of
    each into RESULT.  Sets RESULT to {0,0} and returns false if the BB
    contains conflicting geometries.  */
@@ -2901,65 +2941,138 @@ collect_ime_mmacc_geometry_in_bb (basic_block bb, ime_function_geometry &result)
   for (gimple_stmt_iterator gsi = gsi_start_bb (bb);
        !gsi_end_p (gsi); gsi_next (&gsi))
     {
-      gimple *stmt = gsi_stmt (gsi);
-      if (!is_gimple_call (stmt))
+      ime_function_geometry g = {0, 0};
+      if (!mmacc_call_geometry (gsi_stmt (gsi), g))
 	continue;
-      tree fndecl = gimple_call_fndecl (stmt);
-      if (!fndecl)
-	continue;
-      const char *name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
-      if (!is_ime_mmacc_builtin_name (name))
-	continue;
-      if (gimple_call_num_args (stmt) < 1)
-	continue;
-      tree acc = gimple_call_arg (stmt, 0);
-      tree acc_type = TREE_TYPE (acc);
-      if (!acc_type || !VECTOR_TYPE_P (acc_type))
-	continue;
-      machine_mode acc_mode = TYPE_MODE (acc_type);
-      if (!VECTOR_MODE_P (acc_mode))
-	continue;
-      int sew = GET_MODE_UNIT_BITSIZE (acc_mode);
-      vlmul_type vlmul = get_vlmul (acc_mode);
-      int this_mul_c;
-      switch (vlmul)
-	{
-	case LMUL_1: this_mul_c = 1; break;
-	case LMUL_2: this_mul_c = 2; break;
-	case LMUL_4: this_mul_c = 4; break;
-	case LMUL_8: this_mul_c = 8; break;
-	default: continue;  /* Fractional or reserved -- skip.  */
-	}
       if (result.mul_c == 0)
+	result = g;
+      else if (result.sew_bits != g.sew_bits || result.mul_c != g.mul_c)
 	{
-	  result.sew_bits = sew;
-	  result.mul_c = this_mul_c;
-	}
-      else if (result.sew_bits != sew || result.mul_c != this_mul_c)
-	{
-	  result.sew_bits = 0;
-	  result.mul_c = 0;
+	  result = ime_function_geometry {0, 0};
 	  return false;
 	}
     }
   return true;
 }
 
+/* Walk SSA copies/PHIs to peel through trivial pass-throughs and find a
+   plausible mmacc-defining call.  Bounded to avoid pathological CFGs.  */
+
+static gimple *
+peel_to_mmacc_def (tree val, int budget)
+{
+  while (val && TREE_CODE (val) == SSA_NAME && budget-- > 0)
+    {
+      gimple *def = SSA_NAME_DEF_STMT (val);
+      if (!def)
+	return NULL;
+      if (is_gimple_call (def))
+	return def;
+      if (gimple_code (def) == GIMPLE_ASSIGN
+	  && gimple_assign_single_p (def))
+	{
+	  val = gimple_assign_rhs1 (def);
+	  continue;
+	}
+      if (gimple_code (def) == GIMPLE_PHI)
+	{
+	  /* Take the first non-self phi argument; cheap and good enough
+	     for the common loop-carried accumulator pattern.  */
+	  gphi *phi = as_a<gphi *> (def);
+	  for (unsigned i = 0; i < gimple_phi_num_args (phi); i++)
+	    {
+	      tree arg = gimple_phi_arg_def (phi, i);
+	      if (arg != val)
+		{
+		  val = arg;
+		  goto next;
+		}
+	    }
+	  return NULL;
+	next:;
+	  continue;
+	}
+      return NULL;
+    }
+  return NULL;
+}
+
+/* If STMT is a tile-load call (vmtl/vmttl), follow its lhs forward to a
+   consumer mmacc.  If STMT is a tile-store call (vmts/vmtts), follow its
+   data argument backward to a producing mmacc.  Returns true on success
+   with GEO populated; false if no unambiguous match.  */
+
+static bool
+find_mmacc_geometry_via_ssa (gimple *stmt, ime_function_geometry &geo)
+{
+  if (!stmt || !is_gimple_call (stmt))
+    return false;
+  tree fndecl = gimple_call_fndecl (stmt);
+  if (!fndecl)
+    return false;
+  const char *name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+  if (!name || strncmp (name, "__riscv_v", 9) != 0)
+    return false;
+  const char *p = name + 9;
+  bool is_load = (strncmp (p, "mtl", 3) == 0
+		  || strncmp (p, "mttl", 4) == 0);
+  bool is_store = (strncmp (p, "mts", 3) == 0
+		   || strncmp (p, "mtts", 4) == 0);
+
+  if (is_load)
+    {
+      tree lhs = gimple_call_lhs (stmt);
+      if (!lhs || TREE_CODE (lhs) != SSA_NAME)
+	return false;
+      ime_function_geometry found = {0, 0};
+      use_operand_p use_p;
+      imm_use_iterator iter;
+      gimple *use_stmt;
+      FOR_EACH_IMM_USE_STMT (use_stmt, iter, lhs)
+	{
+	  ime_function_geometry g = {0, 0};
+	  if (!mmacc_call_geometry (use_stmt, g))
+	    continue;
+	  if (found.mul_c == 0)
+	    found = g;
+	  else if (found.sew_bits != g.sew_bits || found.mul_c != g.mul_c)
+	    return false;  /* Ambiguous: feeds multiple geometries.  */
+	}
+      if (found.mul_c == 0)
+	return false;
+      geo = found;
+      return true;
+    }
+
+  if (is_store)
+    {
+      /* vmts / vmtts: signature (ptr, stride, data, vl); data at index 2.  */
+      if (gimple_call_num_args (stmt) < 3)
+	return false;
+      gimple *def = peel_to_mmacc_def (gimple_call_arg (stmt, 2), 8);
+      return def && mmacc_call_geometry (def, geo);
+    }
+
+  return false;
+}
+
 /* Find the dominant mmacc geometry for the surrounding context of the
-   tile op currently being expanded.  Strategy:
+   tile op currently being expanded.  Strategy, in order of precision:
 
-     1. If the gimple statement being expanded is known
-	(currently_expanding_gimple_stmt is set during pass_expand),
-	walk only its enclosing basic block.  This gives the right
-	answer in dispatch-style code where multiple LMUL variants
-	have been inlined into a single function: each dispatched BB
-	contains one mmacc geometry, and we should pick the local one
-	rather than declaring the function ambiguous.
+     1. SSA dataflow on the tile op itself: a tile load's lhs is
+	consumed by an mmacc; a tile store's data argument is produced
+	by an mmacc.  When this match exists it is unambiguous and
+	correct even when the tile op and the mmacc live in different
+	basic blocks (loop-hoisted loads, joins after dispatch, etc.).
 
-     2. Otherwise (or if the local BB had no mmacc), fall back to a
-	whole-function scan -- preserving the previous behaviour for
-	functions that contain a single mmacc geometry.  Ambiguity at
-	the function level returns {0,0}.  */
+     2. The basic block enclosing the tile op.  In dispatch-style
+	code where IPA/inline collapsed several LMUL variants into one
+	function each dispatched BB still contains exactly one mmacc
+	geometry, so a per-BB walk picks the local one.
+
+     3. Whole-function scan: covers functions that contain a single
+	mmacc geometry; ambiguity at this level returns {0,0} and the
+	caller falls back to standalone MUL_C=1.  */
 
 static ime_function_geometry
 find_function_ime_geometry ()
@@ -2969,15 +3082,17 @@ find_function_ime_geometry ()
   if (!cfun || !cfun->cfg)
     return result;
 
+  if (currently_expanding_gimple_stmt
+      && find_mmacc_geometry_via_ssa (currently_expanding_gimple_stmt,
+				      result))
+    return result;
+
   if (currently_expanding_gimple_stmt)
     {
       basic_block local_bb = gimple_bb (currently_expanding_gimple_stmt);
       if (local_bb && collect_ime_mmacc_geometry_in_bb (local_bb, result)
 	  && result.mul_c != 0)
 	return result;
-      /* BB had no mmacc, or the BB is already RTL: fall through to
-	 the function-wide walk.  Reset in case a partial scan happened
-	 before discarding ambiguity.  */
       result = ime_function_geometry {0, 0};
     }
 
