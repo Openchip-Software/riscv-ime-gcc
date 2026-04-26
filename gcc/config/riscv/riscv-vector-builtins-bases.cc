@@ -32,6 +32,7 @@
 #include "expr.h"
 #include "basic-block.h"
 #include "function.h"
+#include "cfg.h"
 #include "fold-const.h"
 #include "gimple.h"
 #include "gimple-iterator.h"
@@ -2836,6 +2837,128 @@ ime_unspec_altfmt_b (int unspec)
     }
 }
 
+/* Walk the current function's GIMPLE body looking for IME multiply-
+   accumulate calls, and report the dominant (SEW_bits, MUL_C) tuple.
+
+   Returned mul_c == 0 means "no mmacc found" or "multiple mmaccs with
+   different geometries".  The caller falls back to standalone tile
+   geometry (MUL_C=1) in that case.
+
+   This is used by tile load/store expanders to inherit a surrounding
+   mmacc's lambda geometry: a non-_L tile load/store carries 0b000 in
+   its lambda-select field (i.e., "fall back to vtype.lambda"), so the
+   tile shape is determined by whatever vtype is active at runtime --
+   typically established by the surrounding mmacc.  Standalone tile
+   geometry (MUL_C=1) often yields a different lambda than the mmacc's
+   geometry (MUL_C=N), and at non-trivial VLENs the tile load's
+   standalone lambda either disagrees with the mmacc's (data corruption)
+   or fails the perfect-square parity check (spurious trap).  Inheriting
+   the mmacc's MUL_C makes the tile setup compute the same lambda as
+   the mmacc.  */
+
+struct ime_function_geometry {
+  int sew_bits;   /* 0 if unknown / no match.  */
+  int mul_c;      /* 0 if unknown / mixed.  */
+};
+
+static bool
+is_ime_mmacc_builtin_name (const char *name)
+{
+  if (!name)
+    return false;
+  if (strncmp (name, "__riscv_v", 9) != 0)
+    return false;
+  const char *p = name + 9;
+  /* Match: vmmacc, vwmmacc, vqwmmacc, v8wmmacc, vfmmacc, vfwmmacc,
+     vfqwmmacc, vf8wmmacc -- with any sign/format suffix.  Tile load/
+     store names start with vmtl/vmts/vmttl/vmtts which we exclude.  */
+  if (strncmp (p, "mt", 2) == 0)
+    return false;  /* tile load/store family */
+  if (strncmp (p, "mmacc", 5) == 0
+      || strncmp (p, "wmmacc", 6) == 0
+      || strncmp (p, "qwmmacc", 7) == 0
+      || strncmp (p, "8wmmacc", 7) == 0
+      || strncmp (p, "fmmacc", 6) == 0
+      || strncmp (p, "fwmmacc", 7) == 0
+      || strncmp (p, "fqwmmacc", 8) == 0
+      || strncmp (p, "f8wmmacc", 8) == 0
+      || strncmp (p, "fwimmacc", 8) == 0
+      || strncmp (p, "fqwimmacc", 9) == 0
+      || strncmp (p, "f8wimmacc", 9) == 0)
+    return true;
+  return false;
+}
+
+static ime_function_geometry
+find_function_ime_geometry ()
+{
+  ime_function_geometry result = {0, 0};
+
+  if (!cfun || !cfun->cfg)
+    return result;
+
+  basic_block bb;
+  FOR_EACH_BB_FN (bb, cfun)
+    {
+      if (!bb)
+	continue;
+      /* During pass_expand the CFG is partially converted from GIMPLE
+	 to RTL.  BBs that have already been expanded carry BB_RTL and
+	 their il union now holds RTL, not gimple_seq.  Walking those
+	 with gsi_start_bb crashes.  */
+      if (bb->flags & BB_RTL)
+	continue;
+      for (gimple_stmt_iterator gsi = gsi_start_bb (bb);
+	   !gsi_end_p (gsi); gsi_next (&gsi))
+	{
+	  gimple *stmt = gsi_stmt (gsi);
+	  if (!is_gimple_call (stmt))
+	    continue;
+	  tree fndecl = gimple_call_fndecl (stmt);
+	  if (!fndecl)
+	    continue;
+	  const char *name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+	  if (!is_ime_mmacc_builtin_name (name))
+	    continue;
+	  /* The accumulator is always operand 0 of an mmacc intrinsic,
+	     and its type encodes the (SEW, MUL_C) we want.  */
+	  if (gimple_call_num_args (stmt) < 1)
+	    continue;
+	  tree acc = gimple_call_arg (stmt, 0);
+	  tree acc_type = TREE_TYPE (acc);
+	  if (!acc_type || !VECTOR_TYPE_P (acc_type))
+	    continue;
+	  machine_mode acc_mode = TYPE_MODE (acc_type);
+	  if (!VECTOR_MODE_P (acc_mode))
+	    continue;
+	  int sew = GET_MODE_UNIT_BITSIZE (acc_mode);
+	  vlmul_type vlmul = get_vlmul (acc_mode);
+	  int this_mul_c;
+	  switch (vlmul)
+	    {
+	    case LMUL_1: this_mul_c = 1; break;
+	    case LMUL_2: this_mul_c = 2; break;
+	    case LMUL_4: this_mul_c = 4; break;
+	    case LMUL_8: this_mul_c = 8; break;
+	    default: continue;  /* Fractional or reserved -- skip.  */
+	    }
+	  if (result.mul_c == 0)
+	    {
+	      result.sew_bits = sew;
+	      result.mul_c = this_mul_c;
+	    }
+	  else if (result.sew_bits != sew || result.mul_c != this_mul_c)
+	    {
+	      /* Multiple mmacc geometries in this function -- ambiguous.  */
+	      result.sew_bits = 0;
+	      result.mul_c = 0;
+	      return result;
+	    }
+	}
+    }
+  return result;
+}
+
 static void
 maybe_emit_ime_runtime_vtype (function_expander &e,
 			      machine_mode acc_mode,
@@ -2849,12 +2972,22 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
   int sew_bits = GET_MODE_UNIT_BITSIZE (acc_mode);
   vlmul_type acc_vlmul = get_vlmul (acc_mode);
 
-  /* MUL_C equals the accumulator's register-group multiplier for mmacc,
-     and 1 for tile load/store.  Used to compute lambda = sqrt(VLEN /
-     (SEW * MUL_C)) at runtime.  */
+  /* For mmacc: MUL_C equals the accumulator's register-group multiplier.
+     For tile load/store: by spec the instruction encodes lambda 0b000
+     (fall back to vtype.lambda); standalone, MUL_C=1 yields its own
+     lambda.  But when the tile op is feeding (or storing for) an mmacc
+     in the same function, the shared vtype.lambda must match the
+     mmacc's geometry -- otherwise data layout disagrees.  Look up the
+     surrounding function's mmacc geometry and adopt its MUL_C if found
+     and the SEW matches.  */
   int mul_c;
   if (is_tile_op)
-    mul_c = 1;
+    {
+      mul_c = 1;
+      ime_function_geometry geo = find_function_ime_geometry ();
+      if (geo.mul_c != 0 && geo.sew_bits == sew_bits)
+	mul_c = geo.mul_c;
+    }
   else
     switch (acc_vlmul)
       {
