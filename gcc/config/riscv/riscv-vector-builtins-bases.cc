@@ -3002,11 +3002,11 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 
   /* The vtype LMUL field encodes the SOURCE register-group size, not
      the accumulator's MUL_C (MUL_C is derived in hardware from VLEN,
-     SEW, and lambda).  For mmacc, sources are always LMUL=1 in the
-     current implementation (no _lm{N} variants yet).  For tile
-     load/store, the data vector is the source and its LMUL equals the
-     acc_mode's LMUL.  */
-  vlmul_type src_vlmul = is_tile_op ? acc_vlmul : LMUL_1;
+     SEW, and lambda).  For mmacc, vs1 is e.arg_mode(1); its LMUL
+     reflects the user-selected _lm{N} variant (LMUL=1 by default,
+     2/4/8 for the _lm{N} variants).  For tile load/store, the data
+     vector is the source and its LMUL equals the acc_mode's LMUL.  */
+  vlmul_type src_vlmul = is_tile_op ? acc_vlmul : get_vlmul (e.arg_mode (1));
 
   /* The VL argument is always the last call argument.  */
   int vl_argno = call_expr_nargs (e.exp) - 1;
