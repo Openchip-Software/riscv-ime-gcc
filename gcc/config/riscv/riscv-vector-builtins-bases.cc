@@ -3145,7 +3145,8 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 			      machine_mode acc_mode,
 			      bool is_tile_op,
 			      bool altfmt_a, bool altfmt_b,
-			      bool altfmt_val, bool bs_val)
+			      bool altfmt_val, bool bs_val,
+			      bool tile_imm_lambda = false)
 {
   if (BYTES_PER_RISCV_VECTOR.is_constant ())
     return;  /* Static path: vsetvl pass handles it.  */
@@ -3162,7 +3163,22 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
      surrounding function's mmacc geometry and adopt its MUL_C if found
      and the SEW matches.  */
   int mul_c;
-  if (is_tile_op)
+  if (tile_imm_lambda)
+    {
+      /* _L{N} tile variants: the operation's lambda is fixed by the
+	 instruction encoding; vtype.lambda is unused but vsetvl still
+	 requires a valid (VLEN, SEW, MUL_C).  Use the operation's own
+	 data LMUL so the vtype always lands on a valid lambda.  */
+      switch (acc_vlmul)
+	{
+	case LMUL_1: mul_c = 1; break;
+	case LMUL_2: mul_c = 2; break;
+	case LMUL_4: mul_c = 4; break;
+	case LMUL_8: mul_c = 8; break;
+	default: gcc_unreachable ();
+	}
+    }
+  else if (is_tile_op)
     {
       mul_c = 1;
       ime_function_geometry geo = find_function_ime_geometry ();
@@ -3791,7 +3807,8 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
+				  true, false, false, false, false,
+				  /* tile_imm_lambda = */ true);
     return e.use_contiguous_load_insn (
       code_for_pred_vmtl (UNSPEC, e.vector_mode ()));
   }
@@ -3827,7 +3844,8 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
+				  true, false, false, false, false,
+				  /* tile_imm_lambda = */ true);
     return e.use_contiguous_store_insn (
       code_for_pred_vmts (UNSPEC, e.vector_mode ()));
   }
@@ -3863,7 +3881,8 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
+				  true, false, false, false, false,
+				  /* tile_imm_lambda = */ true);
     return e.use_contiguous_load_insn (
       code_for_pred_vmttl (UNSPEC, e.vector_mode ()));
   }
@@ -3899,7 +3918,8 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
+				  true, false, false, false, false,
+				  /* tile_imm_lambda = */ true);
     return e.use_contiguous_store_insn (
       code_for_pred_vmtts (UNSPEC, e.vector_mode ()));
   }

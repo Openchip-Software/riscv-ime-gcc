@@ -127,6 +127,17 @@
 (define_attr "ime_bs" "none,bs16,bs32"
   (const_string "none"))
 
+;; Set on tile load/store patterns whose lambda is encoded in the
+;; instruction itself (the _L{N} family: vmtl_L*, vmts_L*, vmttl_L*,
+;; vmtts_L*).  vtype.lambda is irrelevant to the operation but vsetvl
+;; still requires a valid (VLEN, SEW, MUL_C) triple.  When this attr
+;; is "yes", the vsetvl/runtime path uses the operation's own data
+;; LMUL as the MUL_C divisor (mirroring mmacc inheritance) so that
+;; vtype always lands on a valid lambda regardless of the immediate
+;; lambda chosen.  Default "no" keeps the standalone-MUL_C=1 path.
+(define_attr "ime_lambda_immediate" "no,yes"
+  (const_string "no"))
+
 (define_int_iterator VMMACC_SU
   [UNSPEC_VMMACC_S UNSPEC_VMMACC_U UNSPEC_VMMACC_SU UNSPEC_VMMACC_US])
 
@@ -756,6 +767,7 @@
   [(set_attr "type" "vlds")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_lambda_immediate" "yes")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
@@ -811,6 +823,7 @@
   [(set_attr "type" "vsts")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_lambda_immediate" "yes")
    (set_attr "mode" "<MODE>")
    (set (attr "avl_type_idx") (const_int 5))])
 
@@ -868,6 +881,7 @@
   [(set_attr "type" "vlds")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_lambda_immediate" "yes")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
@@ -913,6 +927,7 @@
   [(set_attr "type" "vsts")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_lambda_immediate" "yes")
    (set_attr "mode" "<MODE>")
    (set (attr "avl_type_idx") (const_int 5))])
 

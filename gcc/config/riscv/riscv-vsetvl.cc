@@ -987,10 +987,22 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
      notional MUL_C=1.  The LMUL of the data vector is carried through
      the vtype LMUL field separately, not folded into lambda.
      The mmacc family uses the data register's LMUL as MUL_C because
-     its vd really is the accumulator register group.  */
+     its vd really is the accumulator register group.
+
+     Exception: the immediate-lambda tile variants (_L{N}) carry their
+     own lambda in the instruction encoding; vtype.lambda is unused by
+     the operation but vsetvl still requires (VLEN, SEW, MUL_C) to
+     yield a valid lambda.  Use the operation's own data LMUL as MUL_C
+     so the vtype always lands on a valid lambda regardless of the
+     immediate K.  Without this, e.g. vmtl_v_i8m2_L2 at VLEN=256 would
+     trap because VLEN/SEW = 32 has odd log2.  */
   enum attr_type t = get_attr_type (rinsn);
   bool is_tile = (t == TYPE_VLDS || t == TYPE_VSTS);
-  if (is_tile)
+  bool tile_imm_lambda
+    = is_tile && get_attr_ime_lambda_immediate (rinsn) == IME_LAMBDA_IMMEDIATE_YES;
+  if (tile_imm_lambda)
+    r.mul_c = get_vlmul (acc_mode);
+  else if (is_tile)
     r.mul_c = riscv_vector::LMUL_1;
   else
     r.mul_c = get_vlmul (acc_mode);
