@@ -33,8 +33,11 @@ along with GCC; see the file COPYING3. If not see
    unsigned one (vmmacc_u).  The two internal bases route to different
    UNSPECs at RTL level so the vsetvl pass can set altfmt_A/altfmt_B
    correctly in vtype.  The _lm{N} variants below give vs1/vs2 LMUL=N
-   at the same SEW as the accumulator (independent of MUL_C); _su/_us
-   mixed-sign variants will be added in a follow-up.  */
+   at the same SEW as the accumulator (independent of MUL_C); the
+   _su/_us mixed-sign variants (and their _lm{N} siblings) share the
+   signed accumulator (i_ops) per the spec, with vs1/vs2 forced to
+   opposite signedness via the lmul{N}_signed_vector /
+   lmul{N}_unsigned_vector base types.  */
 #define REQUIRED_EXTENSIONS ZVVMM_EXT
 DEF_RVV_FUNCTION (vmmacc_s,     ime_mmacc, none_tu_preds, i_ime_vss_ops)
 DEF_RVV_FUNCTION (vmmacc_u,     ime_mmacc, none_tu_preds, u_ime_vss_ops)
@@ -44,6 +47,14 @@ DEF_RVV_FUNCTION (vmmacc_s_lm8, ime_mmacc, none_tu_preds, i_ime_vss_lm8_ops)
 DEF_RVV_FUNCTION (vmmacc_u_lm2, ime_mmacc, none_tu_preds, u_ime_vss_lm2_ops)
 DEF_RVV_FUNCTION (vmmacc_u_lm4, ime_mmacc, none_tu_preds, u_ime_vss_lm4_ops)
 DEF_RVV_FUNCTION (vmmacc_u_lm8, ime_mmacc, none_tu_preds, u_ime_vss_lm8_ops)
+DEF_RVV_FUNCTION (vmmacc_su,     ime_mmacc, none_tu_preds, i_su_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_us,     ime_mmacc, none_tu_preds, i_us_ime_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_su_lm2, ime_mmacc, none_tu_preds, i_su_ime_vss_lm2_ops)
+DEF_RVV_FUNCTION (vmmacc_su_lm4, ime_mmacc, none_tu_preds, i_su_ime_vss_lm4_ops)
+DEF_RVV_FUNCTION (vmmacc_su_lm8, ime_mmacc, none_tu_preds, i_su_ime_vss_lm8_ops)
+DEF_RVV_FUNCTION (vmmacc_us_lm2, ime_mmacc, none_tu_preds, i_us_ime_vss_lm2_ops)
+DEF_RVV_FUNCTION (vmmacc_us_lm4, ime_mmacc, none_tu_preds, i_us_ime_vss_lm4_ops)
+DEF_RVV_FUNCTION (vmmacc_us_lm8, ime_mmacc, none_tu_preds, i_us_ime_vss_lm8_ops)
 /* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2 LMUL=1.
    Four sign combinations.  Mixed-sign variants share the signed
    accumulator ops (i_ops) since the spec mandates a signed
