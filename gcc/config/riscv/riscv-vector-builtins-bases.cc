@@ -2807,6 +2807,7 @@ ime_unspec_altfmt_a (int unspec)
   switch (unspec)
     {
     case UNSPEC_VMMACC_U:
+    case UNSPEC_VMMACC_US:
     case UNSPEC_VWMMACC_U:
     case UNSPEC_VWMMACC_US:
     case UNSPEC_VQWMMACC_U:
@@ -2827,6 +2828,7 @@ ime_unspec_altfmt_b (int unspec)
   switch (unspec)
     {
     case UNSPEC_VMMACC_U:
+    case UNSPEC_VMMACC_SU:
     case UNSPEC_VWMMACC_U:
     case UNSPEC_VWMMACC_SU:
     case UNSPEC_VQWMMACC_U:
@@ -3256,6 +3258,20 @@ static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_lm4>
   vmmacc_u_lm4_obj;
 static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_lm8>
   vmmacc_u_lm8_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU> vmmacc_su_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US> vmmacc_us_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU, code_for_pred_vmmacc_lm2>
+  vmmacc_su_lm2_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU, code_for_pred_vmmacc_lm4>
+  vmmacc_su_lm4_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU, code_for_pred_vmmacc_lm8>
+  vmmacc_su_lm8_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm2>
+  vmmacc_us_lm2_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm4>
+  vmmacc_us_lm4_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm8>
+  vmmacc_us_lm8_obj;
 
 /* IME vector widening integer matrix multiply-accumulate (W=2).  Same
    structure as vmmacc_ime_op but dispatches to @pred_vwmmacc*<mode>.
@@ -4321,6 +4337,14 @@ BASE (vmmacc_s_lm8)
 BASE (vmmacc_u_lm2)
 BASE (vmmacc_u_lm4)
 BASE (vmmacc_u_lm8)
+BASE (vmmacc_su)
+BASE (vmmacc_us)
+BASE (vmmacc_su_lm2)
+BASE (vmmacc_su_lm4)
+BASE (vmmacc_su_lm8)
+BASE (vmmacc_us_lm2)
+BASE (vmmacc_us_lm4)
+BASE (vmmacc_us_lm8)
 BASE (vwmmacc_s)
 BASE (vwmmacc_u)
 BASE (vwmmacc_su)

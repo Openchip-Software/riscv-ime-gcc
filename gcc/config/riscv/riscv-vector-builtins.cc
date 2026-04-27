@@ -730,6 +730,58 @@ static CONSTEXPR const rvv_arg_type_info ime_vss_lm8_args[]
      rvv_arg_type_info (RVV_BASE_lmul8_vector),
      rvv_arg_type_info (RVV_BASE_lmul8_vector), rvv_arg_type_info_end};
 
+/* Args for the W=1 mixed-sign vmmacc (_su / _us) variants.  The
+   accumulator sits at SEW with MUL_C; vs1 and vs2 share the SEW and
+   LMUL but use opposite signedness.  Spec mandates a signed
+   accumulator for all four sign combinations.  */
+static CONSTEXPR const rvv_arg_type_info ime_vss_su_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul1_signed_vector),
+     rvv_arg_type_info (RVV_BASE_lmul1_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_us_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul1_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_lmul1_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_su_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul2_signed_vector),
+     rvv_arg_type_info (RVV_BASE_lmul2_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_us_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul2_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_lmul2_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_su_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul4_signed_vector),
+     rvv_arg_type_info (RVV_BASE_lmul4_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_us_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul4_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_lmul4_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_su_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul8_signed_vector),
+     rvv_arg_type_info (RVV_BASE_lmul8_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vss_us_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_lmul8_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_lmul8_signed_vector),
+     rvv_arg_type_info_end};
+
 /* Args for the W=2 widening IME multiply-accumulate (vwmmacc.vv).  The
    accumulator sits at SEW with MUL_C; the two inputs are SEW/2 and
    LMUL=1 via ime_double_trunc_lmul1_vector.  Four variants cover the
@@ -3481,6 +3533,41 @@ static CONSTEXPR const rvv_op_info u_ime_vss_lm8_ops
   = {u_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
 
+/* Op-info structs for the W=1 mmacc mixed-sign (_su / _us) variants.
+   The spec mandates a signed accumulator for both, so all four use
+   i_ops; only the operand args arrays differ.  */
+static CONSTEXPR const rvv_op_info i_su_ime_vss_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_vss_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_vss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_vss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_vss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_vss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_vss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm8_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_vss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm8_args};
+
 /* Op-info structs for vwmmacc.vv (W=2) -- same-sign (ss, uu) and
    mixed-sign (su, us).  Signed accumulator is mandated by the spec
    for both _su and _us.  */
@@ -4961,7 +5048,77 @@ ime_lmul_input_idx (vector_type_index type_idx, rvv_base_type kind)
   vector_type_index target = NUM_VECTOR_TYPES;
   switch (type_idx)
     {
-#define IME_LMUL_MAP(ELEM_M1, ELEM_M2, ELEM_M4, ELEM_M8)		\
+      /* Integer mappings: each element-size group has a signed and an
+	 unsigned row.  The signedness-preserving kinds (lmul{N}_vector)
+	 stay on the same row; the explicit-signedness kinds
+	 (lmul{N}_signed_vector / lmul{N}_unsigned_vector) cross to the
+	 sibling row at the same SEW.  */
+#define IME_LMUL_INT_MAP(SELEM_M1, SELEM_M2, SELEM_M4, SELEM_M8,	\
+			 UELEM_M1, UELEM_M2, UELEM_M4, UELEM_M8)	\
+      case VECTOR_TYPE_##SELEM_M1: case VECTOR_TYPE_##SELEM_M2:		\
+      case VECTOR_TYPE_##SELEM_M4: case VECTOR_TYPE_##SELEM_M8:		\
+      case VECTOR_TYPE_##UELEM_M1: case VECTOR_TYPE_##UELEM_M2:		\
+      case VECTOR_TYPE_##UELEM_M4: case VECTOR_TYPE_##UELEM_M8:		\
+	switch (kind)							\
+	  {								\
+	  case RVV_BASE_lmul2_vector:					\
+	    target = (type_idx == VECTOR_TYPE_##SELEM_M1			\
+		      || type_idx == VECTOR_TYPE_##SELEM_M2		\
+		      || type_idx == VECTOR_TYPE_##SELEM_M4		\
+		      || type_idx == VECTOR_TYPE_##SELEM_M8)		\
+		     ? VECTOR_TYPE_##SELEM_M2				\
+		     : VECTOR_TYPE_##UELEM_M2;				\
+	    break;							\
+	  case RVV_BASE_lmul4_vector:					\
+	    target = (type_idx == VECTOR_TYPE_##SELEM_M1			\
+		      || type_idx == VECTOR_TYPE_##SELEM_M2		\
+		      || type_idx == VECTOR_TYPE_##SELEM_M4		\
+		      || type_idx == VECTOR_TYPE_##SELEM_M8)		\
+		     ? VECTOR_TYPE_##SELEM_M4				\
+		     : VECTOR_TYPE_##UELEM_M4;				\
+	    break;							\
+	  case RVV_BASE_lmul8_vector:					\
+	    target = (type_idx == VECTOR_TYPE_##SELEM_M1			\
+		      || type_idx == VECTOR_TYPE_##SELEM_M2		\
+		      || type_idx == VECTOR_TYPE_##SELEM_M4		\
+		      || type_idx == VECTOR_TYPE_##SELEM_M8)		\
+		     ? VECTOR_TYPE_##SELEM_M8				\
+		     : VECTOR_TYPE_##UELEM_M8;				\
+	    break;							\
+	  case RVV_BASE_lmul1_signed_vector:				\
+	    target = VECTOR_TYPE_##SELEM_M1; break;			\
+	  case RVV_BASE_lmul2_signed_vector:				\
+	    target = VECTOR_TYPE_##SELEM_M2; break;			\
+	  case RVV_BASE_lmul4_signed_vector:				\
+	    target = VECTOR_TYPE_##SELEM_M4; break;			\
+	  case RVV_BASE_lmul8_signed_vector:				\
+	    target = VECTOR_TYPE_##SELEM_M8; break;			\
+	  case RVV_BASE_lmul1_unsigned_vector:				\
+	    target = VECTOR_TYPE_##UELEM_M1; break;			\
+	  case RVV_BASE_lmul2_unsigned_vector:				\
+	    target = VECTOR_TYPE_##UELEM_M2; break;			\
+	  case RVV_BASE_lmul4_unsigned_vector:				\
+	    target = VECTOR_TYPE_##UELEM_M4; break;			\
+	  case RVV_BASE_lmul8_unsigned_vector:				\
+	    target = VECTOR_TYPE_##UELEM_M8; break;			\
+	  default:							\
+	    return NUM_VECTOR_TYPES;					\
+	  }								\
+	break;
+      IME_LMUL_INT_MAP (vint8m1_t, vint8m2_t, vint8m4_t, vint8m8_t,
+			vuint8m1_t, vuint8m2_t, vuint8m4_t, vuint8m8_t)
+      IME_LMUL_INT_MAP (vint16m1_t, vint16m2_t, vint16m4_t, vint16m8_t,
+			vuint16m1_t, vuint16m2_t, vuint16m4_t, vuint16m8_t)
+      IME_LMUL_INT_MAP (vint32m1_t, vint32m2_t, vint32m4_t, vint32m8_t,
+			vuint32m1_t, vuint32m2_t, vuint32m4_t, vuint32m8_t)
+      IME_LMUL_INT_MAP (vint64m1_t, vint64m2_t, vint64m4_t, vint64m8_t,
+			vuint64m1_t, vuint64m2_t, vuint64m4_t, vuint64m8_t)
+#undef IME_LMUL_INT_MAP
+
+      /* Floating-point mappings: signedness-preserving kinds only.
+	 The explicit-signedness kinds are not meaningful for FP types
+	 and return NUM_VECTOR_TYPES.  */
+#define IME_LMUL_FP_MAP(ELEM_M1, ELEM_M2, ELEM_M4, ELEM_M8)		\
       case VECTOR_TYPE_##ELEM_M1: case VECTOR_TYPE_##ELEM_M2:		\
       case VECTOR_TYPE_##ELEM_M4: case VECTOR_TYPE_##ELEM_M8:		\
 	switch (kind)							\
@@ -4976,20 +5133,12 @@ ime_lmul_input_idx (vector_type_index type_idx, rvv_base_type kind)
 	    return NUM_VECTOR_TYPES;					\
 	  }								\
 	break;
-      IME_LMUL_MAP (vint8m1_t, vint8m2_t, vint8m4_t, vint8m8_t)
-      IME_LMUL_MAP (vuint8m1_t, vuint8m2_t, vuint8m4_t, vuint8m8_t)
-      IME_LMUL_MAP (vint16m1_t, vint16m2_t, vint16m4_t, vint16m8_t)
-      IME_LMUL_MAP (vuint16m1_t, vuint16m2_t, vuint16m4_t, vuint16m8_t)
-      IME_LMUL_MAP (vint32m1_t, vint32m2_t, vint32m4_t, vint32m8_t)
-      IME_LMUL_MAP (vuint32m1_t, vuint32m2_t, vuint32m4_t, vuint32m8_t)
-      IME_LMUL_MAP (vint64m1_t, vint64m2_t, vint64m4_t, vint64m8_t)
-      IME_LMUL_MAP (vuint64m1_t, vuint64m2_t, vuint64m4_t, vuint64m8_t)
-      IME_LMUL_MAP (vfloat16m1_t, vfloat16m2_t, vfloat16m4_t, vfloat16m8_t)
-      IME_LMUL_MAP (vbfloat16m1_t, vbfloat16m2_t, vbfloat16m4_t,
-		    vbfloat16m8_t)
-      IME_LMUL_MAP (vfloat32m1_t, vfloat32m2_t, vfloat32m4_t, vfloat32m8_t)
-      IME_LMUL_MAP (vfloat64m1_t, vfloat64m2_t, vfloat64m4_t, vfloat64m8_t)
-#undef IME_LMUL_MAP
+      IME_LMUL_FP_MAP (vfloat16m1_t, vfloat16m2_t, vfloat16m4_t, vfloat16m8_t)
+      IME_LMUL_FP_MAP (vbfloat16m1_t, vbfloat16m2_t, vbfloat16m4_t,
+		       vbfloat16m8_t)
+      IME_LMUL_FP_MAP (vfloat32m1_t, vfloat32m2_t, vfloat32m4_t, vfloat32m8_t)
+      IME_LMUL_FP_MAP (vfloat64m1_t, vfloat64m2_t, vfloat64m4_t, vfloat64m8_t)
+#undef IME_LMUL_FP_MAP
       default:
 	return NUM_VECTOR_TYPES;
     }
@@ -5031,7 +5180,15 @@ rvv_arg_type_info::get_function_type_index (vector_type_index type_idx) const
     }
   if (base_type == RVV_BASE_lmul2_vector
       || base_type == RVV_BASE_lmul4_vector
-      || base_type == RVV_BASE_lmul8_vector)
+      || base_type == RVV_BASE_lmul8_vector
+      || base_type == RVV_BASE_lmul1_signed_vector
+      || base_type == RVV_BASE_lmul1_unsigned_vector
+      || base_type == RVV_BASE_lmul2_signed_vector
+      || base_type == RVV_BASE_lmul2_unsigned_vector
+      || base_type == RVV_BASE_lmul4_signed_vector
+      || base_type == RVV_BASE_lmul4_unsigned_vector
+      || base_type == RVV_BASE_lmul8_signed_vector
+      || base_type == RVV_BASE_lmul8_unsigned_vector)
     {
       vector_type_index idx = ime_lmul_input_idx (type_idx, base_type);
       if (idx == NUM_VECTOR_TYPES || !builtin_types[idx].vector)

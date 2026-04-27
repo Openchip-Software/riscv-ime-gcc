@@ -1591,12 +1591,21 @@ struct ime_mmacc_def : public build_base
 	  }
       }
 
-    /* Mixed-sign: "_su" or "_us".  */
+    /* Mixed-sign: "_su" or "_us".  Use string literals rather than a
+       pointer into INTERNAL because the lm/bs strip steps above only
+       decremented ILEN -- the original buffer still has the "_lm{N}"
+       (or "_bs{N}") suffix after the sign token, so a substring
+       pointer would emit those characters into the canonical name.  */
     if (ilen >= 3 && internal[ilen - 3] == '_'
-	&& ((internal[ilen - 2] == 's' && internal[ilen - 1] == 'u')
-	    || (internal[ilen - 2] == 'u' && internal[ilen - 1] == 's')))
+	&& internal[ilen - 2] == 's' && internal[ilen - 1] == 'u')
       {
-	sign_suffix = internal + ilen - 3;
+	sign_suffix = "_su";
+	base_len = ilen - 3;
+      }
+    else if (ilen >= 3 && internal[ilen - 3] == '_'
+	     && internal[ilen - 2] == 'u' && internal[ilen - 1] == 's')
+      {
+	sign_suffix = "_us";
 	base_len = ilen - 3;
       }
     /* Same-sign: "_s" or "_u" -- consumed into the base; no trailing
@@ -1660,12 +1669,20 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_f8e5m2_lmul1_vector:
       case RVV_BASE_ime_f4e2m1_lmul1_vector:
       case RVV_BASE_ime_i8_lmul1_vector:
+      case RVV_BASE_lmul1_signed_vector:
+      case RVV_BASE_lmul1_unsigned_vector:
 	return 1;
       case RVV_BASE_lmul2_vector:
+      case RVV_BASE_lmul2_signed_vector:
+      case RVV_BASE_lmul2_unsigned_vector:
 	return 2;
       case RVV_BASE_lmul4_vector:
+      case RVV_BASE_lmul4_signed_vector:
+      case RVV_BASE_lmul4_unsigned_vector:
 	return 4;
       case RVV_BASE_lmul8_vector:
+      case RVV_BASE_lmul8_signed_vector:
+      case RVV_BASE_lmul8_unsigned_vector:
 	return 8;
       default:
 	gcc_unreachable ();
