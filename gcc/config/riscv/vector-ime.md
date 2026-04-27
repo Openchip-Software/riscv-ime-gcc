@@ -24,6 +24,8 @@
 (define_c_enum "unspec" [
   UNSPEC_VMMACC_S    ;; Zvvmm vmmacc.vv,  signed*signed    (altfmt_A=0, altfmt_B=0)
   UNSPEC_VMMACC_U    ;; Zvvmm vmmacc.vv,  unsigned*unsigned (altfmt_A=1, altfmt_B=1)
+  UNSPEC_VMMACC_SU   ;; Zvvmm vmmacc.vv,  signed*unsigned   (altfmt_A=0, altfmt_B=1)
+  UNSPEC_VMMACC_US   ;; Zvvmm vmmacc.vv,  unsigned*signed   (altfmt_A=1, altfmt_B=0)
   UNSPEC_VWMMACC_S   ;; Zvvmm vwmmacc.vv, signed*signed    (W=2, altfmt_A=0, altfmt_B=0)
   UNSPEC_VWMMACC_U   ;; Zvvmm vwmmacc.vv, unsigned*unsigned (W=2, altfmt_A=1, altfmt_B=1)
   UNSPEC_VWMMACC_SU  ;; Zvvmm vwmmacc.vv, signed*unsigned  (W=2, altfmt_A=0, altfmt_B=1)
@@ -113,9 +115,9 @@
 
 ;; Signedness encoding for the two integer-input operands of IME
 ;; multiply-accumulate instructions, as it maps to the vtype altfmt_A /
-;; altfmt_B bits that the vsetvl pass establishes.  For now, only the
-;; same-sign cases (ss, uu) are implemented; mixed-sign (su, us) lands
-;; with the widening variants.
+;; altfmt_B bits that the vsetvl pass establishes.  Both same-sign
+;; (ss, uu) and mixed-sign (su, us) cases are supported for vmmacc and
+;; the widening variants.
 (define_attr "ime_altfmt" "ss,uu,su,us"
   (const_string "ss"))
 
@@ -125,13 +127,18 @@
 (define_attr "ime_bs" "none,bs16,bs32"
   (const_string "none"))
 
-(define_int_iterator VMMACC_SU [UNSPEC_VMMACC_S UNSPEC_VMMACC_U])
+(define_int_iterator VMMACC_SU
+  [UNSPEC_VMMACC_S UNSPEC_VMMACC_U UNSPEC_VMMACC_SU UNSPEC_VMMACC_US])
 
 (define_int_attr vmmacc_su_name [(UNSPEC_VMMACC_S "_s")
-				 (UNSPEC_VMMACC_U "_u")])
+				 (UNSPEC_VMMACC_U "_u")
+				 (UNSPEC_VMMACC_SU "_su")
+				 (UNSPEC_VMMACC_US "_us")])
 
 (define_int_attr vmmacc_altfmt [(UNSPEC_VMMACC_S "ss")
-				(UNSPEC_VMMACC_U "uu")])
+				(UNSPEC_VMMACC_U "uu")
+				(UNSPEC_VMMACC_SU "su")
+				(UNSPEC_VMMACC_US "us")])
 
 (define_int_iterator VWMMACC_SUSUUS
   [UNSPEC_VWMMACC_S UNSPEC_VWMMACC_U UNSPEC_VWMMACC_SU UNSPEC_VWMMACC_US])
