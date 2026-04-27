@@ -2875,6 +2875,22 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
      vector is the source and its LMUL equals the acc_mode's LMUL.  */
   vlmul_type src_vlmul = is_tile_op ? acc_vlmul : get_vlmul (e.arg_mode (1));
 
+  /* For FP mmacc, derive altfmt bits from BFmode operands per the IME
+     spec (mirrors the vsetvl pass logic in riscv_extract_ime_requirements).
+     Per-input inspection lets a future mixed-format intrinsic (e.g.
+     fp16 x bf16) drop in without further changes.  Tile load/store has
+     no FP-format choice -- it just moves bytes -- so skip there.  */
+  if (!is_tile_op)
+    {
+      if (GET_MODE_INNER (acc_mode) == E_BFmode)
+	altfmt_val = true;
+      if (GET_MODE_INNER (e.arg_mode (1)) == E_BFmode)
+	altfmt_a = true;
+      if (e.op_info->args[2].base_type != NUM_BASE_TYPES
+	  && GET_MODE_INNER (e.arg_mode (2)) == E_BFmode)
+	altfmt_b = true;
+    }
+
   /* The VL argument is always the last call argument.  */
   int vl_argno = call_expr_nargs (e.exp) - 1;
   rtx avl = expand_normal (CALL_EXPR_ARG (e.exp, vl_argno));
