@@ -3291,8 +3291,11 @@ static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm8>
 
 /* IME vector widening integer matrix multiply-accumulate (W=2).  Same
    structure as vmmacc_ime_op but dispatches to @pred_vwmmacc*<mode>.
-   Four instances cover ss, uu, su, us.  */
-template<int UNSPEC>
+   Four instances cover ss, uu, su, us.  The optional CODE_FOR template
+   parameter selects between the default LMUL=1 pattern and the
+   _lm{2,4,8} source-LMUL siblings.  */
+template<int UNSPEC,
+	 insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_vwmmacc>
 class vwmmacc_ime_op : public function_base
 {
 public:
@@ -3308,7 +3311,7 @@ public:
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (code_for_pred_vwmmacc (UNSPEC, e.vector_mode ()));
+    return e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
   }
 };
 
@@ -3316,9 +3319,40 @@ static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_S>  vwmmacc_s_obj;
 static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_U>  vwmmacc_u_obj;
 static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_SU> vwmmacc_su_obj;
 static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_US> vwmmacc_us_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_S, code_for_pred_vwmmacc_lm2> vwmmacc_s_lm2_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_S, code_for_pred_vwmmacc_lm4> vwmmacc_s_lm4_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_S, code_for_pred_vwmmacc_lm8> vwmmacc_s_lm8_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_U, code_for_pred_vwmmacc_lm2> vwmmacc_u_lm2_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_U, code_for_pred_vwmmacc_lm4> vwmmacc_u_lm4_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_U, code_for_pred_vwmmacc_lm8> vwmmacc_u_lm8_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_SU, code_for_pred_vwmmacc_lm2>
+    vwmmacc_su_lm2_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_SU, code_for_pred_vwmmacc_lm4>
+    vwmmacc_su_lm4_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_SU, code_for_pred_vwmmacc_lm8>
+    vwmmacc_su_lm8_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_US, code_for_pred_vwmmacc_lm2>
+    vwmmacc_us_lm2_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_US, code_for_pred_vwmmacc_lm4>
+    vwmmacc_us_lm4_obj;
+static CONSTEXPR const
+  vwmmacc_ime_op<UNSPEC_VWMMACC_US, code_for_pred_vwmmacc_lm8>
+    vwmmacc_us_lm8_obj;
 
 /* IME vector widening integer matrix multiply-accumulate (W=4).  */
-template<int UNSPEC>
+template<int UNSPEC,
+	 insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_vqwmmacc>
 class vqwmmacc_ime_op : public function_base
 {
 public:
@@ -3334,7 +3368,7 @@ public:
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (code_for_pred_vqwmmacc (UNSPEC, e.vector_mode ()));
+    return e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
   }
 };
 
@@ -3342,9 +3376,46 @@ static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_S>  vqwmmacc_s_obj;
 static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_U>  vqwmmacc_u_obj;
 static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU> vqwmmacc_su_obj;
 static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_US> vqwmmacc_us_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_S, code_for_pred_vqwmmacc_lm2>
+    vqwmmacc_s_lm2_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_S, code_for_pred_vqwmmacc_lm4>
+    vqwmmacc_s_lm4_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_S, code_for_pred_vqwmmacc_lm8>
+    vqwmmacc_s_lm8_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_U, code_for_pred_vqwmmacc_lm2>
+    vqwmmacc_u_lm2_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_U, code_for_pred_vqwmmacc_lm4>
+    vqwmmacc_u_lm4_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_U, code_for_pred_vqwmmacc_lm8>
+    vqwmmacc_u_lm8_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU, code_for_pred_vqwmmacc_lm2>
+    vqwmmacc_su_lm2_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU, code_for_pred_vqwmmacc_lm4>
+    vqwmmacc_su_lm4_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU, code_for_pred_vqwmmacc_lm8>
+    vqwmmacc_su_lm8_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_US, code_for_pred_vqwmmacc_lm2>
+    vqwmmacc_us_lm2_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_US, code_for_pred_vqwmmacc_lm4>
+    vqwmmacc_us_lm4_obj;
+static CONSTEXPR const
+  vqwmmacc_ime_op<UNSPEC_VQWMMACC_US, code_for_pred_vqwmmacc_lm8>
+    vqwmmacc_us_lm8_obj;
 
 /* IME vector widening integer matrix multiply-accumulate (W=8).  */
-template<int UNSPEC>
+template<int UNSPEC,
+	 insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_v8wmmacc>
 class v8wmmacc_ime_op : public function_base
 {
 public:
@@ -3360,7 +3431,7 @@ public:
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (code_for_pred_v8wmmacc (UNSPEC, e.vector_mode ()));
+    return e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
   }
 };
 
@@ -3368,6 +3439,42 @@ static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_S>  v8wmmacc_s_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_U>  v8wmmacc_u_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU> v8wmmacc_su_obj;
 static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_US> v8wmmacc_us_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_S, code_for_pred_v8wmmacc_lm2>
+    v8wmmacc_s_lm2_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_S, code_for_pred_v8wmmacc_lm4>
+    v8wmmacc_s_lm4_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_S, code_for_pred_v8wmmacc_lm8>
+    v8wmmacc_s_lm8_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_U, code_for_pred_v8wmmacc_lm2>
+    v8wmmacc_u_lm2_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_U, code_for_pred_v8wmmacc_lm4>
+    v8wmmacc_u_lm4_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_U, code_for_pred_v8wmmacc_lm8>
+    v8wmmacc_u_lm8_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU, code_for_pred_v8wmmacc_lm2>
+    v8wmmacc_su_lm2_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU, code_for_pred_v8wmmacc_lm4>
+    v8wmmacc_su_lm4_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU, code_for_pred_v8wmmacc_lm8>
+    v8wmmacc_su_lm8_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_US, code_for_pred_v8wmmacc_lm2>
+    v8wmmacc_us_lm2_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_US, code_for_pred_v8wmmacc_lm4>
+    v8wmmacc_us_lm4_obj;
+static CONSTEXPR const
+  v8wmmacc_ime_op<UNSPEC_V8WMMACC_US, code_for_pred_v8wmmacc_lm8>
+    v8wmmacc_us_lm8_obj;
 
 /* Zvvfmm FP matrix multiply-accumulate, W=1 (vfmmacc.vv).  Parametrised
    on the icode-getter so the same class drives the default LMUL=1
@@ -4369,14 +4476,50 @@ BASE (vwmmacc_s)
 BASE (vwmmacc_u)
 BASE (vwmmacc_su)
 BASE (vwmmacc_us)
+BASE (vwmmacc_s_lm2)
+BASE (vwmmacc_s_lm4)
+BASE (vwmmacc_s_lm8)
+BASE (vwmmacc_u_lm2)
+BASE (vwmmacc_u_lm4)
+BASE (vwmmacc_u_lm8)
+BASE (vwmmacc_su_lm2)
+BASE (vwmmacc_su_lm4)
+BASE (vwmmacc_su_lm8)
+BASE (vwmmacc_us_lm2)
+BASE (vwmmacc_us_lm4)
+BASE (vwmmacc_us_lm8)
 BASE (vqwmmacc_s)
 BASE (vqwmmacc_u)
 BASE (vqwmmacc_su)
 BASE (vqwmmacc_us)
+BASE (vqwmmacc_s_lm2)
+BASE (vqwmmacc_s_lm4)
+BASE (vqwmmacc_s_lm8)
+BASE (vqwmmacc_u_lm2)
+BASE (vqwmmacc_u_lm4)
+BASE (vqwmmacc_u_lm8)
+BASE (vqwmmacc_su_lm2)
+BASE (vqwmmacc_su_lm4)
+BASE (vqwmmacc_su_lm8)
+BASE (vqwmmacc_us_lm2)
+BASE (vqwmmacc_us_lm4)
+BASE (vqwmmacc_us_lm8)
 BASE (v8wmmacc_s)
 BASE (v8wmmacc_u)
 BASE (v8wmmacc_su)
 BASE (v8wmmacc_us)
+BASE (v8wmmacc_s_lm2)
+BASE (v8wmmacc_s_lm4)
+BASE (v8wmmacc_s_lm8)
+BASE (v8wmmacc_u_lm2)
+BASE (v8wmmacc_u_lm4)
+BASE (v8wmmacc_u_lm8)
+BASE (v8wmmacc_su_lm2)
+BASE (v8wmmacc_su_lm4)
+BASE (v8wmmacc_su_lm8)
+BASE (v8wmmacc_us_lm2)
+BASE (v8wmmacc_us_lm4)
+BASE (v8wmmacc_us_lm8)
 /* Zvvfmm */
 BASE (vfmmacc)
 BASE (vfmmacc_lm2)
