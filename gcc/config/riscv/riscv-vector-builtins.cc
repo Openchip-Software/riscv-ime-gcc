@@ -848,6 +848,175 @@ static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_args[]
      rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_signed_vector),
      rvv_arg_type_info_end};
 
+/* Args for the W=2 widening IME multiply-accumulate _lm{N} variants.
+   The accumulator sits at SEW with MUL_C; the two inputs are SEW/2 and
+   LMUL=N (independent of MUL_C) via ime_double_trunc_lmul{N}_*_vector.
+   Three input LMULs (2, 4, 8) crossed with three sign combinations
+   (default / _su / _us) gives 9 args arrays per width.  */
+static CONSTEXPR const rvv_arg_type_info ime_wvss_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_su_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_us_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_su_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_us_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_su_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_wvss_us_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_signed_vector),
+     rvv_arg_type_info_end};
+
+/* W=4 (vqwmmacc.vv) widening _lm{N} args.  */
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_su_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_us_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_su_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_us_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_su_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_qwvss_us_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_signed_vector),
+     rvv_arg_type_info_end};
+
+/* W=8 (v8wmmacc.vv) widening _lm{N} args.  */
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_su_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_su_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_signed_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_su_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_signed_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector),
+     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_signed_vector),
+     rvv_arg_type_info_end};
+
 /* Args for FP IME vfmmacc (W=1): acc, lmul1 same-type, lmul1 same-type.
    Reuses ime_vss_args since the operand layout is identical.  */
 
@@ -3596,6 +3765,58 @@ static CONSTEXPR const rvv_op_info i_us_ime_wvss_ops
      rvv_arg_type_info (RVV_BASE_vector),
      ime_wvss_us_args};
 
+/* Op-info structs for the W=2 widening mmacc _lm{N} variants.  Same
+   accumulator type sets as the LMUL=1 ops, but vs1/vs2 are at LMUL=N
+   (and at SEW/2 narrower than the accumulator).  Mixed-sign uses
+   i_ops per the spec.  */
+static CONSTEXPR const rvv_op_info i_ime_wvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm2_args};
+
+static CONSTEXPR const rvv_op_info u_ime_wvss_lm2_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_wvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_su_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_wvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_us_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_ime_wvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm4_args};
+
+static CONSTEXPR const rvv_op_info u_ime_wvss_lm4_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_wvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_su_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_wvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_us_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_ime_wvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm8_args};
+
+static CONSTEXPR const rvv_op_info u_ime_wvss_lm8_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm8_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_wvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_su_lm8_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_wvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_us_lm8_args};
+
 /* Op-info structs for vqwmmacc.vv (W=4).  */
 
 static CONSTEXPR const rvv_op_info i_ime_qwvss_ops
@@ -3613,6 +3834,55 @@ static CONSTEXPR const rvv_op_info i_su_ime_qwvss_ops
 static CONSTEXPR const rvv_op_info i_us_ime_qwvss_ops
   = {i_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_args};
+
+/* W=4 widening mmacc _lm{N} op-info.  */
+static CONSTEXPR const rvv_op_info i_ime_qwvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm2_args};
+
+static CONSTEXPR const rvv_op_info u_ime_qwvss_lm2_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_qwvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_su_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_qwvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_ime_qwvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm4_args};
+
+static CONSTEXPR const rvv_op_info u_ime_qwvss_lm4_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_qwvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_su_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_qwvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_ime_qwvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm8_args};
+
+static CONSTEXPR const rvv_op_info u_ime_qwvss_lm8_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm8_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_qwvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_su_lm8_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_qwvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_lm8_args};
 
 /* Type set used by the IME tile load/store: all signed and unsigned
    integer vector types at LMUL in {1, 2, 4, 8}.  Fractional LMULs
@@ -3752,6 +4022,55 @@ static CONSTEXPR const rvv_op_info i_su_ime_8wvss_ops
 static CONSTEXPR const rvv_op_info i_us_ime_8wvss_ops
   = {i_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_args};
+
+/* W=8 widening mmacc _lm{N} op-info.  */
+static CONSTEXPR const rvv_op_info i_ime_8wvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm2_args};
+
+static CONSTEXPR const rvv_op_info u_ime_8wvss_lm2_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_8wvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_su_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_8wvss_lm2_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_lm2_args};
+
+static CONSTEXPR const rvv_op_info i_ime_8wvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm4_args};
+
+static CONSTEXPR const rvv_op_info u_ime_8wvss_lm4_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_8wvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_su_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_8wvss_lm4_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_lm4_args};
+
+static CONSTEXPR const rvv_op_info i_ime_8wvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm8_args};
+
+static CONSTEXPR const rvv_op_info u_ime_8wvss_lm8_ops
+  = {u_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm8_args};
+
+static CONSTEXPR const rvv_op_info i_su_ime_8wvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_su_lm8_args};
+
+static CONSTEXPR const rvv_op_info i_us_ime_8wvss_lm8_ops
+  = {i_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_lm8_args};
 
 /* FP IME matrix multiply-accumulate op_info structs.  */
 
@@ -4935,13 +5254,21 @@ rvv_arg_type_info::get_scalar_float_type (vector_type_index type_idx) const
     return NULL_TREE;
 }
 
+/* Forward declaration: defined below.  Used here to perform the LMUL=N
+   (N in {2, 4, 8}) normalisation step when computing widening input
+   types for the _lm{N} source-LMUL variants.  */
+static vector_type_index
+ime_lmul_input_idx (vector_type_index type_idx, rvv_base_type kind);
+
 /* Compute the vector_type_index for an IME widening input type, i.e.
    a type with SEW/W of the accumulator's SEW (W = 2, 4 or 8) and
-   LMUL=1.  We obtain it by chaining existing base-type lookups: a
-   trunc step (DOUBLE/QUAD/OCT, same SEW/LMUL ratio) followed by LMUL1
-   (same SEW, LMUL=1).  The SIGNED / UNSIGNED variants first
-   canonicalise the input signedness via the SIGNED / UNSIGNED base
-   types.  Returns NUM_VECTOR_TYPES if any step of the chain fails.  */
+   LMUL in {1, 2, 4, 8}.  We obtain it by chaining existing base-type
+   lookups: a trunc step (DOUBLE/QUAD/OCT, same SEW/LMUL ratio) followed
+   by an LMUL normalisation step (LMUL=1 via the lmul1_vector slot, or
+   LMUL={2,4,8} via the ime_lmul_input_idx helper).  The SIGNED / UNSIGNED
+   variants first canonicalise the input signedness via the SIGNED /
+   UNSIGNED base types.  Returns NUM_VECTOR_TYPES if any step of the
+   chain fails.  */
 
 static vector_type_index
 ime_widening_input_idx (vector_type_index type_idx, rvv_base_type kind)
@@ -4949,9 +5276,15 @@ ime_widening_input_idx (vector_type_index type_idx, rvv_base_type kind)
   if (type_idx == VECTOR_TYPE_INVALID)
     return NUM_VECTOR_TYPES;
 
-  /* Decode the (trunc-kind, sign-kind) pair from KIND.  */
+  /* Decode the (trunc-kind, sign-kind, lmul-kind) tuple from KIND.
+     LMUL_KIND is NUM_BASE_TYPES for the default (LMUL=1) form, in which
+     case the LMUL normalisation goes through the lmul1_vector slot
+     directly; otherwise it specifies the lmulN_{,signed_,unsigned_}
+     vector base type used to look up the LMUL=N sibling at the
+     truncated SEW.  */
   rvv_base_type trunc_kind;
   rvv_base_type sign_kind = NUM_BASE_TYPES;
+  rvv_base_type lmul_kind = NUM_BASE_TYPES;
   switch (kind)
     {
     case RVV_BASE_ime_double_trunc_lmul1_vector:
@@ -4987,6 +5320,135 @@ ime_widening_input_idx (vector_type_index type_idx, rvv_base_type kind)
       trunc_kind = RVV_BASE_oct_trunc_vector;
       sign_kind = RVV_BASE_unsigned_vector;
       break;
+    /* LMUL=2 widening sources.  */
+    case RVV_BASE_ime_double_trunc_lmul2_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      lmul_kind = RVV_BASE_lmul2_vector;
+      break;
+    case RVV_BASE_ime_double_trunc_lmul2_signed_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul2_signed_vector;
+      break;
+    case RVV_BASE_ime_double_trunc_lmul2_unsigned_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul2_unsigned_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul2_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      lmul_kind = RVV_BASE_lmul2_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul2_signed_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul2_signed_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul2_unsigned_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul2_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      lmul_kind = RVV_BASE_lmul2_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul2_signed_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul2_signed_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul2_unsigned_vector;
+      break;
+    /* LMUL=4 widening sources.  */
+    case RVV_BASE_ime_double_trunc_lmul4_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      lmul_kind = RVV_BASE_lmul4_vector;
+      break;
+    case RVV_BASE_ime_double_trunc_lmul4_signed_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul4_signed_vector;
+      break;
+    case RVV_BASE_ime_double_trunc_lmul4_unsigned_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul4_unsigned_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul4_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      lmul_kind = RVV_BASE_lmul4_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul4_signed_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul4_signed_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul4_unsigned_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul4_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      lmul_kind = RVV_BASE_lmul4_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul4_signed_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul4_signed_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul4_unsigned_vector;
+      break;
+    /* LMUL=8 widening sources.  */
+    case RVV_BASE_ime_double_trunc_lmul8_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      lmul_kind = RVV_BASE_lmul8_vector;
+      break;
+    case RVV_BASE_ime_double_trunc_lmul8_signed_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul8_signed_vector;
+      break;
+    case RVV_BASE_ime_double_trunc_lmul8_unsigned_vector:
+      trunc_kind = RVV_BASE_double_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul8_unsigned_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul8_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      lmul_kind = RVV_BASE_lmul8_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul8_signed_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul8_signed_vector;
+      break;
+    case RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector:
+      trunc_kind = RVV_BASE_quad_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul8_unsigned_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul8_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      lmul_kind = RVV_BASE_lmul8_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul8_signed_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      sign_kind = RVV_BASE_signed_vector;
+      lmul_kind = RVV_BASE_lmul8_signed_vector;
+      break;
+    case RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector:
+      trunc_kind = RVV_BASE_oct_trunc_vector;
+      sign_kind = RVV_BASE_unsigned_vector;
+      lmul_kind = RVV_BASE_lmul8_unsigned_vector;
+      break;
     default:
       return NUM_VECTOR_TYPES;
     }
@@ -5004,9 +5466,25 @@ ime_widening_input_idx (vector_type_index type_idx, rvv_base_type kind)
   if (trunc == VECTOR_TYPE_INVALID)
     return NUM_VECTOR_TYPES;
 
-  /* Step 3: normalise to LMUL=1 while keeping the narrowed SEW.  */
-  vector_type_index result
+  /* Step 3: normalise to LMUL=1 first (the trunc step may have produced
+     a fractional-LMUL type, e.g. quad_trunc of vint32m2_t yields
+     vint8mf2_t; we need to canonicalise to vint8m1_t before any further
+     LMUL adjustment).  */
+  vector_type_index lmul1
     = function_types[trunc].type_indexes[RVV_BASE_lmul1_vector];
+  if (lmul1 == VECTOR_TYPE_INVALID)
+    return NUM_VECTOR_TYPES;
+
+  /* Step 4: for LMUL in {2, 4, 8} variants, walk the LMUL=1 row up to
+     LMUL=N via ime_lmul_input_idx.  For the default LMUL=1 form, the
+     result is already at LMUL=1.  */
+  vector_type_index result = lmul1;
+  if (lmul_kind != NUM_BASE_TYPES)
+    {
+      result = ime_lmul_input_idx (lmul1, lmul_kind);
+      if (result == NUM_VECTOR_TYPES)
+	return NUM_VECTOR_TYPES;
+    }
   if (result == VECTOR_TYPE_INVALID)
     return NUM_VECTOR_TYPES;
 
@@ -5171,7 +5649,34 @@ rvv_arg_type_info::get_function_type_index (vector_type_index type_idx) const
       || base_type == RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector
       || base_type == RVV_BASE_ime_oct_trunc_lmul1_vector
       || base_type == RVV_BASE_ime_oct_trunc_lmul1_signed_vector
-      || base_type == RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector)
+      || base_type == RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul2_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul2_signed_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul2_unsigned_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul4_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul4_signed_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul4_unsigned_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul8_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul8_signed_vector
+      || base_type == RVV_BASE_ime_double_trunc_lmul8_unsigned_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul2_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul2_signed_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul4_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul4_signed_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul8_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul8_signed_vector
+      || base_type == RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul2_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul2_signed_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul4_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul4_signed_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul8_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul8_signed_vector
+      || base_type == RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector)
     {
       vector_type_index idx = ime_widening_input_idx (type_idx, base_type);
       if (idx == NUM_VECTOR_TYPES || !builtin_types[idx].vector)
