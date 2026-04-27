@@ -845,6 +845,27 @@ DEF_RVV_BASE_TYPE (lmul4_vector,
 DEF_RVV_BASE_TYPE (lmul8_vector,
 		   get_ime_lmul_input_type (type_idx, base_type))
 
+/* IME source-LMUL base types with explicit signedness.  Used for the
+   W=1 mmacc mixed-sign (_su / _us) variants where vs1 and vs2 share
+   the SEW and LMUL but use opposite signedness.  Each variant returns
+   the signed or unsigned sibling at LMUL=N at the accumulator's SEW.  */
+DEF_RVV_BASE_TYPE (lmul1_signed_vector,
+		   get_ime_lmul_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (lmul1_unsigned_vector,
+		   get_ime_lmul_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (lmul2_signed_vector,
+		   get_ime_lmul_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (lmul2_unsigned_vector,
+		   get_ime_lmul_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (lmul4_signed_vector,
+		   get_ime_lmul_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (lmul4_unsigned_vector,
+		   get_ime_lmul_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (lmul8_signed_vector,
+		   get_ime_lmul_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (lmul8_unsigned_vector,
+		   get_ime_lmul_input_type (type_idx, base_type))
+
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)
