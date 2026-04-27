@@ -3182,8 +3182,27 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
     {
       mul_c = 1;
       ime_function_geometry geo = find_function_ime_geometry ();
-      if (geo.mul_c != 0 && geo.sew_bits == sew_bits)
-	mul_c = geo.mul_c;
+      if (geo.mul_c != 0)
+	{
+	  if (geo.sew_bits == sew_bits)
+	    mul_c = geo.mul_c;
+	  else if (geo.sew_bits > sew_bits
+		   && (geo.sew_bits % sew_bits) == 0)
+	    {
+	      /* Widening case: the surrounding mmacc consumes inputs at
+		 a wider SEW than this tile op produces (W=2/4/8).  The
+		 input-side vmtl and the mmacc share vtype.lambda, so the
+		 tile probe at the narrower ISEW must compute the SAME
+		 lambda the mmacc would: with VLEN/(ASEW*MUL_C_acc) =
+		 lambda^2 and ASEW = W*ISEW, that means MUL_C for the
+		 tile op is W*MUL_C_acc.  Without this, the input-side
+		 probe (VLEN/ISEW) and the mmacc-side probe
+		 (VLEN/(ASEW*MUL_C_acc)) end up with different lambdas
+		 and the data layout disagrees.  */
+	      int w = geo.sew_bits / sew_bits;
+	      mul_c = w * geo.mul_c;
+	    }
+	}
     }
   else
     switch (acc_vlmul)
