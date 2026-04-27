@@ -1109,6 +1109,15 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
       r.mul_c = riscv_vector::LMUL_1;
       ime_mmacc_rtl_geometry geo
 	= find_surrounding_ime_mmacc_geometry (rinsn);
+      /* The walk above calls extract_insn_cached on each candidate
+	 mmacc, leaving recog_data populated with operands from the last
+	 visited mmacc.  Re-extract our own insn before any subsequent
+	 read of recog_data.operand[]; otherwise downstream code reads
+	 the wrong insn's operands and trips the SEW assertion (see
+	 reproducer at examples/src/repro-vfwmmacc-O3-ice.cxx, where
+	 multiple widening callsites in one function caused vmtl probes
+	 to inherit acc_mode from a sibling vfwmmacc).  */
+      extract_insn_cached (rinsn);
       if (geo.mul_c != 0)
 	{
 	  int inherited_mul_c = 0;
