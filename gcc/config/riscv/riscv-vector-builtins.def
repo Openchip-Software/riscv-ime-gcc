@@ -866,6 +866,67 @@ DEF_RVV_BASE_TYPE (lmul8_signed_vector,
 DEF_RVV_BASE_TYPE (lmul8_unsigned_vector,
 		   get_ime_lmul_input_type (type_idx, base_type))
 
+/* IME widening source-LMUL base types: for the W={2,4,8} mmacc _lm{N}
+   variants, vs1/vs2 use SEW/W and LMUL=N (independent of MUL_C).  These
+   are appended at the END of the base-type list so their enum values do
+   not shift positional slot indices used by DEF_RVV_TYPE_INDEX.  Lookups
+   bypass function_types[] via explicit dispatch in
+   rvv_arg_type_info::get_function_type_index() and get_tree_type().  */
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul2_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul2_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul2_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul4_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul4_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul4_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul8_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul8_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_double_trunc_lmul8_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul2_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul2_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul2_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul4_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul4_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul4_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul8_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul8_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul8_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul2_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul2_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul2_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul4_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul4_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul4_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul8_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul8_signed_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul8_unsigned_vector,
+		   get_ime_widening_input_type (type_idx, base_type))
+
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)

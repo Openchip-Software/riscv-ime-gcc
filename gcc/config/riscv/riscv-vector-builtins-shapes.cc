@@ -1675,14 +1675,41 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_lmul2_vector:
       case RVV_BASE_lmul2_signed_vector:
       case RVV_BASE_lmul2_unsigned_vector:
+      case RVV_BASE_ime_double_trunc_lmul2_vector:
+      case RVV_BASE_ime_double_trunc_lmul2_signed_vector:
+      case RVV_BASE_ime_double_trunc_lmul2_unsigned_vector:
+      case RVV_BASE_ime_quad_trunc_lmul2_vector:
+      case RVV_BASE_ime_quad_trunc_lmul2_signed_vector:
+      case RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector:
+      case RVV_BASE_ime_oct_trunc_lmul2_vector:
+      case RVV_BASE_ime_oct_trunc_lmul2_signed_vector:
+      case RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector:
 	return 2;
       case RVV_BASE_lmul4_vector:
       case RVV_BASE_lmul4_signed_vector:
       case RVV_BASE_lmul4_unsigned_vector:
+      case RVV_BASE_ime_double_trunc_lmul4_vector:
+      case RVV_BASE_ime_double_trunc_lmul4_signed_vector:
+      case RVV_BASE_ime_double_trunc_lmul4_unsigned_vector:
+      case RVV_BASE_ime_quad_trunc_lmul4_vector:
+      case RVV_BASE_ime_quad_trunc_lmul4_signed_vector:
+      case RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector:
+      case RVV_BASE_ime_oct_trunc_lmul4_vector:
+      case RVV_BASE_ime_oct_trunc_lmul4_signed_vector:
+      case RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector:
 	return 4;
       case RVV_BASE_lmul8_vector:
       case RVV_BASE_lmul8_signed_vector:
       case RVV_BASE_lmul8_unsigned_vector:
+      case RVV_BASE_ime_double_trunc_lmul8_vector:
+      case RVV_BASE_ime_double_trunc_lmul8_signed_vector:
+      case RVV_BASE_ime_double_trunc_lmul8_unsigned_vector:
+      case RVV_BASE_ime_quad_trunc_lmul8_vector:
+      case RVV_BASE_ime_quad_trunc_lmul8_signed_vector:
+      case RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector:
+      case RVV_BASE_ime_oct_trunc_lmul8_vector:
+      case RVV_BASE_ime_oct_trunc_lmul8_signed_vector:
+      case RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector:
 	return 8;
       default:
 	gcc_unreachable ();
