@@ -3140,6 +3140,37 @@ find_function_ime_geometry ()
   return result;
 }
 
+/* Anchor an IME consumer in scheduling order on the runtime-VLEN path.
+
+   The instruction scheduler runs at sched1 (RTL pass 324r), well
+   before the vsetvl pass (348r) post-reload-splits
+   `@vsetvl<mode>_no_side_effects' (vector.md:1843) into a real vsetvl
+   that visibly writes vtype.  Until that split the scheduler sees the
+   pattern as having no vtype side-effect -- no anti-dependency from
+   an IME consumer (which reads VL_REGNUM/VTYPE_REGNUM) to a following
+   user-emitted `__riscv_vsetvl_*' -- and feels free to hoist the
+   user vsetvl past the IME consumer for register-pressure reasons.
+   That breaks the IME setup the runtime probe established.
+
+   `gen_blockage ()' emits an `unspec_volatile' ghost insn (no
+   codegen, no latency, type=ghost) that the scheduler treats as a
+   full barrier: nothing crosses it in either direction.  Emitted
+   immediately AFTER each IME consumer it pins the consumer's
+   scheduling position relative to surrounding vsetvls.
+
+   Static-VLEN compilation produces no runtime probe and the user
+   vsetvl ends up correctly ordered without help, so we limit the
+   blockage emission to the runtime path.  See the gap-9 reproducer
+   in examples/src/repro-vfwmmacc-vmtl-sew.cxx and the corresponding
+   plan in .claude/plans/gap9-anchor-runtime-ime-vsetvl.md.  */
+
+static void
+emit_ime_post_consumer_blockage ()
+{
+  if (!BYTES_PER_RISCV_VECTOR.is_constant ())
+    emit_insn (gen_blockage ());
+}
+
 static void
 maybe_emit_ime_runtime_vtype (function_expander &e,
 			      machine_mode acc_mode,
@@ -3275,7 +3306,9 @@ public:
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3330,7 +3363,9 @@ public:
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3387,7 +3422,9 @@ public:
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3450,7 +3487,9 @@ public:
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3514,7 +3553,9 @@ public:
 				  /* altfmt_b = */ false,
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    return e.use_exact_insn (CODE_FOR (e.vector_mode ()));
+    rtx result = e.use_exact_insn (CODE_FOR (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3538,7 +3579,9 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  false, false, false, false, false);
-    return e.use_exact_insn (code_for_pred_vfwmmacc_f16 (e.vector_mode ()));
+    rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_f16 (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3555,7 +3598,9 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  false, false, false, false, false);
-    return e.use_exact_insn (code_for_pred_vfwmmacc_bf16 (e.vector_mode ()));
+    rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_bf16 (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3572,7 +3617,9 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  false, false, false, false, false);
-    return e.use_exact_insn (code_for_pred_vfwmmacc_f32 (e.vector_mode ()));
+    rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_f32 (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3590,7 +3637,9 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  false, false, false, false, false);
-    return e.use_exact_insn (code_for_pred_vfqwmmacc_f16 (e.vector_mode ()));
+    rtx result = e.use_exact_insn (code_for_pred_vfqwmmacc_f16 (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3607,7 +3656,9 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  false, false, false, false, false);
-    return e.use_exact_insn (code_for_pred_vfqwmmacc_bf16 (e.vector_mode ()));
+    rtx result = e.use_exact_insn (code_for_pred_vfqwmmacc_bf16 (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3629,8 +3680,10 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  false, false, false, false, false);
-    return e.use_exact_insn (
+    rtx result = e.use_exact_insn (
       code_for_pred_vfqwmmacc_ofp8 (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3654,8 +3707,10 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  false, false, false, false, false);
-    return e.use_exact_insn (
+    rtx result = e.use_exact_insn (
       code_for_pred_vf8wmmacc_ofp8 (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3677,7 +3732,10 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  false, false, false, false, false);
-    return e.use_exact_insn (code_for_pred_vf8wmmacc_f4e2m1 (e.vector_mode ()));
+    rtx result
+      = e.use_exact_insn (code_for_pred_vf8wmmacc_f4e2m1 (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3735,7 +3793,9 @@ public:
     /* The scales argument is the second-to-last (before vl).  */
     int scales_idx = call_expr_nargs (e.exp) - 2;
     insn_code icode = CODE_FOR (UNSPEC, e.vector_mode ());
-    return e.use_microscaled_insn (icode, scales_idx);
+    rtx result = e.use_microscaled_insn (icode, scales_idx);
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3902,7 +3962,10 @@ public:
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  /* is_tile_op = */ true,
 				  false, false, false, false);
-    return e.use_contiguous_load_insn (code_for_pred_vmtl (e.vector_mode ()));
+    rtx result
+      = e.use_contiguous_load_insn (code_for_pred_vmtl (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3935,8 +3998,10 @@ public:
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  true, false, false, false, false,
 				  /* tile_imm_lambda = */ true);
-    return e.use_contiguous_load_insn (
+    rtx result = e.use_contiguous_load_insn (
       code_for_pred_vmtl (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -3972,8 +4037,10 @@ public:
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  true, false, false, false, false,
 				  /* tile_imm_lambda = */ true);
-    return e.use_contiguous_store_insn (
+    rtx result = e.use_contiguous_store_insn (
       code_for_pred_vmts (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -4009,8 +4076,10 @@ public:
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  true, false, false, false, false,
 				  /* tile_imm_lambda = */ true);
-    return e.use_contiguous_load_insn (
+    rtx result = e.use_contiguous_load_insn (
       code_for_pred_vmttl (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -4046,8 +4115,10 @@ public:
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  true, false, false, false, false,
 				  /* tile_imm_lambda = */ true);
-    return e.use_contiguous_store_insn (
+    rtx result = e.use_contiguous_store_insn (
       code_for_pred_vmtts (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -4083,7 +4154,10 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  true, false, false, false, false);
-    return e.use_contiguous_store_insn (code_for_pred_vmts (e.vector_mode ()));
+    rtx result
+      = e.use_contiguous_store_insn (code_for_pred_vmts (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -4112,7 +4186,10 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  true, false, false, false, false);
-    return e.use_contiguous_load_insn (code_for_pred_vmttl (e.vector_mode ()));
+    rtx result
+      = e.use_contiguous_load_insn (code_for_pred_vmttl (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
@@ -4141,7 +4218,10 @@ public:
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  true, false, false, false, false);
-    return e.use_contiguous_store_insn (code_for_pred_vmtts (e.vector_mode ()));
+    rtx result
+      = e.use_contiguous_store_insn (code_for_pred_vmtts (e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
   }
 };
 
