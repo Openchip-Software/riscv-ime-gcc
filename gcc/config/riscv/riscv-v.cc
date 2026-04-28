@@ -6462,76 +6462,25 @@ splat_to_scalar_move_p (rtx *ops)
 	 && known_ge (GET_MODE_SIZE (Pmode), GET_MODE_SIZE (GET_MODE (ops[3])));
 }
 
-/* Emit a runtime IME vtype setup sequence.  Called from IME intrinsic
-   expanders when VLEN is not compile-time known (i.e. when
-   !BYTES_PER_RISCV_VECTOR.is_constant ()).
+/* Emit (or reuse) the once-per-function lambda encoding pseudo for the
+   runtime-VLEN IME path.  The first call computes the WARL-probed
+   3-bit lambda encoding from `csrr vlenb' + ctz + shifts and caches
+   the resulting pseudo on `cfun->machine'.  Subsequent calls return
+   the cached pseudo.  XMODE is Pmode and SEW_BITS / MUL_C are the
+   accumulator geometry that determines lambda^2.
 
-   SEW_BITS is the accumulator element width in bits (8, 16, 32, 64).
-   MUL_C is the integer register-group multiplier (1, 2, 4, 8) -- for
-   tile loads/stores this is always 1.
-   VLMUL_ENC is the vlmul_type encoding for the data register group.
-   ALTFMT_A, ALTFMT_B, ALTFMT, BS are the IME-specific vtype fields.
-   TA and MA are the tail/mask-agnostic policy bits.
-   AVL is the application vector length (a register rtx).
+   Includes the perfect-square check (traps if lambda^2 is not a power
+   of 4, which would mean the (VLEN, SEW, MUL_C) triple yields a
+   non-integer lambda and silent truncation would pick the wrong
+   geometry).  Both the perfect-square check and the lambda
+   computation are hardware-invariant within a function, so caching is
+   sound.  */
 
-   The emitted sequence:
-     vlenb   = csrr vlenb                      ; VLEN/8
-     vlen    = vlenb << 3                       ; VLEN in bits
-     lsq     = vlen >> log2(SEW * MUL_C)        ; lambda^2
-     llog2sq = ctz(lsq)                         ; log2(lambda^2)
-     llog2   = llog2sq >> 1                      ; log2(lambda)
-     lenc    = llog2 + 1                         ; 3-bit encoding
-     shifted = lenc << (xlen - 4)
-     vtype   = static_bits | shifted
-     vsetvl  rd, avl, vtype
-     ; WARL verification:
-     vtype_rb = csrr vtype
-     got      = (vtype_rb >> (xlen - 4)) & 7
-     if (got != lenc) trap  */
-
-void
-emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
-			      vlmul_type vlmul_enc,
-			      bool altfmt_a, bool altfmt_b,
-			      bool altfmt, bool bs,
-			      bool ta, bool ma,
-			      rtx avl)
+static rtx
+get_or_emit_ime_lambda_enc (machine_mode xmode, int sew_bits, int mul_c)
 {
-  gcc_assert (!BYTES_PER_RISCV_VECTOR.is_constant ());
-
-  /* The runtime lambda computation requires the ctz instruction (Zbb).
-     If Zbb is not available, emit a sorry and bail out.  */
-  if (!TARGET_ZBB)
-    {
-      sorry ("IME intrinsic with runtime %<lambda%> requires the "
-	     "%<Zbb%> extension; use %<-mrvv-vector-bits=zvl%> with a "
-	     "%<zvl*b%> that makes VLEN compile-time known, or enable "
-	     "%<Zbb%>");
-      return;
-    }
-
-  machine_mode xmode = Pmode;
-  int xlen = GET_MODE_BITSIZE (xmode).to_constant ();
-
-  /* Build the static vtype bits (everything except the lambda field at
-     bits [xlen-2 : xlen-4]).  */
-  HOST_WIDE_INT static_val = 0;
-  /* VLMUL: bits [2:0].  */
-  static_val |= (unsigned) vlmul_enc;
-  /* VSEW: bits [5:3] = log2(sew_bits) - 3.  */
-  static_val |= (HOST_WIDE_INT) (exact_log2 (sew_bits) - 3) << 3;
-  if (ta)
-    static_val |= (HOST_WIDE_INT) 1 << 6;
-  if (ma)
-    static_val |= (HOST_WIDE_INT) 1 << 7;
-  if (altfmt)
-    static_val |= (HOST_WIDE_INT) 1 << 8;
-  if (bs)
-    static_val |= (HOST_WIDE_INT) 1 << (xlen - 7);
-  if (altfmt_b)
-    static_val |= (HOST_WIDE_INT) 1 << (xlen - 6);
-  if (altfmt_a)
-    static_val |= (HOST_WIDE_INT) 1 << (xlen - 5);
+  if (rtx cached = riscv_ime_get_lambda_enc ())
+    return cached;
 
   /* Read VLEN at runtime via csrr vlenb.  */
   rtx vlenb = gen_reg_rtx (xmode);
@@ -6590,6 +6539,133 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 					const1_rtx, NULL_RTX,
 					0, OPTAB_DIRECT);
 
+  riscv_ime_set_lambda_enc (lambda_enc);
+  return lambda_enc;
+}
+
+/* Emit a runtime IME vtype setup sequence.  Called from IME intrinsic
+   expanders when VLEN is not compile-time known (i.e. when
+   !BYTES_PER_RISCV_VECTOR.is_constant ()).
+
+   SEW_BITS is the accumulator element width in bits (8, 16, 32, 64).
+   MUL_C is the integer register-group multiplier (1, 2, 4, 8) -- for
+   tile loads/stores this is always 1.
+   VLMUL_ENC is the vlmul_type encoding for the data register group.
+   ALTFMT_A, ALTFMT_B, ALTFMT, BS are the IME-specific vtype fields.
+   TA and MA are the tail/mask-agnostic policy bits.
+   AVL is the application vector length (a register rtx).
+
+   The emitted sequence varies by cache state:
+
+   First IME consumer in the function:
+     vlenb    = csrr vlenb
+     vlen     = vlenb << 3
+     lsq      = vlen >> log2(SEW * MUL_C)
+     log2lsq  = ctz(lsq)               ; with perfect-square trap
+     log2l    = log2lsq >> 1
+     lenc     = log2l + 1              ; cached in ime_lambda_enc
+     shifted  = lenc << (xlen - 4)
+     vtype    = static_bits | shifted  ; cached for static_bits
+     vsetvl   rd, avl, vtype           ; the IME vtype assertion
+     vtype_rb = csrr vtype             ; WARL verify (once per tuple)
+     got      = (vtype_rb >> (xlen - 4)) & 7
+     if (got != lenc) trap
+
+   Subsequent consumer with the same static_bits tuple:
+     vsetvl   rd, avl, cached_vtype    ; just re-assert IME vtype
+
+   Subsequent consumer with a different static_bits tuple (same
+   function, so lambda_enc is already cached):
+     shifted  = cached_lenc << (xlen - 4)
+     vtype    = static_bits | shifted  ; cached for new static_bits
+     vsetvl   rd, avl, vtype
+     vtype_rb = csrr vtype             ; WARL verify (once per tuple)
+     got      = (vtype_rb >> (xlen - 4)) & 7
+     if (got != lenc) trap
+
+   The "just re-assert" emission lets the post-vsetvl-pass dedup walk
+   collapse back-to-back same-source `vsetvl_ime_reg's; the per-tuple
+   sharing of the full_vtype pseudo is what makes the dedup possible.
+*/
+
+void
+emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
+			      vlmul_type vlmul_enc,
+			      bool altfmt_a, bool altfmt_b,
+			      bool altfmt, bool bs,
+			      bool ta, bool ma,
+			      rtx avl)
+{
+  gcc_assert (!BYTES_PER_RISCV_VECTOR.is_constant ());
+
+  /* The runtime lambda computation requires the ctz instruction (Zbb).
+     If Zbb is not available, emit a sorry and bail out.  */
+  if (!TARGET_ZBB)
+    {
+      sorry ("IME intrinsic with runtime %<lambda%> requires the "
+	     "%<Zbb%> extension; use %<-mrvv-vector-bits=zvl%> with a "
+	     "%<zvl*b%> that makes VLEN compile-time known, or enable "
+	     "%<Zbb%>");
+      return;
+    }
+
+  machine_mode xmode = Pmode;
+  int xlen = GET_MODE_BITSIZE (xmode).to_constant ();
+
+  /* Build the static vtype bits (everything except the lambda field at
+     bits [xlen-2 : xlen-4]).  */
+  HOST_WIDE_INT static_val = 0;
+  /* VLMUL: bits [2:0].  */
+  static_val |= (unsigned) vlmul_enc;
+  /* VSEW: bits [5:3] = log2(sew_bits) - 3.  */
+  static_val |= (HOST_WIDE_INT) (exact_log2 (sew_bits) - 3) << 3;
+  if (ta)
+    static_val |= (HOST_WIDE_INT) 1 << 6;
+  if (ma)
+    static_val |= (HOST_WIDE_INT) 1 << 7;
+  if (altfmt)
+    static_val |= (HOST_WIDE_INT) 1 << 8;
+  if (bs)
+    static_val |= (HOST_WIDE_INT) 1 << (xlen - 7);
+  if (altfmt_b)
+    static_val |= (HOST_WIDE_INT) 1 << (xlen - 6);
+  if (altfmt_a)
+    static_val |= (HOST_WIDE_INT) 1 << (xlen - 5);
+
+  /* Cache hit: emit a `vsetvl_ime_reg' reading the cached pseudo.
+     This is the "liveness-anchoring" emit: it keeps the cached
+     pseudo live across all IME consumers in the function so that
+     the register allocator does not reuse its hard reg for
+     unrelated values.  The vsetvl pass also emits a `vsetvl_ime_reg'
+     immediately before each IME consumer (post-reload, after any
+     pass-inserted non-IME vsetvli for intervening vector ops); the
+     two emits are dedup'd by the post-pass walk when no vtype
+     clobber sits between them.
+
+     `dest_vl' uses the fixed RISCV_PROLOGUE_TEMP_REGNUM (t0/x5)
+     instead of a fresh pseudo: a fresh pseudo could be coalesced by
+     the register allocator onto the same hard reg as `full_vtype'
+     (since dest_vl is dead after the insn), producing a destructive
+     `vsetvl rN, avl, rN' that overwrites `full_vtype' before the
+     vsetvl pass's later post-reload emit can read it.  */
+  rtx full_vtype = riscv_ime_lookup_vtype (static_val);
+  if (full_vtype)
+    {
+      rtx dest_vl = gen_rtx_REG (xmode, RISCV_PROLOGUE_TEMP_REGNUM);
+      emit_insn (gen_vsetvl_ime_reg (xmode, dest_vl, avl, full_vtype));
+      return;
+    }
+
+  /* Cache miss: lazily emit (or reuse) the lambda_enc pseudo, compose
+     and cache the full_vtype pseudo for this tuple, then run the
+     WARL probe.  The cached full_vtype lets the vsetvl pass emit a
+     fresh `vsetvl_ime_reg' before each IME consumer in the runtime
+     path -- without this cache the pass had to bail out (no way to
+     re-create the runtime vtype value), leaving consumers vulnerable
+     to vtype clobbers from the pass's own non-IME vsetvli
+     insertions.  */
+  rtx lambda_enc = get_or_emit_ime_lambda_enc (xmode, sew_bits, mul_c);
+
   /* shifted_enc = lambda_enc << (xlen - 4).  */
   rtx shifted_enc = expand_simple_binop (xmode, ASHIFT, lambda_enc,
 					 GEN_INT (xlen - 4), NULL_RTX,
@@ -6597,17 +6673,22 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 
   /* full_vtype = static_bits | shifted_enc.  */
   rtx static_bits_rtx = gen_int_mode (static_val, xmode);
-  rtx full_vtype = expand_simple_binop (xmode, IOR, static_bits_rtx,
-					shifted_enc, NULL_RTX,
-					1, OPTAB_DIRECT);
+  full_vtype = expand_simple_binop (xmode, IOR, static_bits_rtx,
+				    shifted_enc, NULL_RTX,
+				    1, OPTAB_DIRECT);
 
-  /* Emit register-form vsetvl: vsetvl rd, avl, full_vtype.
-     This sets VL_REGNUM and VTYPE_REGNUM as side effects.  */
-  rtx new_vl = gen_reg_rtx (xmode);
-  emit_insn (gen_vsetvl_ime_reg (xmode, new_vl, avl, full_vtype));
+  riscv_ime_insert_vtype (static_val, full_vtype);
 
-  /* WARL verification: read back vtype, extract the lambda field, and
-     trap if it does not match what we wrote.  */
+  /* WARL probe: emit a "test write" of vtype, read it back, compare
+     the lambda field, trap on mismatch.  Done once per static-bits
+     tuple -- subsequent consumers with the same tuple reuse the
+     cached full_vtype and skip the probe (lambda support is
+     hardware-invariant within a function).  Use the fixed
+     RISCV_PROLOGUE_TEMP_REGNUM for dest_vl (see the cache-hit
+     comment for why a fresh pseudo would be unsafe).  */
+  rtx probe_vl = gen_rtx_REG (xmode, RISCV_PROLOGUE_TEMP_REGNUM);
+  emit_insn (gen_vsetvl_ime_reg (xmode, probe_vl, avl, full_vtype));
+
   rtx vtype_rb = gen_reg_rtx (xmode);
   emit_insn (gen_read_vtype (xmode, vtype_rb));
 
@@ -6630,6 +6711,15 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
      code.  */
   emit_barrier ();
   emit_label (ok_label);
+
+  /* Liveness-anchoring emit (also for cache miss): same rationale as
+     the cache-hit branch above.  Emit a `vsetvl_ime_reg' reading the
+     cached pseudo right before the consumer so RA sees the use and
+     keeps the pseudo's hard reg alive through the whole function;
+     otherwise the vsetvl pass's later post-reload emission of the
+     same insn would reference a stale hard reg.  */
+  rtx anchor_vl = gen_rtx_REG (xmode, RISCV_PROLOGUE_TEMP_REGNUM);
+  emit_insn (gen_vsetvl_ime_reg (xmode, anchor_vl, avl, full_vtype));
 }
 
 } // namespace riscv_vector

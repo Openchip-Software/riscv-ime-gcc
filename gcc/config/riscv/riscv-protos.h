@@ -103,6 +103,15 @@ struct riscv_address_info {
 };
 
 /* Routines implemented in riscv.cc.  */
+
+/* Per-function cache helpers for the runtime-VLEN IME vtype setup.
+   Defined in riscv.cc because they touch struct machine_function;
+   used from riscv-v.cc's emit_ime_runtime_vtype_setup.  */
+extern rtx riscv_ime_get_lambda_enc (void);
+extern void riscv_ime_set_lambda_enc (rtx);
+extern rtx riscv_ime_lookup_vtype (HOST_WIDE_INT);
+extern void riscv_ime_insert_vtype (HOST_WIDE_INT, rtx);
+
 extern const char *riscv_asm_output_opcode (FILE *asm_out_file, const char *p);
 extern enum riscv_symbol_type riscv_classify_symbolic_expression (rtx);
 extern bool riscv_symbolic_constant_p (rtx, enum riscv_symbol_type *);

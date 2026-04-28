@@ -3006,29 +3006,78 @@ private:
   void insert_ime_vsetvl_insn (enum emit_type emit_type,
 			       const vsetvl_info &info)
   {
-    rtx vtype_const = emit_ime_vtype_build (info);
-    if (vtype_const == NULL_RTX)
-      return;  /* sorry() already reported.  */
-
     rtx avl = info.get_avl ();
     if (!avl)
       avl = const0_rtx;
 
-    /* Pick a destination/scratch register for the vsetvl_ime insn.  The
-       @vsetvl_ime pattern reuses its dest register as the scratch for
-       the "li" that loads the vtype constant.  If the IME instruction
-       we're setting up has its own VL destination (rare -- only for
-       vsetvl intrinsics), reuse that; otherwise fall back to the
-       dedicated prologue temp (x5 / t0), which is caller-saved and not
-       reserved across the function body.  The new VL value written by
-       the register-form vsetvl is dead in the latter case, which is
-       fine because downstream RVV insns read VL via VL_REGNUM, not via
-       a GPR.  */
+    /* Pick a destination/scratch register for the IME vsetvl insn.
+       The @vsetvl_ime pattern reuses its dest register as the
+       scratch for the "li" that loads the vtype constant.  If the
+       IME instruction we're setting up has its own VL destination
+       (rare -- only for vsetvl intrinsics), reuse that; otherwise
+       fall back to the dedicated prologue temp (x5 / t0), which is
+       caller-saved and not reserved across the function body.  The
+       new VL value written by the register-form vsetvl is dead in
+       the latter case, which is fine because downstream RVV insns
+       read VL via VL_REGNUM, not via a GPR.  */
     rtx dest_vl = info.has_vl ()
 		    ? info.get_vl ()
 		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
 
-    rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+    /* For the runtime-VLEN IME path, the per-function expander has
+       cached a pseudo holding the assembled vtype value (keyed on
+       the static-bits portion of the vtype).  Look it up and emit a
+       register-form `vsetvl_ime_reg' that re-asserts the IME vtype
+       right before the consumer.  This handles the case where the
+       pass itself has inserted a non-IME vsetvli (for an intervening
+       vector op like vmv1r.v) between the WARL probe and the
+       consumer -- the inserted vsetvli would otherwise clobber the
+       IME vtype.  Cache lookup is keyed on the static-bits portion
+       so two consumers with the same tuple share the same pseudo,
+       which lets the post-pass dedup walk collapse back-to-back
+       same-source `vsetvl_ime_reg's into one.  */
+    rtx pat;
+    const ime_vtype_req &r = info.get_ime_req ();
+    if (r.lambda_log2 == -1)
+      {
+	int xlen = GET_MODE_BITSIZE (Pmode);
+	HOST_WIDE_INT static_val
+	  = compute_static_vtype_without_lambda (info, xlen);
+	rtx full_vtype = riscv_ime_lookup_vtype (static_val);
+	if (!full_vtype)
+	  {
+	    /* Cache miss in the pass means the expander never ran for
+	       this tuple in this function -- shouldn't happen.  */
+	    return;
+	  }
+	/* The cached rtx was created during expansion and points at a
+	   pseudo register.  This pass runs post-reload, so substitute
+	   the pseudo with the hard reg the register allocator picked
+	   for it.  If the pseudo got spilled (reg_renumber[regno] < 0),
+	   we cannot emit a register-form vsetvl_ime_reg here -- skip
+	   the insertion; the consumer will run with whatever vtype is
+	   current.  This is a soft-fail mode rather than an ICE; in
+	   practice it does not happen for typical IME usage because
+	   the expander emits a `vsetvl_ime_reg' at every consumer
+	   site, giving the cached pseudo enough uses to keep it in a
+	   callee-save reg.  */
+	if (REG_P (full_vtype)
+	    && REGNO (full_vtype) >= FIRST_PSEUDO_REGISTER)
+	  {
+	    int hard = reg_renumber[REGNO (full_vtype)];
+	    if (hard < 0)
+	      return;
+	    full_vtype = gen_rtx_REG (GET_MODE (full_vtype), hard);
+	  }
+	pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, full_vtype);
+      }
+    else
+      {
+	rtx vtype_const = emit_ime_vtype_build (info);
+	if (vtype_const == NULL_RTX)
+	  return;  /* sorry() already reported.  */
+	pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+      }
     rtx_insn *rinsn = info.get_insn ()->rtl ();
     rtx_insn *inserted = NULL;
 
@@ -4498,15 +4547,45 @@ pass_vsetvl::simple_vsetvl ()
 	      const auto &info = vsetvl_info (rinsn);
 	      if (info.ime_required_p ())
 		{
-		  rtx vtype_const = emit_ime_vtype_build (info);
-		  if (vtype_const == NULL_RTX)
-		    continue;  /* sorry() already reported.  */
 		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
 		  rtx dest_vl
 		    = info.has_vl ()
 			? info.get_vl ()
 			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-		  rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+		  rtx pat;
+		  const ime_vtype_req &r = info.get_ime_req ();
+		  if (r.lambda_log2 == -1)
+		    {
+		      /* Runtime path: read the cached full_vtype pseudo
+			 from the per-function expander cache and emit a
+			 register-form vsetvl_ime_reg.  See
+			 `insert_ime_vsetvl_insn' in pre_vsetvl for the
+			 rationale.  */
+		      int xlen = GET_MODE_BITSIZE (Pmode);
+		      HOST_WIDE_INT static_val
+			= compute_static_vtype_without_lambda (info, xlen);
+		      rtx full_vtype = riscv_ime_lookup_vtype (static_val);
+		      if (!full_vtype)
+			continue;
+		      if (REG_P (full_vtype)
+			  && REGNO (full_vtype) >= FIRST_PSEUDO_REGISTER)
+			{
+			  int hard = reg_renumber[REGNO (full_vtype)];
+			  if (hard < 0)
+			    continue;
+			  full_vtype
+			    = gen_rtx_REG (GET_MODE (full_vtype), hard);
+			}
+		      pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl,
+						full_vtype);
+		    }
+		  else
+		    {
+		      rtx vtype_const = emit_ime_vtype_build (info);
+		      if (vtype_const == NULL_RTX)
+			continue;  /* sorry() already reported.  */
+		      pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+		    }
 		  emit_insn_before (pat, rinsn);
 		  if (dump_file)
 		    fprintf (dump_file,
