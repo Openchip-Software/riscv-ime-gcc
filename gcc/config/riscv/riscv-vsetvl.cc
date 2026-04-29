@@ -4672,101 +4672,6 @@ pass_vsetvl::lazy_vsetvl ()
   pre.finish ();
 }
 
-/* Identify a register-form IME vsetvl insn (the multi-instruction
-   register-input variant emitted on the runtime-VLEN path).  */
-
-static bool
-ime_vsetvl_reg_insn_p (rtx_insn *insn)
-{
-  if (!insn || !NONDEBUG_INSN_P (insn))
-    return false;
-  int code = INSN_CODE (insn);
-  return code == CODE_FOR_vsetvl_ime_regdi
-	 || code == CODE_FOR_vsetvl_ime_regsi;
-}
-
-/* Extract the vtype-source operand from an `vsetvl_ime_reg' insn's
-   PATTERN.  See the @vsetvl_ime_reg<mode> definition in vector-ime.md
-   for the (parallel [(set dest_vl (unspec [avl, vtype] UNSPEC))
-   ...]) layout: the vtype source is operand 1 of the first SET's
-   unspec, hence XVECEXP (..., 0, 1).  */
-
-static rtx
-ime_vsetvl_reg_vtype_source (rtx_insn *insn)
-{
-  rtx pat = PATTERN (insn);
-  rtx set0 = XVECEXP (pat, 0, 0);
-  rtx src = SET_SRC (set0);
-  return XVECEXP (src, 0, 1);
-}
-
-/* Walk the function and remove redundant runtime-path
-   `vsetvl_ime_reg' insns.  Two such insns are redundant when the
-   later one reads the same vtype source as an earlier one and no
-   instruction between them writes VTYPE_REGNUM, calls a function,
-   crosses a basic-block boundary, or is otherwise an unknown vtype
-   modifier.  This collapses the typical case where the expander
-   emits a `vsetvl_ime_reg' at every consumer plus the vsetvl pass
-   emits another one immediately before each consumer (post-reload):
-   in straight-line code with no intervening clobber, the dedup walk
-   keeps only the earlier one.  When the vsetvl pass DOES insert a
-   non-IME `vsetvldi' between the two (typical for caller-save
-   spills around an upcoming call), both emissions are preserved --
-   correctness is guaranteed because the later emission re-asserts
-   the IME vtype after the clobber.  */
-
-static void
-dedup_runtime_ime_vsetvls (void)
-{
-  basic_block bb;
-  rtx_insn *insn, *next;
-  rtx vtype_reg = gen_rtx_REG (SImode, VTYPE_REGNUM);
-
-  FOR_EACH_BB_FN (bb, cfun)
-    FOR_BB_INSNS_SAFE (bb, insn, next)
-      {
-	if (!ime_vsetvl_reg_insn_p (insn))
-	  continue;
-	rtx cur_src = ime_vsetvl_reg_vtype_source (insn);
-	if (!REG_P (cur_src))
-	  continue;
-
-	/* Walk back through the BB looking for another vsetvl_ime_reg
-	   with the same source.  Stop on calls, jumps, labels, vtype
-	   clobbers, or BB entry.  */
-	for (rtx_insn *prev = PREV_INSN (insn);
-	     prev && BLOCK_FOR_INSN (prev) == bb;
-	     prev = PREV_INSN (prev))
-	  {
-	    if (LABEL_P (prev) || BARRIER_P (prev) || NOTE_P (prev))
-	      continue;
-	    if (CALL_P (prev) || JUMP_P (prev))
-	      break;
-	    if (!INSN_P (prev))
-	      continue;
-	    if (ime_vsetvl_reg_insn_p (prev))
-	      {
-		rtx prev_src = ime_vsetvl_reg_vtype_source (prev);
-		if (REG_P (prev_src)
-		    && REGNO (prev_src) == REGNO (cur_src))
-		  {
-		    if (dump_file)
-		      fprintf (dump_file,
-			       "  Dedup IME vsetvl: delete insn %d "
-			       "(redundant with insn %d)\n",
-			       INSN_UID (insn), INSN_UID (prev));
-		    delete_insn (insn);
-		  }
-		/* Either way (same source dedup'd, or different source
-		   so prev itself clobbered vtype), stop walking back.  */
-		break;
-	      }
-	    if (reg_set_p (vtype_reg, prev))
-	      break;
-	  }
-      }
-}
-
 /* Main entry point for this pass.  */
 unsigned int
 pass_vsetvl::execute (function *)
@@ -4787,10 +4692,6 @@ pass_vsetvl::execute (function *)
     simple_vsetvl ();
   else
     lazy_vsetvl ();
-
-  /* Collapse redundant runtime-path IME vsetvls left behind by the
-     two-source emission scheme (expander + pass).  */
-  dedup_runtime_ime_vsetvls ();
 
   return 0;
 }
