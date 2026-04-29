@@ -225,9 +225,6 @@ struct GTY(())  machine_function {
      fields are initialised to zero/nullptr by the GC machinery and
      populated on first use by `emit_ime_runtime_vtype_setup ()'.
 
-     `ime_lambda_enc' holds the once-per-function 3-bit lambda
-     encoding pseudo (the result of csrr vlenb + ctz + shifts).
-
      `ime_vtype_cache_keys' / `ime_vtype_cache_vals' /
      `ime_vtype_cache_count' form a tiny linear-search cache mapping
      the static-portion of the vtype encoding (every field except
@@ -239,7 +236,6 @@ struct GTY(())  machine_function {
      reasonable IME usage pattern (one per (sew, mul_c, vlmul,
      altfmt_*, bs) tuple in a function).  */
 #define RISCV_IME_VTYPE_CACHE_SIZE 8
-  rtx ime_lambda_enc;
   HOST_WIDE_INT ime_vtype_cache_keys[RISCV_IME_VTYPE_CACHE_SIZE];
   rtx ime_vtype_cache_vals[RISCV_IME_VTYPE_CACHE_SIZE];
   int ime_vtype_cache_count;
@@ -12218,18 +12214,6 @@ riscv_init_machine_status (void)
 /* IME runtime-vtype cache accessors -- defined here because the
    machine_function definition is local to this file.  Called from
    emit_ime_runtime_vtype_setup () in riscv-v.cc.  */
-
-rtx
-riscv_ime_get_lambda_enc (void)
-{
-  return cfun->machine->ime_lambda_enc;
-}
-
-void
-riscv_ime_set_lambda_enc (rtx pseudo)
-{
-  cfun->machine->ime_lambda_enc = pseudo;
-}
 
 rtx
 riscv_ime_lookup_vtype (HOST_WIDE_INT key)

@@ -41,6 +41,7 @@
 #include "explow.h"
 #include "memmodel.h"
 #include "emit-rtl.h"
+#include "cfgrtl.h"
 #include "tm_p.h"
 #include "target.h"
 #include "targhooks.h"
@@ -6462,87 +6463,6 @@ splat_to_scalar_move_p (rtx *ops)
 	 && known_ge (GET_MODE_SIZE (Pmode), GET_MODE_SIZE (GET_MODE (ops[3])));
 }
 
-/* Emit (or reuse) the once-per-function lambda encoding pseudo for the
-   runtime-VLEN IME path.  The first call computes the WARL-probed
-   3-bit lambda encoding from `csrr vlenb' + ctz + shifts and caches
-   the resulting pseudo on `cfun->machine'.  Subsequent calls return
-   the cached pseudo.  XMODE is Pmode and SEW_BITS / MUL_C are the
-   accumulator geometry that determines lambda^2.
-
-   Includes the perfect-square check (traps if lambda^2 is not a power
-   of 4, which would mean the (VLEN, SEW, MUL_C) triple yields a
-   non-integer lambda and silent truncation would pick the wrong
-   geometry).  Both the perfect-square check and the lambda
-   computation are hardware-invariant within a function, so caching is
-   sound.  */
-
-static rtx
-get_or_emit_ime_lambda_enc (machine_mode xmode, int sew_bits, int mul_c)
-{
-  if (rtx cached = riscv_ime_get_lambda_enc ())
-    return cached;
-
-  /* Read VLEN at runtime via csrr vlenb.  */
-  rtx vlenb = gen_reg_rtx (xmode);
-  emit_move_insn (vlenb, gen_int_mode (BYTES_PER_RISCV_VECTOR, xmode));
-
-  /* vlen_bits = vlenb << 3.  */
-  rtx vlen_bits = expand_simple_binop (xmode, ASHIFT, vlenb,
-				       GEN_INT (3), NULL_RTX,
-				       1, OPTAB_DIRECT);
-
-  /* lambda_sq = vlen_bits >> log2(sew_bits * mul_c).  */
-  int shift = exact_log2 (sew_bits * mul_c);
-  gcc_assert (shift >= 0);
-  rtx lambda_sq = expand_simple_binop (xmode, LSHIFTRT, vlen_bits,
-				       GEN_INT (shift), NULL_RTX,
-				       1, OPTAB_DIRECT);
-
-  /* log2_lambda_sq = ctz(lambda_sq).  Use optab which expands to ctz
-     instruction on Zbb or a library call / inline sequence otherwise.  */
-  rtx log2_lsq = gen_reg_rtx (xmode);
-  rtx ctz_op = expand_unop (xmode, ctz_optab, lambda_sq,
-			    log2_lsq, 1);
-  if (ctz_op != log2_lsq)
-    emit_move_insn (log2_lsq, ctz_op);
-
-  /* Perfect-square check: lambda is an integer iff log2(lambda^2) is
-     even.  lambda_sq is always a power of 2 (VLEN is a power of 2 and
-     we right-shifted by a constant), so checking log2(lambda_sq) & 1
-     == 0 is sufficient.  If lambda_sq is not a perfect square (e.g.
-     VLEN=128, SEW=32, MUL_C=2 gives lambda_sq=2), the arithmetic
-     `log2_lsq >> 1` below would silently truncate to a smaller valid
-     lambda whose MUL_C does NOT match the accumulator type.  The WARL
-     probe would then pass for the wrong geometry.  Trap here instead.
-     */
-  rtx log_parity = expand_simple_binop (xmode, AND, log2_lsq,
-					const1_rtx, NULL_RTX,
-					1, OPTAB_DIRECT);
-  rtx sq_ok_label = gen_label_rtx ();
-  emit_cmp_and_jump_insns (log_parity, const0_rtx, EQ, NULL_RTX,
-			   xmode, 1, sq_ok_label);
-  emit_insn (gen_trap ());
-  /* A barrier tells the CFG builder the trap does not fall through;
-     without it later passes (e.g. bbro) complain "flow control insn
-     inside a basic block" when the trap is merged with surrounding
-     code.  */
-  emit_barrier ();
-  emit_label (sq_ok_label);
-
-  /* log2_lambda = log2_lambda_sq >> 1.  */
-  rtx log2_lambda = expand_simple_binop (xmode, LSHIFTRT, log2_lsq,
-					 GEN_INT (1), NULL_RTX,
-					 1, OPTAB_DIRECT);
-
-  /* lambda_enc = log2_lambda + 1 (3-bit encoding).  */
-  rtx lambda_enc = expand_simple_binop (xmode, PLUS, log2_lambda,
-					const1_rtx, NULL_RTX,
-					0, OPTAB_DIRECT);
-
-  riscv_ime_set_lambda_enc (lambda_enc);
-  return lambda_enc;
-}
-
 /* Emit a runtime IME vtype setup sequence.  Called from IME intrinsic
    expanders when VLEN is not compile-time known (i.e. when
    !BYTES_PER_RISCV_VECTOR.is_constant ()).
@@ -6656,15 +6576,84 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
       return;
     }
 
-  /* Cache miss: lazily emit (or reuse) the lambda_enc pseudo, compose
-     and cache the full_vtype pseudo for this tuple, then run the
-     WARL probe.  The cached full_vtype lets the vsetvl pass emit a
-     fresh `vsetvl_ime_reg' before each IME consumer in the runtime
-     path -- without this cache the pass had to bail out (no way to
-     re-create the runtime vtype value), leaving consumers vulnerable
-     to vtype clobbers from the pass's own non-IME vsetvli
-     insertions.  */
-  rtx lambda_enc = get_or_emit_ime_lambda_enc (xmode, sew_bits, mul_c);
+  /* Cache miss: emit the per-tuple WARL probe (csrr vlenb + ctz +
+     shifts to derive lambda + IOR with static_val to assemble the
+     full vtype + a "test write" of vtype + read-back lambda compare
+     + trap on mismatch) at the function's entry block, so that the
+     resulting `full_vtype' pseudo dominates every IME consumer in
+     the function.  Without that property `pass_initialize_regs'
+     inserts a `set pseudo, 0' on paths where it cannot prove
+     dominance, and `combine' subsequently folds that 0 into the IME
+     consumer's `vsetvl_ime_reg' (rewriting it to the const-vtype
+     form `vsetvl_ime') -- which then ICEs the vsetvl pass at
+     calculate_ratio because the const-vtype pattern has DI mode
+     that has no vlmul/sew encoding.
+
+     Lambda is determined by `(VLEN, SEW * MUL_C)' so we cannot
+     share the lambda compute across tuples with different
+     `(SEW * MUL_C)' (e.g. an SEW=64,MUL_C=1 mmacc and an
+     SEW=8,MUL_C=2 mmacc in the same function need DIFFERENT
+     lambdas).  Recompute per tuple; the redundant work is bounded
+     by the number of distinct (sew, mul_c) tuples and amortised
+     into the function-entry probe.  */
+  start_sequence ();
+
+  /* Read VLEN at runtime via csrr vlenb.  */
+  rtx vlenb = gen_reg_rtx (xmode);
+  emit_move_insn (vlenb, gen_int_mode (BYTES_PER_RISCV_VECTOR, xmode));
+
+  /* vlen_bits = vlenb << 3.  */
+  rtx vlen_bits = expand_simple_binop (xmode, ASHIFT, vlenb,
+				       GEN_INT (3), NULL_RTX,
+				       1, OPTAB_DIRECT);
+
+  /* lambda_sq = vlen_bits >> log2(sew_bits * mul_c).  */
+  int shift = exact_log2 (sew_bits * mul_c);
+  gcc_assert (shift >= 0);
+  rtx lambda_sq = expand_simple_binop (xmode, LSHIFTRT, vlen_bits,
+				       GEN_INT (shift), NULL_RTX,
+				       1, OPTAB_DIRECT);
+
+  /* log2_lambda_sq = ctz(lambda_sq).  Use optab which expands to ctz
+     instruction on Zbb or a library call / inline sequence otherwise.  */
+  rtx log2_lsq = gen_reg_rtx (xmode);
+  rtx ctz_op = expand_unop (xmode, ctz_optab, lambda_sq,
+			    log2_lsq, 1);
+  if (ctz_op != log2_lsq)
+    emit_move_insn (log2_lsq, ctz_op);
+
+  /* Perfect-square check: lambda is an integer iff log2(lambda^2) is
+     even.  lambda_sq is always a power of 2 (VLEN is a power of 2 and
+     we right-shifted by a constant), so checking log2(lambda_sq) & 1
+     == 0 is sufficient.  If lambda_sq is not a perfect square (e.g.
+     VLEN=128, SEW=32, MUL_C=2 gives lambda_sq=2), the arithmetic
+     `log2_lsq >> 1` below would silently truncate to a smaller valid
+     lambda whose MUL_C does NOT match the accumulator type.  The WARL
+     probe would then pass for the wrong geometry.  Trap here instead.
+     */
+  rtx log_parity = expand_simple_binop (xmode, AND, log2_lsq,
+					const1_rtx, NULL_RTX,
+					1, OPTAB_DIRECT);
+  rtx sq_ok_label = gen_label_rtx ();
+  emit_cmp_and_jump_insns (log_parity, const0_rtx, EQ, NULL_RTX,
+			   xmode, 1, sq_ok_label);
+  emit_insn (gen_trap ());
+  /* A barrier tells the CFG builder the trap does not fall through;
+     without it later passes (e.g. bbro) complain "flow control insn
+     inside a basic block" when the trap is merged with surrounding
+     code.  */
+  emit_barrier ();
+  emit_label (sq_ok_label);
+
+  /* log2_lambda = log2_lambda_sq >> 1.  */
+  rtx log2_lambda = expand_simple_binop (xmode, LSHIFTRT, log2_lsq,
+					 GEN_INT (1), NULL_RTX,
+					 1, OPTAB_DIRECT);
+
+  /* lambda_enc = log2_lambda + 1 (3-bit encoding).  */
+  rtx lambda_enc = expand_simple_binop (xmode, PLUS, log2_lambda,
+					const1_rtx, NULL_RTX,
+					0, OPTAB_DIRECT);
 
   /* shifted_enc = lambda_enc << (xlen - 4).  */
   rtx shifted_enc = expand_simple_binop (xmode, ASHIFT, lambda_enc,
@@ -6677,17 +6666,12 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 				    shifted_enc, NULL_RTX,
 				    1, OPTAB_DIRECT);
 
-  riscv_ime_insert_vtype (static_val, full_vtype);
-
-  /* WARL probe: emit a "test write" of vtype, read it back, compare
-     the lambda field, trap on mismatch.  Done once per static-bits
-     tuple -- subsequent consumers with the same tuple reuse the
-     cached full_vtype and skip the probe (lambda support is
-     hardware-invariant within a function).  Use the fixed
-     RISCV_PROLOGUE_TEMP_REGNUM for dest_vl (see the cache-hit
-     comment for why a fresh pseudo would be unsafe).  */
+  /* WARL probe: a "test write" of vtype, read-back, compare the
+     lambda field, trap on mismatch.  AVL is `const0_rtx' because
+     the actual VL value does not affect the WARL verify (which
+     only inspects vtype CSR's lambda field after the test-write).  */
   rtx probe_vl = gen_rtx_REG (xmode, RISCV_PROLOGUE_TEMP_REGNUM);
-  emit_insn (gen_vsetvl_ime_reg (xmode, probe_vl, avl, full_vtype));
+  emit_insn (gen_vsetvl_ime_reg (xmode, probe_vl, const0_rtx, full_vtype));
 
   rtx vtype_rb = gen_reg_rtx (xmode);
   emit_insn (gen_read_vtype (xmode, vtype_rb));
@@ -6705,21 +6689,31 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   emit_cmp_and_jump_insns (lambda_got, lambda_enc, EQ, NULL_RTX,
 			   xmode, 1, ok_label);
   emit_insn (gen_trap ());
-  /* A barrier tells the CFG builder the trap does not fall through;
-     without it later passes (e.g. bbro) complain "flow control insn
-     inside a basic block" when the trap is merged with surrounding
-     code.  */
   emit_barrier ();
   emit_label (ok_label);
 
-  /* Liveness-anchoring emit (also for cache miss): same rationale as
-     the cache-hit branch above.  Emit a `vsetvl_ime_reg' reading the
-     cached pseudo right before the consumer so RA sees the use and
-     keeps the pseudo's hard reg alive through the whole function;
-     otherwise the vsetvl pass's later post-reload emission of the
-     same insn would reference a stale hard reg.  */
-  rtx anchor_vl = gen_rtx_REG (xmode, RISCV_PROLOGUE_TEMP_REGNUM);
-  emit_insn (gen_vsetvl_ime_reg (xmode, anchor_vl, avl, full_vtype));
+  rtx_insn *seq = end_sequence ();
+
+  /* Splice the captured sequence into the function's entry block so
+     `full_vtype' dominates every IME consumer.  */
+  push_topmost_sequence ();
+  emit_insn_after (seq, entry_of_function ());
+  pop_topmost_sequence ();
+
+  riscv_ime_insert_vtype (static_val, full_vtype);
+
+  /* In-place per-consumer emit: vsetvl_ime_reg right before the
+     consumer, reading the cached pseudo.  The cached pseudo's def
+     is at function entry (above), so it dominates here.
+
+     `dest_vl' uses the fixed RISCV_PROLOGUE_TEMP_REGNUM (t0/x5)
+     instead of a fresh pseudo: a fresh pseudo could be coalesced by
+     the register allocator onto the same hard reg as `full_vtype'
+     (since dest_vl is dead after the insn), producing a destructive
+     `vsetvl rN, avl, rN' that overwrites `full_vtype' before the
+     vsetvl pass's later post-reload emit can read it.  */
+  rtx dest_vl = gen_rtx_REG (xmode, RISCV_PROLOGUE_TEMP_REGNUM);
+  emit_insn (gen_vsetvl_ime_reg (xmode, dest_vl, avl, full_vtype));
 }
 
 } // namespace riscv_vector
