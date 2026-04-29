@@ -220,29 +220,6 @@ struct GTY(())  machine_function {
 
   /* The mode switching information for the FRM rounding modes.  */
   struct mode_switching_info mode_sw_info;
-
-  /* Lazily-built cache for the runtime-VLEN IME vtype setup.  All
-     fields are initialised to zero/nullptr by the GC machinery and
-     populated on first use by `emit_ime_runtime_vtype_setup ()'.
-
-     `ime_lambda_enc' holds the once-per-function 3-bit lambda
-     encoding pseudo (the result of csrr vlenb + ctz + shifts).
-
-     `ime_vtype_cache_keys' / `ime_vtype_cache_vals' /
-     `ime_vtype_cache_count' form a tiny linear-search cache mapping
-     the static-portion of the vtype encoding (every field except
-     lambda) to the pseudo holding the assembled full vtype value.
-     Two consumers with the same static-bits tuple share their
-     full-vtype pseudo, which lets the vsetvl-pass-end dedup walk
-     recognise back-to-back `vsetvl_ime_reg's reading the same pseudo
-     and remove the redundant ones.  Eight slots is enough for any
-     reasonable IME usage pattern (one per (sew, mul_c, vlmul,
-     altfmt_*, bs) tuple in a function).  */
-#define RISCV_IME_VTYPE_CACHE_SIZE 8
-  rtx ime_lambda_enc;
-  HOST_WIDE_INT ime_vtype_cache_keys[RISCV_IME_VTYPE_CACHE_SIZE];
-  rtx ime_vtype_cache_vals[RISCV_IME_VTYPE_CACHE_SIZE];
-  int ime_vtype_cache_count;
 };
 
 /* Information about a single argument.  */
@@ -12213,42 +12190,6 @@ static struct machine_function *
 riscv_init_machine_status (void)
 {
   return ggc_cleared_alloc<machine_function> ();
-}
-
-/* IME runtime-vtype cache accessors -- defined here because the
-   machine_function definition is local to this file.  Called from
-   emit_ime_runtime_vtype_setup () in riscv-v.cc.  */
-
-rtx
-riscv_ime_get_lambda_enc (void)
-{
-  return cfun->machine->ime_lambda_enc;
-}
-
-void
-riscv_ime_set_lambda_enc (rtx pseudo)
-{
-  cfun->machine->ime_lambda_enc = pseudo;
-}
-
-rtx
-riscv_ime_lookup_vtype (HOST_WIDE_INT key)
-{
-  for (int i = 0; i < cfun->machine->ime_vtype_cache_count; i++)
-    if (cfun->machine->ime_vtype_cache_keys[i] == key)
-      return cfun->machine->ime_vtype_cache_vals[i];
-  return NULL_RTX;
-}
-
-void
-riscv_ime_insert_vtype (HOST_WIDE_INT key, rtx full_vtype)
-{
-  int n = cfun->machine->ime_vtype_cache_count;
-  if (n >= RISCV_IME_VTYPE_CACHE_SIZE)
-    return;
-  cfun->machine->ime_vtype_cache_keys[n] = key;
-  cfun->machine->ime_vtype_cache_vals[n] = full_vtype;
-  cfun->machine->ime_vtype_cache_count = n + 1;
 }
 
 /* Return the VLEN value associated with -march and -mrvv-vector-bits.
