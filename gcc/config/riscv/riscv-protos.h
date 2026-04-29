@@ -107,6 +107,8 @@ struct riscv_address_info {
 /* Per-function cache helpers for the runtime-VLEN IME vtype setup.
    Defined in riscv.cc because they touch struct machine_function;
    used from riscv-v.cc's emit_ime_runtime_vtype_setup.  */
+extern rtx riscv_ime_get_lambda_enc (void);
+extern void riscv_ime_set_lambda_enc (rtx);
 extern rtx riscv_ime_lookup_vtype (HOST_WIDE_INT);
 extern void riscv_ime_insert_vtype (HOST_WIDE_INT, rtx);
 
