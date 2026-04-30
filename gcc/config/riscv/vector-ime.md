@@ -358,6 +358,8 @@
    (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")])
 
 ;; Int iterator for vfqwmmacc OFP8 variants (E4M3 and E5M2 -> FP32).
+;; Acc is FP32 which has no altfmt freedom; the third token of the
+;; ime_fp_altfmt encoding is therefore always e4m3 (= 0).
 (define_int_iterator VFQWMMACC_OFP8
   [UNSPEC_VFQWMMACC_F8E4M3 UNSPEC_VFQWMMACC_F8E5M2])
 
@@ -365,13 +367,22 @@
   [(UNSPEC_VFQWMMACC_F8E4M3 "_f8e4m3")
    (UNSPEC_VFQWMMACC_F8E5M2 "_f8e5m2")])
 
+(define_int_attr vfqwmmacc_ofp8_altfmt
+  [(UNSPEC_VFQWMMACC_F8E4M3 "e4m3_e4m3_e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2 "e5m2_e5m2_e4m3")])
+
 ;; Int iterator for vf8wmmacc OFP8 variants (E4M3 and E5M2 -> FP64).
+;; Acc is FP64 (no altfmt freedom); same third-token convention.
 (define_int_iterator VF8WMMACC_OFP8
   [UNSPEC_VF8WMMACC_F8E4M3 UNSPEC_VF8WMMACC_F8E5M2])
 
 (define_int_attr vf8wmmacc_ofp8_name
   [(UNSPEC_VF8WMMACC_F8E4M3 "_f8e4m3")
    (UNSPEC_VF8WMMACC_F8E5M2 "_f8e5m2")])
+
+(define_int_attr vf8wmmacc_ofp8_altfmt
+  [(UNSPEC_VF8WMMACC_F8E4M3 "e4m3_e4m3_e4m3")
+   (UNSPEC_VF8WMMACC_F8E5M2 "e5m2_e5m2_e4m3")])
 
 ;; Element modes at LMUL >= 1 for the tile load/store patterns.  The
 ;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not
@@ -1569,6 +1580,7 @@
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<vfqwmmacc_ofp8_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 
@@ -1598,6 +1610,7 @@
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<vf8wmmacc_ofp8_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 
