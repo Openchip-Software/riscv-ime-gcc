@@ -6602,8 +6602,12 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 					1, OPTAB_DIRECT);
 
   /* Emit register-form vsetvl: vsetvl rd, avl, full_vtype.
-     This sets VL_REGNUM and VTYPE_REGNUM as side effects.  */
+     This sets VL_REGNUM and VTYPE_REGNUM as side effects.  Force AVL
+     into a register since the pattern only accepts a Pmode register or
+     const0 -- at -O0 the caller may hand us a stack mem.  */
   rtx new_vl = gen_reg_rtx (xmode);
+  if (avl != const0_rtx && !REG_P (avl))
+    avl = force_reg (xmode, avl);
   emit_insn (gen_vsetvl_ime_reg (xmode, new_vl, avl, full_vtype));
 
   /* WARL verification: read back vtype, extract the lambda field, and
