@@ -3006,6 +3006,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3065,6 +3066,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3130,6 +3132,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3196,6 +3199,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3226,6 +3230,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3245,6 +3250,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3264,6 +3270,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3284,6 +3291,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3303,6 +3311,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
@@ -3323,6 +3332,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
   /* OFP8 E4M3 and E5M2 share RVVM1QI mode; the overloaded-dispatch
      hash cannot distinguish them, so disable overloading.  */
   bool can_be_overloaded_p (enum predication_type_index) const override
@@ -3352,6 +3362,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
   bool can_be_overloaded_p (enum predication_type_index) const override
   { return false; }
 
@@ -3377,6 +3388,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
   bool can_be_overloaded_p (enum predication_type_index) const override
   { return false; }
 
@@ -3431,6 +3443,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
   bool can_be_overloaded_p (enum predication_type_index) const override
   { return false; }
 
@@ -3598,6 +3611,7 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   bool can_be_overloaded_p (enum predication_type_index pred) const override
   {
@@ -3634,6 +3648,7 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   bool can_be_overloaded_p (enum predication_type_index pred) const override
   {
@@ -3672,6 +3687,7 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   unsigned int call_properties (const function_instance &) const override
   {
@@ -3710,6 +3726,7 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   bool can_be_overloaded_p (enum predication_type_index pred) const override
   {
@@ -3748,6 +3765,7 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   unsigned int call_properties (const function_instance &) const override
   {
@@ -3787,6 +3805,7 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   unsigned int call_properties (const function_instance &) const override
   {
@@ -3819,6 +3838,7 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   bool can_be_overloaded_p (enum predication_type_index pred) const override
   {
@@ -3851,6 +3871,7 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   unsigned int call_properties (const function_instance &) const override
   {
