@@ -6630,6 +6630,14 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
      code.  */
   emit_barrier ();
   emit_label (ok_label);
+
+  /* Stash the full_vtype rtx so the caller's `use_exact_insn' can
+     thread it into the consumer's hidden `vtype source' operand.
+     The vsetvl pass later reads that operand to re-anchor IME vtype
+     right before the consumer if the pass itself inserted a non-IME
+     `vsetvldi' (e.g. for a caller-save vector spill) between this
+     setup and the consumer.  */
+  riscv_ime_set_last_full_vtype (full_vtype);
 }
 
 } // namespace riscv_vector

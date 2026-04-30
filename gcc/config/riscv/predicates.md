@@ -635,6 +635,16 @@
   (ior (match_operand 0 "const_0_operand")
        (match_operand 0 "pmode_register_operand")))
 
+;; Predicate for the hidden vtype-source operand on IME consumer
+;; patterns.  Accepts a Pmode register (the runtime-VLEN full_vtype
+;; pseudo) or const0_rtx (the placeholder used on the static-VLEN
+;; path, where the vsetvl pass synthesises a const vtype via
+;; `vsetvl_ime' rather than reading this operand).  See
+;; `ime_vtype_op_idx' in vector-ime.md.
+(define_special_predicate "vtype_op_operand"
+  (ior (match_operand 0 "const_0_operand")
+       (match_operand 0 "pmode_register_operand")))
+
 ;; [1, 2, 4, 8] means strided load/store with stride == element width
 (define_special_predicate "vector_eew8_stride_operand"
   (ior (match_operand 0 "pmode_register_operand")
