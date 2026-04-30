@@ -79,10 +79,14 @@
   UNSPEC_VFWMMACC_F32			;; vfwmmacc.vv (W=2, FP32->FP64)
   UNSPEC_VFQWMMACC_F16			;; vfqwmmacc.vv (W=4, FP16->FP64)
   UNSPEC_VFQWMMACC_BF16		;; vfqwmmacc.vv (W=4, BF16->FP64)
-  UNSPEC_VFQWMMACC_F8E4M3		;; vfqwmmacc.vv (W=4, OFP8_E4M3->FP32)
-  UNSPEC_VFQWMMACC_F8E5M2		;; vfqwmmacc.vv (W=4, OFP8_E5M2->FP32)
-  UNSPEC_VF8WMMACC_F8E4M3		;; vf8wmmacc.vv (W=8, OFP8_E4M3->FP64)
-  UNSPEC_VF8WMMACC_F8E5M2		;; vf8wmmacc.vv (W=8, OFP8_E5M2->FP64)
+  UNSPEC_VFQWMMACC_F8E4M3		;; vfqwmmacc.vv (W=4, vs1=E4M3, vs2=E4M3 -> FP32)
+  UNSPEC_VFQWMMACC_F8E5M2		;; vfqwmmacc.vv (W=4, vs1=E5M2, vs2=E5M2 -> FP32)
+  UNSPEC_VFQWMMACC_F8E4M3_E5M2	;; vfqwmmacc.vv (W=4, vs1=E4M3, vs2=E5M2 -> FP32)
+  UNSPEC_VFQWMMACC_F8E5M2_E4M3	;; vfqwmmacc.vv (W=4, vs1=E5M2, vs2=E4M3 -> FP32)
+  UNSPEC_VF8WMMACC_F8E4M3		;; vf8wmmacc.vv (W=8, vs1=E4M3, vs2=E4M3 -> FP64)
+  UNSPEC_VF8WMMACC_F8E5M2		;; vf8wmmacc.vv (W=8, vs1=E5M2, vs2=E5M2 -> FP64)
+  UNSPEC_VF8WMMACC_F8E4M3_E5M2	;; vf8wmmacc.vv (W=8, vs1=E4M3, vs2=E5M2 -> FP64)
+  UNSPEC_VF8WMMACC_F8E5M2_E4M3	;; vf8wmmacc.vv (W=8, vs1=E5M2, vs2=E4M3 -> FP64)
   UNSPEC_VF8WMMACC_F4E2M1		;; vf8wmmacc.vv (W=8, OFP4_E2M1->FP32)
 
   ;; Microscaled (§8) FP-input scaled variants: same mnemonic as §7 but
@@ -357,32 +361,60 @@
   [(RVVM1DF "TARGET_VECTOR_ELEN_64") (RVVM2DF "TARGET_VECTOR_ELEN_64")
    (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")])
 
-;; Int iterator for vfqwmmacc OFP8 variants (E4M3 and E5M2 -> FP32).
-;; Acc is FP32 which has no altfmt freedom; the third token of the
-;; ime_fp_altfmt encoding is therefore always e4m3 (= 0).
+;; Int iterator for vfqwmmacc OFP8 variants (E4M3/E5M2 vs1 x E4M3/E5M2
+;; vs2 -> FP32).  Acc is FP32 which has no altfmt freedom; the third
+;; token of the ime_fp_altfmt encoding is therefore always e4m3 (= 0).
+;; Four entries cover the 2x2 cross-product of input formats.
 (define_int_iterator VFQWMMACC_OFP8
-  [UNSPEC_VFQWMMACC_F8E4M3 UNSPEC_VFQWMMACC_F8E5M2])
+  [UNSPEC_VFQWMMACC_F8E4M3 UNSPEC_VFQWMMACC_F8E5M2
+   UNSPEC_VFQWMMACC_F8E4M3_E5M2 UNSPEC_VFQWMMACC_F8E5M2_E4M3])
 
 (define_int_attr vfqwmmacc_ofp8_name
-  [(UNSPEC_VFQWMMACC_F8E4M3 "_f8e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2 "_f8e5m2")])
+  [(UNSPEC_VFQWMMACC_F8E4M3      "_f8e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2      "_f8e5m2")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "_f8e4m3_f8e5m2")
+   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "_f8e5m2_f8e4m3")])
 
 (define_int_attr vfqwmmacc_ofp8_altfmt
-  [(UNSPEC_VFQWMMACC_F8E4M3 "e4m3_e4m3_e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2 "e5m2_e5m2_e4m3")])
+  [(UNSPEC_VFQWMMACC_F8E4M3      "e4m3_e4m3_e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2      "e5m2_e5m2_e4m3")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")])
 
-;; Int iterator for vf8wmmacc OFP8 variants (E4M3 and E5M2 -> FP64).
-;; Acc is FP64 (no altfmt freedom); same third-token convention.
+;; The vs1 / vs2 input modes vary per variant; map the UNSPEC to the
+;; element format of each input so the pattern can pick the right
+;; match_operand inner mode.  Both inputs share RVVM*QI at the GCC
+;; level (OFP8 storage is QImode); the ime_fp_altfmt attribute is the
+;; only thing telling them apart at the vsetvl pass.
+(define_int_attr vfqwmmacc_ofp8_vs1
+  [(UNSPEC_VFQWMMACC_F8E4M3      "e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2      "e5m2")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "e5m2")])
+
+(define_int_attr vfqwmmacc_ofp8_vs2
+  [(UNSPEC_VFQWMMACC_F8E4M3      "e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2      "e5m2")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "e5m2")
+   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "e4m3")])
+
+;; Int iterator for vf8wmmacc OFP8 variants (W=8, FP64 acc).  Same
+;; 2x2 input cross-product as vfqwmmacc.
 (define_int_iterator VF8WMMACC_OFP8
-  [UNSPEC_VF8WMMACC_F8E4M3 UNSPEC_VF8WMMACC_F8E5M2])
+  [UNSPEC_VF8WMMACC_F8E4M3 UNSPEC_VF8WMMACC_F8E5M2
+   UNSPEC_VF8WMMACC_F8E4M3_E5M2 UNSPEC_VF8WMMACC_F8E5M2_E4M3])
 
 (define_int_attr vf8wmmacc_ofp8_name
-  [(UNSPEC_VF8WMMACC_F8E4M3 "_f8e4m3")
-   (UNSPEC_VF8WMMACC_F8E5M2 "_f8e5m2")])
+  [(UNSPEC_VF8WMMACC_F8E4M3      "_f8e4m3")
+   (UNSPEC_VF8WMMACC_F8E5M2      "_f8e5m2")
+   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "_f8e4m3_f8e5m2")
+   (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "_f8e5m2_f8e4m3")])
 
 (define_int_attr vf8wmmacc_ofp8_altfmt
-  [(UNSPEC_VF8WMMACC_F8E4M3 "e4m3_e4m3_e4m3")
-   (UNSPEC_VF8WMMACC_F8E5M2 "e5m2_e5m2_e4m3")])
+  [(UNSPEC_VF8WMMACC_F8E4M3      "e4m3_e4m3_e4m3")
+   (UNSPEC_VF8WMMACC_F8E5M2      "e5m2_e5m2_e4m3")
+   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
+   (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")])
 
 ;; Element modes at LMUL >= 1 for the tile load/store patterns.  The
 ;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not

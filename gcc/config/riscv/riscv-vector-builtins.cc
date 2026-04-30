@@ -1052,6 +1052,22 @@ static CONSTEXPR const rvv_arg_type_info ime_fwvss_f8e5m2_args[]
      rvv_arg_type_info (RVV_BASE_ime_f8e5m2_lmul1_vector),
      rvv_arg_type_info_end};
 
+/* Mixed-input OFP8 args: vs1 / vs2 select different OFP8 formats per
+   the IME spec.  Both register groups use RVVM*QI at the GCC level;
+   the C type system distinguishes E4M3 from E5M2 via the
+   ime_f8e{4m3,5m2}_lmul1_vector base types.  */
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_f8e4m3_f8e5m2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_f8e4m3_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_f8e5m2_lmul1_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_f8e5m2_f8e4m3_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_f8e5m2_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_ime_f8e4m3_lmul1_vector),
+     rvv_arg_type_info_end};
+
 static CONSTEXPR const rvv_arg_type_info ime_fwvss_f4e2m1_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_ime_f4e2m1_lmul1_vector),
@@ -4127,6 +4143,16 @@ static CONSTEXPR const rvv_op_info f32_ime_qwvss_f8e5m2_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
 
+/* vfqwmmacc_f8e4m3_f8e5m2: vs1=E4M3, vs2=E5M2 -> FP32 accumulator.  */
+static CONSTEXPR const rvv_op_info f32_ime_qwvss_f8e4m3_f8e5m2_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_f8e5m2_args};
+
+/* vfqwmmacc_f8e5m2_f8e4m3: vs1=E5M2, vs2=E4M3 -> FP32 accumulator.  */
+static CONSTEXPR const rvv_op_info f32_ime_qwvss_f8e5m2_f8e4m3_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_f8e4m3_args};
+
 /* vf8wmmacc_f8e4m3: OFP8_E4M3 -> FP64 accumulator.  */
 static CONSTEXPR const rvv_op_info f64_ime_8wvss_f8e4m3_ops
   = {f64_lmul_ge1_ops, OP_TYPE_vv,
@@ -4136,6 +4162,16 @@ static CONSTEXPR const rvv_op_info f64_ime_8wvss_f8e4m3_ops
 static CONSTEXPR const rvv_op_info f64_ime_8wvss_f8e5m2_ops
   = {f64_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
+
+/* vf8wmmacc_f8e4m3_f8e5m2: vs1=E4M3, vs2=E5M2 -> FP64 accumulator.  */
+static CONSTEXPR const rvv_op_info f64_ime_8wvss_f8e4m3_f8e5m2_ops
+  = {f64_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_f8e5m2_args};
+
+/* vf8wmmacc_f8e5m2_f8e4m3: vs1=E5M2, vs2=E4M3 -> FP64 accumulator.  */
+static CONSTEXPR const rvv_op_info f64_ime_8wvss_f8e5m2_f8e4m3_ops
+  = {f64_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_f8e4m3_args};
 
 /* vf8wmmacc_f4e2m1: OFP4_E2M1 -> FP32 accumulator.  */
 static CONSTEXPR const rvv_op_info f32_ime_8wvss_f4e2m1_ops

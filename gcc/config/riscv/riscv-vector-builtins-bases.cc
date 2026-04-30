@@ -3722,6 +3722,10 @@ static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E4M3>
   vfqwmmacc_f8e4m3_obj;
 static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E5M2>
   vfqwmmacc_f8e5m2_obj;
+static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E4M3_E5M2>
+  vfqwmmacc_f8e4m3_f8e5m2_obj;
+static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E5M2_E4M3>
+  vfqwmmacc_f8e5m2_f8e4m3_obj;
 
 /* Zvvfmm FP matrix multiply-accumulate, W=8 (vf8wmmacc.vv).  */
 template<int UNSPEC>
@@ -3750,6 +3754,10 @@ static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E4M3>
   vf8wmmacc_f8e4m3_obj;
 static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E5M2>
   vf8wmmacc_f8e5m2_obj;
+static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E4M3_E5M2>
+  vf8wmmacc_f8e4m3_f8e5m2_obj;
+static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E5M2_E4M3>
+  vf8wmmacc_f8e5m2_f8e4m3_obj;
 
 class vf8wmmacc_f4e2m1_ime_op : public function_base
 {
@@ -4673,8 +4681,12 @@ BASE (vfqwmmacc_f16)
 BASE (vfqwmmacc_bf16)
 BASE (vfqwmmacc_f8e4m3)
 BASE (vfqwmmacc_f8e5m2)
+BASE (vfqwmmacc_f8e4m3_f8e5m2)
+BASE (vfqwmmacc_f8e5m2_f8e4m3)
 BASE (vf8wmmacc_f8e4m3)
 BASE (vf8wmmacc_f8e5m2)
+BASE (vf8wmmacc_f8e4m3_f8e5m2)
+BASE (vf8wmmacc_f8e5m2_f8e4m3)
 BASE (vf8wmmacc_f4e2m1)
 /* Microscaled (section 8) FP-input scaled variants */
 BASE (vfwmmacc_scaled_f16_bs32)

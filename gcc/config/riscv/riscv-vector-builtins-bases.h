@@ -429,8 +429,12 @@ extern const function_base *const vfqwmmacc_f16;
 extern const function_base *const vfqwmmacc_bf16;
 extern const function_base *const vfqwmmacc_f8e4m3;
 extern const function_base *const vfqwmmacc_f8e5m2;
+extern const function_base *const vfqwmmacc_f8e4m3_f8e5m2;
+extern const function_base *const vfqwmmacc_f8e5m2_f8e4m3;
 extern const function_base *const vf8wmmacc_f8e4m3;
 extern const function_base *const vf8wmmacc_f8e5m2;
+extern const function_base *const vf8wmmacc_f8e4m3_f8e5m2;
+extern const function_base *const vf8wmmacc_f8e5m2_f8e4m3;
 extern const function_base *const vf8wmmacc_f4e2m1;
 /* Microscaled (section 8) FP-input scaled variants */
 extern const function_base *const vfwmmacc_scaled_f16_bs32;
