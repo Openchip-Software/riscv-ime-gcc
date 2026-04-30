@@ -220,6 +220,18 @@ struct GTY(())  machine_function {
 
   /* The mode switching information for the FRM rounding modes.  */
   struct mode_switching_info mode_sw_info;
+
+  /* The runtime-VLEN IME-vtype source rtx for the most recent IME
+     consumer expansion.  Set by `emit_ime_runtime_vtype_setup' (in
+     riscv-v.cc) at the end of each per-consumer WARL probe; read by
+     `function_expander::use_exact_insn' (in riscv-vector-builtins.cc)
+     when populating the consumer's hidden vtype-source operand.  Set
+     to `const0_rtx' for the static-VLEN path so the consumer pattern
+     still has a valid placeholder operand.  Reset to NULL_RTX after
+     each consumer expansion; used to thread the runtime full_vtype
+     pseudo from the expander into the consumer insn so the vsetvl
+     pass can re-anchor IME vtype after spill-induced clobbers.  */
+  rtx ime_last_full_vtype;
 };
 
 /* Information about a single argument.  */
@@ -12190,6 +12202,22 @@ static struct machine_function *
 riscv_init_machine_status (void)
 {
   return ggc_cleared_alloc<machine_function> ();
+}
+
+/* IME runtime-vtype thread accessors -- defined here because
+   `machine_function' is local to this file.  See the field comment
+   for the protocol.  */
+
+rtx
+riscv_ime_get_last_full_vtype (void)
+{
+  return cfun->machine->ime_last_full_vtype;
+}
+
+void
+riscv_ime_set_last_full_vtype (rtx pseudo)
+{
+  cfun->machine->ime_last_full_vtype = pseudo;
 }
 
 /* Return the VLEN value associated with -march and -mrvv-vector-bits.

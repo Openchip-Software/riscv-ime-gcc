@@ -6326,6 +6326,20 @@ function_expander::use_exact_insn (insn_code icode)
       && opno < insn_data[icode].n_generator_args)
     add_input_operand (Pmode, gen_int_mode (riscv_vector::FRM_DYN, Pmode));
 
+  /* IME consumer patterns carry a hidden Pmode `vtype source' operand
+     so the vsetvl pass can re-anchor IME vtype right before each
+     consumer (after spill-induced clobbers).  The runtime path
+     stashed the full_vtype rtx during `emit_ime_runtime_vtype_setup';
+     for the static-VLEN path no stash exists and we pass `const0_rtx'
+     as a placeholder (the pass synthesises its own const vtype via
+     `vsetvl_ime' rather than reading this operand).  */
+  if (base->apply_ime_vtype_op_p ())
+    {
+      rtx fvX = riscv_ime_get_last_full_vtype ();
+      add_input_operand (Pmode, fvX ? fvX : const0_rtx);
+      riscv_ime_set_last_full_vtype (NULL_RTX);
+    }
+
   return generate_insn (icode);
 }
 
@@ -6413,6 +6427,16 @@ function_expander::use_contiguous_load_insn (insn_code icode)
 
   if (opno != insn_data[icode].n_generator_args)
     add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
+
+  /* IME tile-load consumer patterns carry a hidden Pmode `vtype source'
+     operand (see `use_exact_insn' for the full rationale).  */
+  if (base->apply_ime_vtype_op_p ())
+    {
+      rtx fvX = riscv_ime_get_last_full_vtype ();
+      add_input_operand (Pmode, fvX ? fvX : const0_rtx);
+      riscv_ime_set_last_full_vtype (NULL_RTX);
+    }
+
   return generate_insn (icode);
 }
 
@@ -6487,6 +6511,16 @@ function_expander::use_contiguous_store_insn (insn_code icode)
     add_input_operand (argno);
 
   add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
+
+  /* IME tile-store consumer patterns carry a hidden Pmode `vtype source'
+     operand (see `use_exact_insn' for the full rationale).  */
+  if (base->apply_ime_vtype_op_p ())
+    {
+      rtx fvX = riscv_ime_get_last_full_vtype ();
+      add_input_operand (Pmode, fvX ? fvX : const0_rtx);
+      riscv_ime_set_last_full_vtype (NULL_RTX);
+    }
+
   return generate_insn (icode);
 }
 

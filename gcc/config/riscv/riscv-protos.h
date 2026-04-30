@@ -103,6 +103,12 @@ struct riscv_address_info {
 };
 
 /* Routines implemented in riscv.cc.  */
+
+/* Runtime-VLEN IME-vtype thread.  See `machine_function::ime_last_full_vtype'
+   in riscv.cc for the protocol.  */
+extern rtx riscv_ime_get_last_full_vtype (void);
+extern void riscv_ime_set_last_full_vtype (rtx);
+
 extern const char *riscv_asm_output_opcode (FILE *asm_out_file, const char *p);
 extern enum riscv_symbol_type riscv_classify_symbolic_expression (rtx);
 extern bool riscv_symbolic_constant_p (rtx, enum riscv_symbol_type *);
