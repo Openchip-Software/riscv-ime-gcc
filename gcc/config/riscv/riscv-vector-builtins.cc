@@ -6373,6 +6373,15 @@ function_expander::use_microscaled_insn (insn_code icode, int scales_argno)
   add_input_operand (Pmode, get_tail_policy_for_pred (pred));
   add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
 
+  /* IME microscaled consumer patterns carry the hidden vtype-source
+     operand at the same trailing position as the non-scaled variants.  */
+  if (base->apply_ime_vtype_op_p ())
+    {
+      rtx fvX = riscv_ime_get_last_full_vtype ();
+      add_input_operand (Pmode, fvX ? fvX : const0_rtx);
+      riscv_ime_set_last_full_vtype (NULL_RTX);
+    }
+
   return generate_insn (icode);
 }
 
