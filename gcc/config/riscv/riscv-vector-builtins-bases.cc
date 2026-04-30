@@ -3194,19 +3194,39 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
      surrounding function's mmacc geometry and adopt its MUL_C if found
      and the SEW matches.  */
   int mul_c;
+  /* For tile_imm_lambda the instruction encodes its own lambda and
+     vtype.lambda is don't-care for the operation.  But there are two
+     distinct cases at the call site:
+
+     a. The function also contains an mmacc whose vtype.lambda must be
+	preserved.  Use the mmacc's MUL_C and let the runtime probe
+	derive the same lambda the mmacc would (-> static_lambda_log2
+	stays -1, full probe runs).
+
+     b. No surrounding mmacc.  vtype.lambda just needs a hardware-
+	valid value.  Picking it from VLEN/(SEW*data_LMUL) at runtime
+	can yield a non-power-of-2 lambda^2 (e.g. VLEN=128, SEW=8,
+	LMUL=2 gives lambda^2=8) and trap on the perfect-square check
+	even though the consumer doesn't care.  Hardcode lambda=1
+	(always supported, smallest valid encoding) and skip the probe
+	entirely (-> static_lambda_log2 = 0).
+
+     For the non-imm tile path we follow the existing mmacc-inheritance
+     logic.  */
+  int static_lambda_log2 = -1;
   if (tile_imm_lambda)
     {
-      /* _L{N} tile variants: the operation's lambda is fixed by the
-	 instruction encoding; vtype.lambda is unused but vsetvl still
-	 requires a valid (VLEN, SEW, MUL_C).  Use the operation's own
-	 data LMUL so the vtype always lands on a valid lambda.  */
-      switch (acc_vlmul)
+      ime_function_geometry geo = find_function_ime_geometry ();
+      if (geo.mul_c != 0 && geo.sew_bits == sew_bits)
 	{
-	case LMUL_1: mul_c = 1; break;
-	case LMUL_2: mul_c = 2; break;
-	case LMUL_4: mul_c = 4; break;
-	case LMUL_8: mul_c = 8; break;
-	default: gcc_unreachable ();
+	  /* Case (a): inherit the surrounding mmacc's geometry.  */
+	  mul_c = geo.mul_c;
+	}
+      else
+	{
+	  /* Case (b): no constraint, pick lambda=1 statically.  */
+	  mul_c = 1;
+	  static_lambda_log2 = 0;
 	}
     }
   else if (is_tile_op)
@@ -3279,7 +3299,7 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 				altfmt_a, altfmt_b,
 				altfmt_val, bs_val,
 				/* ta = */ true, /* ma = */ true,
-				avl);
+				avl, static_lambda_log2);
 }
 
 /* IME vector integer matrix multiply-accumulate (W=1).  Expands to
