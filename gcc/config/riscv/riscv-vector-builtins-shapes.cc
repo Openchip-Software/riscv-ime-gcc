@@ -1530,7 +1530,7 @@ struct ime_mmacc_def : public build_base
      prefix.  */
   static constexpr const char *fp_format_tokens[] = {
     "_f8e4m3", "_f8e5m2", "_f4e2m1",
-    "_bf16", "_f16", "_f32",
+    "_bf16", "_f16", "_fp16", "_f32",
     "_i8",
     nullptr
   };
@@ -1618,17 +1618,34 @@ struct ime_mmacc_def : public build_base
 	/* FP/integer format token: "_f16", "_bf16", "_f32", "_f8e4m3",
 	   "_i8", etc.  These are stripped from the user-visible base
 	   name; the input type suffix is emitted separately by
-	   get_name().  */
-	for (const char *const *fp = fp_format_tokens; *fp; ++fp)
+	   get_name().
+
+	   Mixed-input variants (e.g. "vfqwmmacc_f8e4m3_f8e5m2") encode
+	   the vs1 / vs2 formats as two consecutive trailing tokens.
+	   Strip them iteratively so the base name keeps its mnemonic
+	   only.  get_name() re-emits each input suffix from
+	   args[1] / args[2].  */
+	bool stripped_any = false;
+	while (ilen > 0)
 	  {
-	    size_t tlen = strlen (*fp);
-	    if (ilen > tlen
-		&& memcmp (internal + ilen - tlen, *fp, tlen) == 0)
+	    bool stripped = false;
+	    for (const char *const *fp = fp_format_tokens; *fp; ++fp)
 	      {
-		base_len = ilen - tlen;
-		break;
+		size_t tlen = strlen (*fp);
+		if (ilen > tlen
+		    && memcmp (internal + ilen - tlen, *fp, tlen) == 0)
+		  {
+		    ilen -= tlen;
+		    stripped = true;
+		    stripped_any = true;
+		    break;
+		  }
 	      }
+	    if (!stripped)
+	      break;
 	  }
+	if (stripped_any)
+	  base_len = ilen;
       }
 
     gcc_assert (base_len + 1 <= base_buf_sz);
@@ -1744,37 +1761,45 @@ struct ime_mmacc_def : public build_base
 
 	/* For FP widening variants, append the input type suffix.
 	   The input base type tells us which fixed-type LMUL=1 vector
-	   is used; map it to the corresponding type suffix string.  */
-	{
-	  rvv_base_type vs1_bt = instance.op_info->args[1].base_type;
-	  switch (vs1_bt)
-	    {
-	    case RVV_BASE_ime_fp16_lmul1_vector:
-	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m1_t].vector);
-	      break;
-	    case RVV_BASE_ime_bf16_lmul1_vector:
-	      b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m1_t].vector);
-	      break;
-	    case RVV_BASE_ime_fp32_lmul1_vector:
-	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m1_t].vector);
-	      break;
-	    case RVV_BASE_ime_f8e4m3_lmul1_vector:
-	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m1_t].vector);
-	      break;
-	    case RVV_BASE_ime_f8e5m2_lmul1_vector:
-	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m1_t].vector);
-	      break;
-	    case RVV_BASE_ime_f4e2m1_lmul1_vector:
-	      b.append_name (type_suffixes[VECTOR_TYPE_vfloat4e2m1m1_t].vector);
-	      break;
-	    case RVV_BASE_ime_i8_lmul1_vector:
-	      b.append_name (type_suffixes[VECTOR_TYPE_vint8m1_t].vector);
-	      break;
-	    default:
-	      /* Integer / same-format FP: no input suffix needed.  */
-	      break;
-	    }
-	}
+	   is used; map it to the corresponding type suffix string.
+
+	   For mixed-input variants (vs1 and vs2 different formats), also
+	   append the vs2 suffix.  Same-format and integer cases keep just
+	   the single vs1 suffix (or none for integer).  */
+	auto append_input_suffix = [&] (rvv_base_type bt) -> bool
+	  {
+	    switch (bt)
+	      {
+	      case RVV_BASE_ime_fp16_lmul1_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m1_t].vector);
+		return true;
+	      case RVV_BASE_ime_bf16_lmul1_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m1_t].vector);
+		return true;
+	      case RVV_BASE_ime_fp32_lmul1_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m1_t].vector);
+		return true;
+	      case RVV_BASE_ime_f8e4m3_lmul1_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m1_t].vector);
+		return true;
+	      case RVV_BASE_ime_f8e5m2_lmul1_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m1_t].vector);
+		return true;
+	      case RVV_BASE_ime_f4e2m1_lmul1_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat4e2m1m1_t].vector);
+		return true;
+	      case RVV_BASE_ime_i8_lmul1_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vint8m1_t].vector);
+		return true;
+	      default:
+		return false;
+	      }
+	  };
+	rvv_base_type vs1_bt = instance.op_info->args[1].base_type;
+	rvv_base_type vs2_bt = instance.op_info->args[2].base_type;
+	bool emitted_vs1 = append_input_suffix (vs1_bt);
+	if (emitted_vs1 && vs1_bt != vs2_bt)
+	  append_input_suffix (vs2_bt);
 
 	/* Mixed-sign token ("_su" / "_us").  */
 	if (*sign_suffix)
