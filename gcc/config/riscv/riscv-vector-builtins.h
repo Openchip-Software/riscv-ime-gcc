@@ -1015,6 +1015,14 @@ public:
   /* Return true if intrinsics maybe require frm operand.  */
   virtual bool may_require_frm_p () const;
 
+  /* Return true if the consumer pattern carries a hidden vtype-source
+     operand for the runtime-VLEN IME path.  When true,
+     `function_expander::use_exact_insn' threads the rtx stashed in
+     `cfun->machine->ime_last_full_vtype' (set by
+     `emit_ime_runtime_vtype_setup') as that operand.  Default false
+     for non-IME intrinsics.  */
+  virtual bool apply_ime_vtype_op_p () const;
+
   /* Try to fold the given gimple call.  Return the new gimple statement
      on success, otherwise return null.  */
   virtual gimple *fold (gimple_folder &) const { return NULL; }
@@ -1276,6 +1284,13 @@ function_base::has_rounding_mode_operand_p () const
    not need frm operand.  */
 inline bool
 function_base::may_require_frm_p () const
+{
+  return false;
+}
+
+/* Default false: only IME consumer expanders override this.  */
+inline bool
+function_base::apply_ime_vtype_op_p () const
 {
   return false;
 }

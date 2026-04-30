@@ -2883,15 +2883,11 @@ private:
   void insert_ime_vsetvl_insn (enum emit_type emit_type,
 			       const vsetvl_info &info)
   {
-    rtx vtype_const = emit_ime_vtype_build (info);
-    if (vtype_const == NULL_RTX)
-      return;  /* sorry() already reported.  */
-
     rtx avl = info.get_avl ();
     if (!avl)
       avl = const0_rtx;
 
-    /* Pick a destination/scratch register for the vsetvl_ime insn.  The
+    /* Pick a destination/scratch register for the IME vsetvl insn.  The
        @vsetvl_ime pattern reuses its dest register as the scratch for
        the "li" that loads the vtype constant.  If the IME instruction
        we're setting up has its own VL destination (rare -- only for
@@ -2905,8 +2901,37 @@ private:
 		    ? info.get_vl ()
 		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
 
-    rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
     rtx_insn *rinsn = info.get_insn ()->rtl ();
+    rtx pat;
+    if (info.get_ime_req ().lambda_log2 == -1)
+      {
+	/* Runtime-VLEN path: read the consumer's hidden vtype-source
+	   operand (threaded through by the expander; see
+	   `apply_ime_vtype_op_p' / the `(use ...)' clause on each IME
+	   consumer pattern) and emit a register-form
+	   `vsetvl_ime_reg' that re-anchors IME vtype right before the
+	   consumer.  This works post-reload because the operand is
+	   tracked by RA: by the time we get here it has been
+	   substituted with the hard reg the allocator picked for the
+	   per-consumer full_vtype pseudo, and that hard reg is alive
+	   at the consumer (the `(use)' clause keeps it live across
+	   any spill code the pass may insert upstream).  */
+	extract_insn_cached (rinsn);
+	int idx = get_attr_ime_vtype_op_idx (rinsn);
+	if (idx == INVALID_ATTRIBUTE)
+	  return;  /* Pattern lacks the operand -- skip.  */
+	rtx fvX = recog_data.operand[idx];
+	if (!REG_P (fvX))
+	  return;  /* Static-VLEN placeholder or spilled -- skip.  */
+	pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX);
+      }
+    else
+      {
+	rtx vtype_const = emit_ime_vtype_build (info);
+	if (vtype_const == NULL_RTX)
+	  return;  /* sorry() already reported.  */
+	pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+      }
     rtx_insn *inserted = NULL;
 
     if (emit_type == EMIT_DIRECT)
@@ -4375,15 +4400,32 @@ pass_vsetvl::simple_vsetvl ()
 	      const auto &info = vsetvl_info (rinsn);
 	      if (info.ime_required_p ())
 		{
-		  rtx vtype_const = emit_ime_vtype_build (info);
-		  if (vtype_const == NULL_RTX)
-		    continue;  /* sorry() already reported.  */
 		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
 		  rtx dest_vl
 		    = info.has_vl ()
 			? info.get_vl ()
 			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-		  rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+		  rtx pat;
+		  if (info.get_ime_req ().lambda_log2 == -1)
+		    {
+		      /* Runtime path: see comment in
+			 `pre_vsetvl::insert_ime_vsetvl_insn'.  */
+		      extract_insn_cached (rinsn);
+		      int idx = get_attr_ime_vtype_op_idx (rinsn);
+		      if (idx == INVALID_ATTRIBUTE)
+			continue;
+		      rtx fvX = recog_data.operand[idx];
+		      if (!REG_P (fvX))
+			continue;
+		      pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX);
+		    }
+		  else
+		    {
+		      rtx vtype_const = emit_ime_vtype_build (info);
+		      if (vtype_const == NULL_RTX)
+			continue;  /* sorry() already reported.  */
+		      pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+		    }
 		  emit_insn_before (pat, rinsn);
 		  if (dump_file)
 		    fprintf (dump_file,

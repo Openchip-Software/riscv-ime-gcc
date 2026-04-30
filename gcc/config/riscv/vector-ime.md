@@ -127,6 +127,19 @@
 (define_attr "ime_bs" "none,bs16,bs32"
   (const_string "none"))
 
+;; Operand index of the hidden "vtype source" operand on IME consumer
+;; patterns.  Default INVALID_ATTRIBUTE (no such operand).  Otherwise
+;; this is the index of a `(use (match_operand:DI N "vtype_op_operand"))'
+;; clause in the pattern's parallel; the runtime-VLEN IME path
+;; threads the full_vtype rtx through this operand so the vsetvl
+;; pass can re-anchor IME vtype right before the consumer after
+;; spill-induced clobbers.  Static-VLEN consumers also carry this
+;; operand but with `const0_rtx' as a placeholder (the pass
+;; synthesises its own const vtype via `vsetvl_ime' for the static
+;; path rather than reading this operand).
+(define_attr "ime_vtype_op_idx" ""
+  (const_int INVALID_ATTRIBUTE))
+
 (define_int_iterator VMMACC_SU
   [UNSPEC_VMMACC_S UNSPEC_VMMACC_U UNSPEC_VMMACC_SU UNSPEC_VMMACC_US])
 
@@ -468,12 +481,14 @@
 	    [(match_operand:VI         1 "register_operand" "  0")
 	     (match_operand:<V_LMUL1>  2 "register_operand" " vr")
 	     (match_operand:<V_LMUL1>  3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))]
+	  (match_dup 1)))
+   (use (match_operand:DI 7 "vtype_op_operand" "rJ"))]
   "TARGET_ZVVMM"
   "vmmacc.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 
 ;; Source-LMUL mode_attrs for the W=1 mmacc _lm{N} variants.  Each maps
@@ -537,12 +552,14 @@
 	    [(match_operand:VI         1 "register_operand" "  0")
 	     (match_operand:<V_LMUL2>  2 "register_operand" " vr")
 	     (match_operand:<V_LMUL2>  3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))]
+	  (match_dup 1)))
+   (use (match_operand:DI 7 "vtype_op_operand" "rJ"))]
   "TARGET_ZVVMM"
   "vmmacc.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 
 ;; W=1 mmacc with vs1/vs2 at LMUL=4.
@@ -559,12 +576,14 @@
 	    [(match_operand:VI         1 "register_operand" "  0")
 	     (match_operand:<V_LMUL4>  2 "register_operand" " vr")
 	     (match_operand:<V_LMUL4>  3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))]
+	  (match_dup 1)))
+   (use (match_operand:DI 7 "vtype_op_operand" "rJ"))]
   "TARGET_ZVVMM"
   "vmmacc.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 
 ;; W=1 mmacc with vs1/vs2 at LMUL=8.
@@ -581,12 +600,14 @@
 	    [(match_operand:VI         1 "register_operand" "  0")
 	     (match_operand:<V_LMUL8>  2 "register_operand" " vr")
 	     (match_operand:<V_LMUL8>  3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))]
+	  (match_dup 1)))
+   (use (match_operand:DI 7 "vtype_op_operand" "rJ"))]
   "TARGET_ZVVMM"
   "vmmacc.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
