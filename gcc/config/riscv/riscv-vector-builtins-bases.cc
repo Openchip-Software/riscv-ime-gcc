@@ -2948,6 +2948,7 @@ public:
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
 
   rtx expand (function_expander &e) const override
   {
