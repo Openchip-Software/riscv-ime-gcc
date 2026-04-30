@@ -1410,6 +1410,24 @@ public:
 	return;
       }
 
+    /* The IME vsetvl helpers (`@vsetvl_ime<mode>',
+       `@vsetvl_ime_reg<mode>') and `@read_vtype<mode>' write the full
+       vtype as a single Pmode value rather than the
+       sew/lmul/ta/ma operand tuple of `@vsetvl<mode>'.  Treat them as
+       opaque vtype writes: do not try to extract sew/vlmul (the
+       computation below would call `calculate_ratio (255, 255)' and
+       ICE).  Mark the state as unknown so any consumer that follows
+       gets a fresh vsetvl insertion as needed.  */
+    int code = INSN_CODE (insn->rtl ());
+    if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
+	|| code == CODE_FOR_vsetvl_ime_regdi
+	|| code == CODE_FOR_vsetvl_ime_regsi
+	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+      {
+	set_unknown ();
+	return;
+      }
+
     /* If this is something that updates VL/VTYPE that we don't know about, set
        the state to unknown.  */
     if (!vector_config_insn_p (insn->rtl ()) && !has_vtype_op (insn->rtl ())
