@@ -1224,6 +1224,36 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
       && GET_MODE_INNER (GET_MODE (recog_data.operand[3])) == E_BFmode)
     r.altfmt_b = true;
 
+  /* OFP8 / explicit FP altfmt override.  When the pattern carries a
+     non-"none" ime_fp_altfmt attribute, overwrite the three altfmt
+     bits we just inferred -- needed for OFP8 (E4M3 vs E5M2) at SEW=8
+     where both formats share RVVM*QI mode and the BFmode inference
+     above cannot tell them apart.  The encoding is "<A>_<B>_<F>",
+     each token e4m3 (=0) or e5m2 (=1).  */
+  switch (get_attr_ime_fp_altfmt (rinsn))
+    {
+    case IME_FP_ALTFMT_NONE:
+      break;  /* keep BFmode/integer inference */
+    case IME_FP_ALTFMT_E4M3_E4M3_E4M3:
+      r.altfmt_a = false; r.altfmt_b = false; r.altfmt = false; break;
+    case IME_FP_ALTFMT_E4M3_E4M3_E5M2:
+      r.altfmt_a = false; r.altfmt_b = false; r.altfmt = true;  break;
+    case IME_FP_ALTFMT_E4M3_E5M2_E4M3:
+      r.altfmt_a = false; r.altfmt_b = true;  r.altfmt = false; break;
+    case IME_FP_ALTFMT_E4M3_E5M2_E5M2:
+      r.altfmt_a = false; r.altfmt_b = true;  r.altfmt = true;  break;
+    case IME_FP_ALTFMT_E5M2_E4M3_E4M3:
+      r.altfmt_a = true;  r.altfmt_b = false; r.altfmt = false; break;
+    case IME_FP_ALTFMT_E5M2_E4M3_E5M2:
+      r.altfmt_a = true;  r.altfmt_b = false; r.altfmt = true;  break;
+    case IME_FP_ALTFMT_E5M2_E5M2_E4M3:
+      r.altfmt_a = true;  r.altfmt_b = true;  r.altfmt = false; break;
+    case IME_FP_ALTFMT_E5M2_E5M2_E5M2:
+      r.altfmt_a = true;  r.altfmt_b = true;  r.altfmt = true;  break;
+    default:
+      gcc_unreachable ();
+    }
+
   /* Static lambda if VLEN is known; runtime otherwise.  */
   int mul_c_val;
   switch (r.mul_c)

@@ -121,6 +121,31 @@
 (define_attr "ime_altfmt" "ss,uu,su,us"
   (const_string "ss"))
 
+;; FP-only altfmt encoding for IME mmacc patterns whose operand modes
+;; cannot disambiguate the input/accumulator format.  Specifically: OFP8
+;; E4M3 vs E5M2 at SEW=8 share RVVM*QI mode and need explicit
+;; per-pattern altfmt selection.
+;;
+;; The 8 enumerators are <A>_<B>_<F>, where each token is e4m3 (altfmt
+;; bit 0) or e5m2 (altfmt bit 1):
+;;   A = altfmt_A (vs1 input format)
+;;   B = altfmt_B (vs2 input format)
+;;   F = altfmt   (accumulator/output format -- only meaningful at W=1
+;;                 with OFP8 acc, and at W=2 where the SEW=16 acc
+;;                 selects fp16 (0) vs bf16 (1))
+;;
+;; Default "none" means "do not override" -- riscv_extract_ime_-
+;; requirements falls back to the BFmode-of-operand inference and the
+;; integer-altfmt logic.  The override path triggers only when a
+;; pattern explicitly sets a non-"none" value.
+(define_attr "ime_fp_altfmt"
+  "none,
+   e4m3_e4m3_e4m3, e4m3_e4m3_e5m2,
+   e4m3_e5m2_e4m3, e4m3_e5m2_e5m2,
+   e5m2_e4m3_e4m3, e5m2_e4m3_e5m2,
+   e5m2_e5m2_e4m3, e5m2_e5m2_e5m2"
+  (const_string "none"))
+
 ;; Block scale size for microscaled (§8) variants.
 ;; "none" means not a microscaled instruction (bs bit irrelevant).
 ;; "bs16" and "bs32" set the bs vtype bit accordingly.
