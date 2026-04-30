@@ -6495,13 +6495,17 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 			      bool altfmt_a, bool altfmt_b,
 			      bool altfmt, bool bs,
 			      bool ta, bool ma,
-			      rtx avl)
+			      rtx avl,
+			      int static_lambda_log2)
 {
   gcc_assert (!BYTES_PER_RISCV_VECTOR.is_constant ());
 
-  /* The runtime lambda computation requires the ctz instruction (Zbb).
-     If Zbb is not available, emit a sorry and bail out.  */
-  if (!TARGET_ZBB)
+  /* If the caller already knows lambda (e.g. an `_L{N}' tile-immediate
+     consumer where the instruction encodes its own lambda and
+     vtype.lambda is don't-care), skip the runtime probe -- we don't
+     even need Zbb in that case.  Otherwise the lambda computation
+     requires Zbb's ctz instruction.  */
+  if (static_lambda_log2 < 0 && !TARGET_ZBB)
     {
       sorry ("IME intrinsic with runtime %<lambda%> requires the "
 	     "%<Zbb%> extension; use %<-mrvv-vector-bits=zvl%> with a "
@@ -6533,73 +6537,92 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   if (altfmt_a)
     static_val |= (HOST_WIDE_INT) 1 << (xlen - 5);
 
-  /* Read VLEN at runtime via csrr vlenb.  */
-  rtx vlenb = gen_reg_rtx (xmode);
-  emit_move_insn (vlenb, gen_int_mode (BYTES_PER_RISCV_VECTOR, xmode));
+  /* Build full_vtype.  Two paths:
 
-  /* vlen_bits = vlenb << 3.  */
-  rtx vlen_bits = expand_simple_binop (xmode, ASHIFT, vlenb,
-				       GEN_INT (3), NULL_RTX,
-				       1, OPTAB_DIRECT);
+     1. static_lambda_log2 >= 0: caller knows lambda at compile time
+	(e.g. tile_imm_lambda where the instruction overrides
+	vtype.lambda anyway).  OR the lambda field directly into the
+	static bits and load the result into a register -- no probe,
+	no WARL match check.
 
-  /* lambda_sq = vlen_bits >> log2(sew_bits * mul_c).  */
-  int shift = exact_log2 (sew_bits * mul_c);
-  gcc_assert (shift >= 0);
-  rtx lambda_sq = expand_simple_binop (xmode, LSHIFTRT, vlen_bits,
-				       GEN_INT (shift), NULL_RTX,
-				       1, OPTAB_DIRECT);
+     2. static_lambda_log2 == -1: derive lambda from VLEN at runtime,
+	verify it is a power of 2 (perfect-square lambda^2), then check
+	the WARL readback matches what we wrote.  */
+  rtx full_vtype;
+  rtx lambda_enc = NULL_RTX;
+  if (static_lambda_log2 >= 0)
+    {
+      HOST_WIDE_INT lambda_enc_val = static_lambda_log2 + 1;
+      static_val |= lambda_enc_val << (xlen - 4);
+      full_vtype = gen_reg_rtx (xmode);
+      emit_move_insn (full_vtype, gen_int_mode (static_val, xmode));
+    }
+  else
+    {
+      /* Read VLEN at runtime via csrr vlenb.  */
+      rtx vlenb = gen_reg_rtx (xmode);
+      emit_move_insn (vlenb, gen_int_mode (BYTES_PER_RISCV_VECTOR, xmode));
 
-  /* log2_lambda_sq = ctz(lambda_sq).  Use optab which expands to ctz
-     instruction on Zbb or a library call / inline sequence otherwise.  */
-  rtx log2_lsq = gen_reg_rtx (xmode);
-  rtx ctz_op = expand_unop (xmode, ctz_optab, lambda_sq,
-			    log2_lsq, 1);
-  if (ctz_op != log2_lsq)
-    emit_move_insn (log2_lsq, ctz_op);
+      /* vlen_bits = vlenb << 3.  */
+      rtx vlen_bits = expand_simple_binop (xmode, ASHIFT, vlenb,
+					   GEN_INT (3), NULL_RTX,
+					   1, OPTAB_DIRECT);
 
-  /* Perfect-square check: lambda is an integer iff log2(lambda^2) is
-     even.  lambda_sq is always a power of 2 (VLEN is a power of 2 and
-     we right-shifted by a constant), so checking log2(lambda_sq) & 1
-     == 0 is sufficient.  If lambda_sq is not a perfect square (e.g.
-     VLEN=128, SEW=32, MUL_C=2 gives lambda_sq=2), the arithmetic
-     `log2_lsq >> 1` below would silently truncate to a smaller valid
-     lambda whose MUL_C does NOT match the accumulator type.  The WARL
-     probe would then pass for the wrong geometry.  Trap here instead.
-     */
-  rtx log_parity = expand_simple_binop (xmode, AND, log2_lsq,
-					const1_rtx, NULL_RTX,
-					1, OPTAB_DIRECT);
-  rtx sq_ok_label = gen_label_rtx ();
-  emit_cmp_and_jump_insns (log_parity, const0_rtx, EQ, NULL_RTX,
-			   xmode, 1, sq_ok_label);
-  emit_insn (gen_trap ());
-  /* A barrier tells the CFG builder the trap does not fall through;
-     without it later passes (e.g. bbro) complain "flow control insn
-     inside a basic block" when the trap is merged with surrounding
-     code.  */
-  emit_barrier ();
-  emit_label (sq_ok_label);
+      /* lambda_sq = vlen_bits >> log2(sew_bits * mul_c).  */
+      int shift = exact_log2 (sew_bits * mul_c);
+      gcc_assert (shift >= 0);
+      rtx lambda_sq = expand_simple_binop (xmode, LSHIFTRT, vlen_bits,
+					   GEN_INT (shift), NULL_RTX,
+					   1, OPTAB_DIRECT);
 
-  /* log2_lambda = log2_lambda_sq >> 1.  */
-  rtx log2_lambda = expand_simple_binop (xmode, LSHIFTRT, log2_lsq,
-					 GEN_INT (1), NULL_RTX,
-					 1, OPTAB_DIRECT);
+      /* log2_lambda_sq = ctz(lambda_sq).  Use optab which expands to ctz
+	 instruction on Zbb or a library call / inline sequence otherwise.  */
+      rtx log2_lsq = gen_reg_rtx (xmode);
+      rtx ctz_op = expand_unop (xmode, ctz_optab, lambda_sq,
+				log2_lsq, 1);
+      if (ctz_op != log2_lsq)
+	emit_move_insn (log2_lsq, ctz_op);
 
-  /* lambda_enc = log2_lambda + 1 (3-bit encoding).  */
-  rtx lambda_enc = expand_simple_binop (xmode, PLUS, log2_lambda,
+      /* Perfect-square check: lambda is an integer iff log2(lambda^2) is
+	 even.  lambda_sq is always a power of 2 (VLEN is a power of 2 and
+	 we right-shifted by a constant), so checking log2(lambda_sq) & 1
+	 == 0 is sufficient.  If lambda_sq is not a perfect square (e.g.
+	 VLEN=128, SEW=32, MUL_C=2 gives lambda_sq=2), the arithmetic
+	 `log2_lsq >> 1` below would silently truncate to a smaller valid
+	 lambda whose MUL_C does NOT match the accumulator type.  The WARL
+	 probe would then pass for the wrong geometry.  Trap here instead.
+       */
+      rtx log_parity = expand_simple_binop (xmode, AND, log2_lsq,
+					    const1_rtx, NULL_RTX,
+					    1, OPTAB_DIRECT);
+      rtx sq_ok_label = gen_label_rtx ();
+      emit_cmp_and_jump_insns (log_parity, const0_rtx, EQ, NULL_RTX,
+			       xmode, 1, sq_ok_label);
+      emit_insn (gen_trap ());
+      emit_barrier ();
+      emit_label (sq_ok_label);
+
+      /* log2_lambda = log2_lambda_sq >> 1.  */
+      rtx log2_lambda = expand_simple_binop (xmode, LSHIFTRT, log2_lsq,
+					     GEN_INT (1), NULL_RTX,
+					     1, OPTAB_DIRECT);
+
+      /* lambda_enc = log2_lambda + 1 (3-bit encoding).  */
+      lambda_enc = expand_simple_binop (xmode, PLUS, log2_lambda,
 					const1_rtx, NULL_RTX,
 					0, OPTAB_DIRECT);
 
-  /* shifted_enc = lambda_enc << (xlen - 4).  */
-  rtx shifted_enc = expand_simple_binop (xmode, ASHIFT, lambda_enc,
-					 GEN_INT (xlen - 4), NULL_RTX,
-					 1, OPTAB_DIRECT);
+      /* shifted_enc = lambda_enc << (xlen - 4).  */
+      rtx shifted_enc = expand_simple_binop (xmode, ASHIFT, lambda_enc,
+					     GEN_INT (xlen - 4), NULL_RTX,
+					     1, OPTAB_DIRECT);
 
-  /* full_vtype = static_bits | shifted_enc.  */
-  rtx static_bits_rtx = gen_int_mode (static_val, xmode);
-  rtx full_vtype = expand_simple_binop (xmode, IOR, static_bits_rtx,
+      /* full_vtype = static_bits | shifted_enc.  */
+      rtx static_bits_rtx = gen_int_mode (static_val, xmode);
+      full_vtype = expand_simple_binop (xmode, IOR, static_bits_rtx,
 					shifted_enc, NULL_RTX,
 					1, OPTAB_DIRECT);
+    }
 
   /* Emit register-form vsetvl: vsetvl rd, avl, full_vtype.
      This sets VL_REGNUM and VTYPE_REGNUM as side effects.  Force AVL
@@ -6610,30 +6633,33 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
     avl = force_reg (xmode, avl);
   emit_insn (gen_vsetvl_ime_reg (xmode, new_vl, avl, full_vtype));
 
-  /* WARL verification: read back vtype, extract the lambda field, and
-     trap if it does not match what we wrote.  */
-  rtx vtype_rb = gen_reg_rtx (xmode);
-  emit_insn (gen_read_vtype (xmode, vtype_rb));
+  /* WARL verification only on the runtime-derived path.  When lambda is
+     statically known the value we wrote has already been validated by
+     the caller (e.g. tile_imm_lambda hardcodes lambda=1 which is always
+     supported); a WARL mismatch would not change correctness because
+     the consumer either ignores vtype.lambda (tile_imm_lambda) or
+     would have failed at vsetvl itself.  */
+  if (static_lambda_log2 < 0)
+    {
+      rtx vtype_rb = gen_reg_rtx (xmode);
+      emit_insn (gen_read_vtype (xmode, vtype_rb));
 
-  /* lambda_got = (vtype_rb >> (xlen - 4)) & 7.  */
-  rtx lambda_field = expand_simple_binop (xmode, LSHIFTRT, vtype_rb,
-					  GEN_INT (xlen - 4), NULL_RTX,
-					  1, OPTAB_DIRECT);
-  rtx lambda_got = expand_simple_binop (xmode, AND, lambda_field,
-					GEN_INT (7), NULL_RTX,
-					1, OPTAB_DIRECT);
+      /* lambda_got = (vtype_rb >> (xlen - 4)) & 7.  */
+      rtx lambda_field = expand_simple_binop (xmode, LSHIFTRT, vtype_rb,
+					      GEN_INT (xlen - 4), NULL_RTX,
+					      1, OPTAB_DIRECT);
+      rtx lambda_got = expand_simple_binop (xmode, AND, lambda_field,
+					    GEN_INT (7), NULL_RTX,
+					    1, OPTAB_DIRECT);
 
-  /* if (lambda_got != lambda_enc) __builtin_trap().  */
-  rtx ok_label = gen_label_rtx ();
-  emit_cmp_and_jump_insns (lambda_got, lambda_enc, EQ, NULL_RTX,
-			   xmode, 1, ok_label);
-  emit_insn (gen_trap ());
-  /* A barrier tells the CFG builder the trap does not fall through;
-     without it later passes (e.g. bbro) complain "flow control insn
-     inside a basic block" when the trap is merged with surrounding
-     code.  */
-  emit_barrier ();
-  emit_label (ok_label);
+      /* if (lambda_got != lambda_enc) __builtin_trap().  */
+      rtx ok_label = gen_label_rtx ();
+      emit_cmp_and_jump_insns (lambda_got, lambda_enc, EQ, NULL_RTX,
+			       xmode, 1, ok_label);
+      emit_insn (gen_trap ());
+      emit_barrier ();
+      emit_label (ok_label);
+    }
 
   /* Stash the full_vtype rtx so the caller's `use_exact_insn' can
      thread it into the consumer's hidden `vtype source' operand.

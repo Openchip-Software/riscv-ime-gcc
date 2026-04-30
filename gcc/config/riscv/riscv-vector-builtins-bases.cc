@@ -2930,7 +2930,7 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 				altfmt_a, altfmt_b,
 				altfmt_val, bs_val,
 				/* ta = */ true, /* ma = */ true,
-				avl);
+				avl, static_lambda_log2);
 }
 
 /* IME vector integer matrix multiply-accumulate (W=1).  Expands to
