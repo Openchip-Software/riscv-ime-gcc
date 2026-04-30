@@ -89,7 +89,8 @@ extern void emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 					  bool altfmt_a, bool altfmt_b,
 					  bool altfmt, bool bs,
 					  bool ta, bool ma,
-					  rtx avl);
+					  rtx avl,
+					  int static_lambda_log2 = -1);
 
 } // namespace riscv_vector
 
