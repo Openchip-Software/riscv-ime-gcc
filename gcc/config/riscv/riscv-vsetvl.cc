@@ -3068,6 +3068,17 @@ private:
 	  return;  /* Static-VLEN placeholder or spilled -- skip.  */
 	dest_vl = info.has_vl () ? info.get_vl ()
 				 : gen_rtx_REG (Pmode, 0);
+	/* `vsetvl_ime_reg' has both rs1 (avl) and rs2 (vtype) in
+	   registers; there is no immediate-AVL form when vtype is in a
+	   register.  Materialise const_int AVL into the prologue temp
+	   first.  We are post-reload, so we cannot allocate a fresh
+	   pseudo; the prologue temp is the conventional choice.  */
+	if (avl != const0_rtx && CONST_INT_P (avl))
+	  {
+	    rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+	    emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
+	    avl = temp;
+	  }
 	pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX);
       }
     else
@@ -4567,6 +4578,15 @@ pass_vsetvl::simple_vsetvl ()
 			continue;
 		      dest_vl = info.has_vl () ? info.get_vl ()
 					       : gen_rtx_REG (Pmode, 0);
+		      /* See `insert_ime_vsetvl_insn' for why we materialise
+			 a const_int AVL into the prologue temp here.  */
+		      if (avl != const0_rtx && CONST_INT_P (avl))
+			{
+			  rtx temp
+			    = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+			  emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
+			  avl = temp;
+			}
 		      pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX);
 		    }
 		  else
