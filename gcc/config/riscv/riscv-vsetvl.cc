@@ -2891,15 +2891,17 @@ private:
        @vsetvl_ime pattern reuses its dest register as the scratch for
        the "li" that loads the vtype constant.  If the IME instruction
        we're setting up has its own VL destination (rare -- only for
-       vsetvl intrinsics), reuse that; otherwise fall back to the
-       dedicated prologue temp (x5 / t0), which is caller-saved and not
-       reserved across the function body.  The new VL value written by
-       the register-form vsetvl is dead in the latter case, which is
-       fine because downstream RVV insns read VL via VL_REGNUM, not via
-       a GPR.  */
-    rtx dest_vl = info.has_vl ()
-		    ? info.get_vl ()
-		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+       vsetvl intrinsics), reuse that; otherwise pick a fallback temp
+       based on which form we are about to emit (decided below).
+       Static-path `vsetvl_ime' reuses operand 0 as the temp that holds
+       the vtype constant (its asm template is "li %0,%2; vsetvl
+       %0,%z1,%0") and so requires a real writable GPR -- fall back to
+       the prologue temp.  Runtime-path `vsetvl_ime_reg' carries vtype
+       in operand 2 and the GPR write of operand 0 is unused, so use x0
+       (zero) -- this avoids clobbering a caller-saved register that
+       may have been bound by RA to one of the consumer's input
+       operands.  We pick `dest_vl' below alongside the pattern.  */
+    rtx dest_vl;
 
     rtx_insn *rinsn = info.get_insn ()->rtl ();
     rtx pat;
@@ -2923,6 +2925,8 @@ private:
 	rtx fvX = recog_data.operand[idx];
 	if (!REG_P (fvX))
 	  return;  /* Static-VLEN placeholder or spilled -- skip.  */
+	dest_vl = info.has_vl () ? info.get_vl ()
+				 : gen_rtx_REG (Pmode, 0);
 	pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX);
       }
     else
@@ -2930,6 +2934,9 @@ private:
 	rtx vtype_const = emit_ime_vtype_build (info);
 	if (vtype_const == NULL_RTX)
 	  return;  /* sorry() already reported.  */
+	dest_vl = info.has_vl ()
+		    ? info.get_vl ()
+		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
 	pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
       }
     rtx_insn *inserted = NULL;
@@ -4401,10 +4408,10 @@ pass_vsetvl::simple_vsetvl ()
 	      if (info.ime_required_p ())
 		{
 		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
-		  rtx dest_vl
-		    = info.has_vl ()
-			? info.get_vl ()
-			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+		  /* See `pre_vsetvl::insert_ime_vsetvl_insn' for why
+		     dest_vl differs between the runtime and static paths
+		     (x0 vs prologue temp).  */
+		  rtx dest_vl;
 		  rtx pat;
 		  if (info.get_ime_req ().lambda_log2 == -1)
 		    {
@@ -4417,6 +4424,8 @@ pass_vsetvl::simple_vsetvl ()
 		      rtx fvX = recog_data.operand[idx];
 		      if (!REG_P (fvX))
 			continue;
+		      dest_vl = info.has_vl () ? info.get_vl ()
+					       : gen_rtx_REG (Pmode, 0);
 		      pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX);
 		    }
 		  else
@@ -4424,6 +4433,11 @@ pass_vsetvl::simple_vsetvl ()
 		      rtx vtype_const = emit_ime_vtype_build (info);
 		      if (vtype_const == NULL_RTX)
 			continue;  /* sorry() already reported.  */
+		      dest_vl
+			= info.has_vl ()
+			    ? info.get_vl ()
+			    : gen_rtx_REG (Pmode,
+					   RISCV_PROLOGUE_TEMP_REGNUM);
 		      pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
 		    }
 		  emit_insn_before (pat, rinsn);
