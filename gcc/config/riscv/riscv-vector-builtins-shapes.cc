@@ -1530,7 +1530,7 @@ struct ime_mmacc_def : public build_base
      prefix.  */
   static constexpr const char *fp_format_tokens[] = {
     "_f8e4m3", "_f8e5m2", "_f4e2m1",
-    "_bf16", "_f16", "_f32",
+    "_bf16", "_f16", "_fp16", "_f32",
     "_i8",
     nullptr
   };

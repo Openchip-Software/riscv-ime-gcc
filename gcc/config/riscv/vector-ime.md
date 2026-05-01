@@ -84,6 +84,18 @@
   UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2
   UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3
   UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2
+  ;; W=2 vfwmmacc OFP8 -> fp16 / bf16: 4 input combinations per acc
+  ;; format = 8 UNSPECs.  Acc altfmt is encoded in the UNSPEC name
+  ;; (FP16 or BF16); the mode iterator on each MD pattern only spans
+  ;; the matching acc element type (HF or BF).
+  UNSPEC_VFWMMACC_OFP8_FP16_E4M3
+  UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2
+  UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3
+  UNSPEC_VFWMMACC_OFP8_FP16_E5M2
+  UNSPEC_VFWMMACC_OFP8_BF16_E4M3
+  UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2
+  UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3
+  UNSPEC_VFWMMACC_OFP8_BF16_E5M2
   UNSPEC_VFWMMACC_F16			;; vfwmmacc.vv (W=2, FP16->FP32)
   UNSPEC_VFWMMACC_BF16			;; vfwmmacc.vv (W=2, BF16->FP32)
   UNSPEC_VFWMMACC_F32			;; vfwmmacc.vv (W=2, FP32->FP64)
@@ -468,6 +480,55 @@
    (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "e4m3_e5m2_e5m2")
    (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "e5m2_e4m3_e5m2")
    (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "e5m2_e5m2_e5m2")])
+
+;; W=2 vfwmmacc OFP8 -> fp16 / bf16: separate int iterators per acc
+;; format so the mode iterator's acc type matches the encoded altfmt
+;; bit.  Each iterator has 4 entries (the (vs1, vs2) input cube at the
+;; selected acc altfmt).
+(define_int_iterator VFWMMACC_OFP8_FP16
+  [UNSPEC_VFWMMACC_OFP8_FP16_E4M3      UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2
+   UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 UNSPEC_VFWMMACC_OFP8_FP16_E5M2])
+
+(define_int_iterator VFWMMACC_OFP8_BF16
+  [UNSPEC_VFWMMACC_OFP8_BF16_E4M3      UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2
+   UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 UNSPEC_VFWMMACC_OFP8_BF16_E5M2])
+
+(define_int_attr vfwmmacc_ofp8_fp16_name
+  [(UNSPEC_VFWMMACC_OFP8_FP16_E4M3      "_f8e4m3")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2 "_f8e4m3_f8e5m2")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "_f8e5m2_f8e4m3")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2      "_f8e5m2")])
+
+(define_int_attr vfwmmacc_ofp8_bf16_name
+  [(UNSPEC_VFWMMACC_OFP8_BF16_E4M3      "_f8e4m3")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "_f8e4m3_f8e5m2")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "_f8e5m2_f8e4m3")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2      "_f8e5m2")])
+
+;; ime_fp_altfmt mapping per UNSPEC: vs1, vs2, acc tokens.  acc is
+;; e4m3 (= 0 = fp16) for FP16 UNSPECs and e5m2 (= 1 = bf16) for BF16
+;; UNSPECs.
+(define_int_attr vfwmmacc_ofp8_fp16_altfmt
+  [(UNSPEC_VFWMMACC_OFP8_FP16_E4M3      "e4m3_e4m3_e4m3")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2 "e4m3_e5m2_e4m3")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "e5m2_e4m3_e4m3")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2      "e5m2_e5m2_e4m3")])
+
+(define_int_attr vfwmmacc_ofp8_bf16_altfmt
+  [(UNSPEC_VFWMMACC_OFP8_BF16_E4M3      "e4m3_e4m3_e5m2")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "e4m3_e5m2_e5m2")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "e5m2_e4m3_e5m2")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2      "e5m2_e5m2_e5m2")])
+
+;; Acc mode iterators for the W=2 OFP8 -> fp16 / bf16 patterns.  HF and
+;; BF are kept separate so each pattern's acc altfmt bit is unambiguous.
+(define_mode_iterator VFW_OFP8_FP16_ACC
+  [(RVVM1HF "TARGET_ZVFH") (RVVM2HF "TARGET_ZVFH")
+   (RVVM4HF "TARGET_ZVFH") (RVVM8HF "TARGET_ZVFH")])
+
+(define_mode_iterator VFW_OFP8_BF16_ACC
+  [(RVVM1BF "TARGET_VECTOR_ELEN_BF_16") (RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM4BF "TARGET_VECTOR_ELEN_BF_16") (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")])
 
 ;; Element modes at LMUL >= 1 for the tile load/store patterns.  The
 ;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not
@@ -1590,6 +1651,59 @@
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")])
+
+;; vfwmmacc OFP8 -> FP16: 4 input combinations, acc altfmt = 0
+;; (selects fp16 over bf16 at SEW=16).
+(define_insn "@pred_vfwmmacc_ofp8_fp16<vfwmmacc_ofp8_fp16_name><mode>"
+  [(set (match_operand:VFW_OFP8_FP16_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VFW_OFP8_FP16_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VFW_OFP8_FP16_ACC
+	    [(match_operand:VFW_OFP8_FP16_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1QI           2 "register_operand" " vr")
+	     (match_operand:RVVM1QI           3 "register_operand" " vr")]
+	    VFWMMACC_OFP8_FP16)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVFMM"
+  "vfwmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<vfwmmacc_ofp8_fp16_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")])
+
+;; vfwmmacc OFP8 -> BF16: 4 input combinations, acc altfmt = 1.
+(define_insn "@pred_vfwmmacc_ofp8_bf16<vfwmmacc_ofp8_bf16_name><mode>"
+  [(set (match_operand:VFW_OFP8_BF16_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VFW_OFP8_BF16_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VFW_OFP8_BF16_ACC
+	    [(match_operand:VFW_OFP8_BF16_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1QI           2 "register_operand" " vr")
+	     (match_operand:RVVM1QI           3 "register_operand" " vr")]
+	    VFWMMACC_OFP8_BF16)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVFMM"
+  "vfwmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<vfwmmacc_ofp8_bf16_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 

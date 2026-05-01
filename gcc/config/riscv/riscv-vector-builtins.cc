@@ -4152,6 +4152,34 @@ static CONSTEXPR const rvv_op_info f64_ime_qwvss_bf16_ops
   = {f64_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_bf16_args};
 
+/* W=2 vfwmmacc OFP8 -> fp16 / bf16 op_infos.  Four (vs1, vs2) input
+   combinations per acc format = 8 entries.  Reuses the OFP8 args
+   lists from the W=4 / W=8 path; the type set picks the acc format.  */
+static CONSTEXPR const rvv_op_info f16_ime_wvss_f8e4m3_ops
+  = {f16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_args};
+static CONSTEXPR const rvv_op_info f16_ime_wvss_f8e4m3_f8e5m2_ops
+  = {f16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_f8e5m2_args};
+static CONSTEXPR const rvv_op_info f16_ime_wvss_f8e5m2_f8e4m3_ops
+  = {f16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_f8e4m3_args};
+static CONSTEXPR const rvv_op_info f16_ime_wvss_f8e5m2_ops
+  = {f16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
+static CONSTEXPR const rvv_op_info bf16_ime_wvss_f8e4m3_ops
+  = {bf16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_args};
+static CONSTEXPR const rvv_op_info bf16_ime_wvss_f8e4m3_f8e5m2_ops
+  = {bf16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_f8e5m2_args};
+static CONSTEXPR const rvv_op_info bf16_ime_wvss_f8e5m2_f8e4m3_ops
+  = {bf16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_f8e4m3_args};
+static CONSTEXPR const rvv_op_info bf16_ime_wvss_f8e5m2_ops
+  = {bf16_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
+
 /* W=1 vfmmacc OFP8 -> OFP8 op_infos.  Eight entries cover the full
    (acc, vs1, vs2) altfmt cube; type set picks the acc format.  */
 static CONSTEXPR const rvv_op_info f8e4m3_ime_vss_f8e4m3_f8e4m3_ops

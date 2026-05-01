@@ -3694,6 +3694,81 @@ public:
 
 static CONSTEXPR const vfqwmmacc_bf16_ime_op vfqwmmacc_bf16_obj;
 
+/* W=2 vfwmmacc OFP8 -> fp16.  Acc mode is HF (altfmt = 0); inputs are
+   OFP8 (E4M3 / E5M2) at LMUL=1 and the per-instance UNSPEC selects
+   the (vs1, vs2) altfmt combination.  */
+template<int UNSPEC>
+class vfwmmacc_ofp8_fp16_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
+    rtx result = e.use_exact_insn (
+      code_for_pred_vfwmmacc_ofp8_fp16 (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
+  }
+};
+
+static CONSTEXPR const
+  vfwmmacc_ofp8_fp16_ime_op<UNSPEC_VFWMMACC_OFP8_FP16_E4M3>
+  vfwmmacc_fp16_f8e4m3_obj;
+static CONSTEXPR const
+  vfwmmacc_ofp8_fp16_ime_op<UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2>
+  vfwmmacc_fp16_f8e4m3_f8e5m2_obj;
+static CONSTEXPR const
+  vfwmmacc_ofp8_fp16_ime_op<UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3>
+  vfwmmacc_fp16_f8e5m2_f8e4m3_obj;
+static CONSTEXPR const
+  vfwmmacc_ofp8_fp16_ime_op<UNSPEC_VFWMMACC_OFP8_FP16_E5M2>
+  vfwmmacc_fp16_f8e5m2_obj;
+
+/* W=2 vfwmmacc OFP8 -> bf16.  Mirror of the fp16 class above with
+   acc altfmt = 1 and acc mode = BF.  */
+template<int UNSPEC>
+class vfwmmacc_ofp8_bf16_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
+    rtx result = e.use_exact_insn (
+      code_for_pred_vfwmmacc_ofp8_bf16 (UNSPEC, e.vector_mode ()));
+    emit_ime_post_consumer_blockage ();
+    return result;
+  }
+};
+
+static CONSTEXPR const
+  vfwmmacc_ofp8_bf16_ime_op<UNSPEC_VFWMMACC_OFP8_BF16_E4M3>
+  vfwmmacc_bf16_f8e4m3_obj;
+static CONSTEXPR const
+  vfwmmacc_ofp8_bf16_ime_op<UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2>
+  vfwmmacc_bf16_f8e4m3_f8e5m2_obj;
+static CONSTEXPR const
+  vfwmmacc_ofp8_bf16_ime_op<UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3>
+  vfwmmacc_bf16_f8e5m2_f8e4m3_obj;
+static CONSTEXPR const
+  vfwmmacc_ofp8_bf16_ime_op<UNSPEC_VFWMMACC_OFP8_BF16_E5M2>
+  vfwmmacc_bf16_f8e5m2_obj;
+
 /* W=1 vfmmacc OFP8 -> OFP8.  Both E4M3 and E5M2 acc share RVVM*QI
    at the GCC level; the per-instance UNSPEC selects the
    (acc, vs1, vs2) altfmt combination.  */
@@ -4723,6 +4798,14 @@ BASE (vfwmmacc_bf16)
 BASE (vfwmmacc_f32)
 BASE (vfqwmmacc_f16)
 BASE (vfqwmmacc_bf16)
+BASE (vfwmmacc_fp16_f8e4m3)
+BASE (vfwmmacc_fp16_f8e4m3_f8e5m2)
+BASE (vfwmmacc_fp16_f8e5m2_f8e4m3)
+BASE (vfwmmacc_fp16_f8e5m2)
+BASE (vfwmmacc_bf16_f8e4m3)
+BASE (vfwmmacc_bf16_f8e4m3_f8e5m2)
+BASE (vfwmmacc_bf16_f8e5m2_f8e4m3)
+BASE (vfwmmacc_bf16_f8e5m2)
 BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3)
 BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2)
 BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3)
