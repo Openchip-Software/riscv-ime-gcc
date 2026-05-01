@@ -1609,11 +1609,18 @@ DEF_RVV_F64_LMUL_GE1_OPS (vfloat64m2_t, RVV_REQUIRE_ELEN_FP_64)
 DEF_RVV_F64_LMUL_GE1_OPS (vfloat64m4_t, RVV_REQUIRE_ELEN_FP_64)
 DEF_RVV_F64_LMUL_GE1_OPS (vfloat64m8_t, RVV_REQUIRE_ELEN_FP_64)
 
-/* OFP8 accumulator type sets for W=1 vfmmacc OFP8 -> OFP8.  Stage 3a
-   registers only m1 (matching the vector-type registrations in
-   riscv-vector-builtins.def); m2/m4/m8 acc are a follow-up.  */
+/* OFP8 accumulator type sets for W=1 vfmmacc OFP8 -> OFP8 covering
+   the four acc LMULs.  The macro names retain the historical "_LMUL1"
+   suffix from when stage 3a registered only m1; the entries cover
+   m1/m2/m4/m8 starting with stage 3b.  */
 DEF_RVV_F8E4M3_LMUL1_OPS (vfloat8e4m3m1_t, 0)
+DEF_RVV_F8E4M3_LMUL1_OPS (vfloat8e4m3m2_t, 0)
+DEF_RVV_F8E4M3_LMUL1_OPS (vfloat8e4m3m4_t, 0)
+DEF_RVV_F8E4M3_LMUL1_OPS (vfloat8e4m3m8_t, 0)
 DEF_RVV_F8E5M2_LMUL1_OPS (vfloat8e5m2m1_t, 0)
+DEF_RVV_F8E5M2_LMUL1_OPS (vfloat8e5m2m2_t, 0)
+DEF_RVV_F8E5M2_LMUL1_OPS (vfloat8e5m2m4_t, 0)
+DEF_RVV_F8E5M2_LMUL1_OPS (vfloat8e5m2m8_t, 0)
 
 #undef DEF_RVV_I_OPS
 #undef DEF_RVV_U_OPS

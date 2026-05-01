@@ -368,10 +368,8 @@
 
 ;; OFP8 accumulator modes for W=1 vfmmacc OFP8 -> OFP8.  Both E4M3 and
 ;; E5M2 share QImode; the acc format is selected by the
-;; ime_fp_altfmt attribute on each pattern.  Stage 3a registers only
-;; m1; m2/m4/m8 acc require new vector-type registrations and are a
-;; follow-up.
-(define_mode_iterator VFMMACC_OFP8_ACC [RVVM1QI])
+;; ime_fp_altfmt attribute on each pattern.
+(define_mode_iterator VFMMACC_OFP8_ACC [RVVM1QI RVVM2QI RVVM4QI RVVM8QI])
 
 ;; FP64 accumulator modes at LMUL >= 1 (for W=2 FP32, W=4 FP16/BF16, W=8 OFP8).
 (define_mode_iterator VF64_ACC
