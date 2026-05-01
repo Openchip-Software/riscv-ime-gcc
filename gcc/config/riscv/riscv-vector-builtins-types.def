@@ -420,6 +420,14 @@ along with GCC; see the file COPYING3. If not see
 #define DEF_RVV_F64_LMUL_GE1_OPS(TYPE, REQUIRE)
 #endif
 
+#ifndef DEF_RVV_F8E4M3_LMUL1_OPS
+#define DEF_RVV_F8E4M3_LMUL1_OPS(TYPE, REQUIRE)
+#endif
+
+#ifndef DEF_RVV_F8E5M2_LMUL1_OPS
+#define DEF_RVV_F8E5M2_LMUL1_OPS(TYPE, REQUIRE)
+#endif
+
 DEF_RVV_I_OPS (vint8mf8_t, RVV_REQUIRE_ELEN_64)
 DEF_RVV_I_OPS (vint8mf4_t, 0)
 DEF_RVV_I_OPS (vint8mf2_t, 0)
@@ -1601,6 +1609,12 @@ DEF_RVV_F64_LMUL_GE1_OPS (vfloat64m2_t, RVV_REQUIRE_ELEN_FP_64)
 DEF_RVV_F64_LMUL_GE1_OPS (vfloat64m4_t, RVV_REQUIRE_ELEN_FP_64)
 DEF_RVV_F64_LMUL_GE1_OPS (vfloat64m8_t, RVV_REQUIRE_ELEN_FP_64)
 
+/* OFP8 accumulator type sets for W=1 vfmmacc OFP8 -> OFP8.  Stage 3a
+   registers only m1 (matching the vector-type registrations in
+   riscv-vector-builtins.def); m2/m4/m8 acc are a follow-up.  */
+DEF_RVV_F8E4M3_LMUL1_OPS (vfloat8e4m3m1_t, 0)
+DEF_RVV_F8E5M2_LMUL1_OPS (vfloat8e5m2m1_t, 0)
+
 #undef DEF_RVV_I_OPS
 #undef DEF_RVV_U_OPS
 #undef DEF_RVV_F_OPS
@@ -1661,6 +1675,8 @@ DEF_RVV_F64_LMUL_GE1_OPS (vfloat64m8_t, RVV_REQUIRE_ELEN_FP_64)
 #undef DEF_RVV_BF16_LMUL_GE1_OPS
 #undef DEF_RVV_F32_LMUL_GE1_OPS
 #undef DEF_RVV_F64_LMUL_GE1_OPS
+#undef DEF_RVV_F8E4M3_LMUL1_OPS
+#undef DEF_RVV_F8E5M2_LMUL1_OPS
 #undef DEF_RVV_XFQF_OPS
 #undef DEF_RVV_X2_U_OPS
 #undef DEF_RVV_X2_WU_OPS

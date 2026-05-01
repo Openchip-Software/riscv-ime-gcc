@@ -122,6 +122,25 @@ DEF_RVV_FUNCTION (vfmmacc,     ime_mmacc, none_tu_preds, f_ime_vss_ops)
 DEF_RVV_FUNCTION (vfmmacc_lm2, ime_mmacc, none_tu_preds, f_ime_vss_lm2_ops)
 DEF_RVV_FUNCTION (vfmmacc_lm4, ime_mmacc, none_tu_preds, f_ime_vss_lm4_ops)
 DEF_RVV_FUNCTION (vfmmacc_lm8, ime_mmacc, none_tu_preds, f_ime_vss_lm8_ops)
+/* W=1 vfmmacc OFP8 -> OFP8: 8 (acc, vs1, vs2) altfmt combinations.
+   Stage 3a covers acc m1 only; m2/m4/m8 acc is a follow-up that
+   requires registering more OFP8 vector types.  */
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e4m3_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e4m3_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e5m2_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e5m2_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e4m3_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e4m3_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e5m2_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e5m2_f8e5m2_ops)
 /* vfwmmacc.vv (W=2) */
 DEF_RVV_FUNCTION (vfwmmacc_f16, ime_mmacc, none_tu_preds, f32_ime_wvss_f16_ops)
 DEF_RVV_FUNCTION (vfwmmacc_bf16, ime_mmacc, none_tu_preds, f32_ime_wvss_bf16_ops)

@@ -74,6 +74,16 @@
 
   ;; Zvvfmm - FP matrix multiply-accumulate
   UNSPEC_VFMMACC			;; vfmmacc.vv (W=1, same-format FP)
+  ;; W=1 vfmmacc OFP8 -> OFP8: 8 UNSPECs covering all (acc,vs1,vs2)
+  ;; altfmt combinations.  Naming: F8_<acc>_<vs1>_<vs2>.
+  UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3
+  UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2
+  UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3
+  UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2
+  UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3
+  UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2
+  UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3
+  UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2
   UNSPEC_VFWMMACC_F16			;; vfwmmacc.vv (W=2, FP16->FP32)
   UNSPEC_VFWMMACC_BF16			;; vfwmmacc.vv (W=2, BF16->FP32)
   UNSPEC_VFWMMACC_F32			;; vfwmmacc.vv (W=2, FP32->FP64)
@@ -356,6 +366,13 @@
 ;; FP32 accumulator modes at LMUL >= 1 (for W=2 FP16/BF16, W=4 OFP8).
 (define_mode_iterator VF32_ACC [RVVM1SF RVVM2SF RVVM4SF RVVM8SF])
 
+;; OFP8 accumulator modes for W=1 vfmmacc OFP8 -> OFP8.  Both E4M3 and
+;; E5M2 share QImode; the acc format is selected by the
+;; ime_fp_altfmt attribute on each pattern.  Stage 3a registers only
+;; m1; m2/m4/m8 acc require new vector-type registrations and are a
+;; follow-up.
+(define_mode_iterator VFMMACC_OFP8_ACC [RVVM1QI])
+
 ;; FP64 accumulator modes at LMUL >= 1 (for W=2 FP32, W=4 FP16/BF16, W=8 OFP8).
 (define_mode_iterator VF64_ACC
   [(RVVM1DF "TARGET_VECTOR_ELEN_64") (RVVM2DF "TARGET_VECTOR_ELEN_64")
@@ -415,6 +432,44 @@
    (UNSPEC_VF8WMMACC_F8E5M2      "e5m2_e5m2_e4m3")
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
    (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")])
+
+;; W=1 vfmmacc OFP8 -> OFP8: 8 UNSPECs covering the full
+;; (altfmt_A, altfmt_B, altfmt) cube.  All 8 share a single MD pattern
+;; template; the int iterator drives the per-instance UNSPEC and the
+;; matching ime_fp_altfmt enumerator.  Acc mode is RVVM1QI in stage 3a
+;; (MVP); m2/m4/m8 acc is a follow-up that requires registering more
+;; OFP8 vector types.
+(define_int_iterator VFMMACC_OFP8
+  [UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2
+   UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2
+   UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2
+   UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2])
+
+;; Suffix order on the user-visible intrinsic name is acc_vs1_vs2;
+;; the int_attr below mirrors it for the MD pattern name (the "acc"
+;; token here also picks the C return type via the type set).
+(define_int_attr vfmmacc_ofp8_name
+  [(UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "_f8e4m3_f8e4m3_f8e4m3")
+   (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "_f8e4m3_f8e4m3_f8e5m2")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "_f8e4m3_f8e5m2_f8e4m3")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2 "_f8e4m3_f8e5m2_f8e5m2")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "_f8e5m2_f8e4m3_f8e4m3")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "_f8e5m2_f8e4m3_f8e5m2")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "_f8e5m2_f8e5m2_f8e4m3")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "_f8e5m2_f8e5m2_f8e5m2")])
+
+;; The ime_fp_altfmt encoding follows the (altfmt_A, altfmt_B, altfmt)
+;; order: vs1, vs2, acc.  The UNSPEC name is acc_vs1_vs2; rewrite it
+;; into vs1_vs2_acc here.  Each token is e4m3 (= 0) or e5m2 (= 1).
+(define_int_attr vfmmacc_ofp8_altfmt
+  [(UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "e4m3_e4m3_e4m3")
+   (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "e4m3_e5m2_e4m3")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "e5m2_e4m3_e4m3")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2 "e5m2_e5m2_e4m3")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "e4m3_e4m3_e5m2")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "e4m3_e5m2_e5m2")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "e5m2_e4m3_e5m2")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "e5m2_e5m2_e5m2")])
 
 ;; Element modes at LMUL >= 1 for the tile load/store patterns.  The
 ;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not
@@ -1454,6 +1509,35 @@
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")])
+
+;; vfmmacc.vv (W=1) OFP8 -> OFP8: 8 variants over the (acc, vs1, vs2)
+;; altfmt cube.  All inputs and the accumulator share RVVM*QI mode at
+;; the GCC level; the per-instance UNSPEC and the ime_fp_altfmt
+;; attribute distinguish them at the vsetvl pass.
+(define_insn "@pred_vfmmacc_ofp8<vfmmacc_ofp8_name><mode>"
+  [(set (match_operand:VFMMACC_OFP8_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VFMMACC_OFP8_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VFMMACC_OFP8_ACC
+	    [(match_operand:VFMMACC_OFP8_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM1QI          2 "register_operand" " vr")
+	     (match_operand:RVVM1QI          3 "register_operand" " vr")]
+	    VFMMACC_OFP8)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVFMM"
+  "vfmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<vfmmacc_ofp8_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 
