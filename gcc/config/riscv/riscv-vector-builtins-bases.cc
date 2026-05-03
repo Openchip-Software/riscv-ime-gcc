@@ -3740,9 +3740,14 @@ public:
   bool has_merge_operand_p () const override { return false; }
   bool apply_ime_vtype_op_p () const override { return true; }
 
-  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  /* IME tile loads (vmtl, vmttl, vmtl_L<N>, vmttl_L<N>): the data
+     vector is the RETURN type; the args are (T*, ptrdiff_t [, mask],
+     vl).  For OFP8 / OFP4 vs u8 the args are bit-identical, so
+     overloaded dispatch from arg types alone is genuinely ambiguous.
+     Force the fully-qualified name.  */
+  bool can_be_overloaded_p (enum predication_type_index) const override
   {
-    return pred != PRED_TYPE_none;
+    return false;
   }
 
   unsigned int call_properties (const function_instance &) const override
@@ -3777,9 +3782,11 @@ public:
   bool has_merge_operand_p () const override { return false; }
   bool apply_ime_vtype_op_p () const override { return true; }
 
-  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  /* See vmtl_ime: tile loads cannot be overloaded — args carry no
+     information about the data vector type, which is the return.  */
+  bool can_be_overloaded_p (enum predication_type_index) const override
   {
-    return pred != PRED_TYPE_none;
+    return false;
   }
 
   unsigned int call_properties (const function_instance &) const override
@@ -3855,9 +3862,11 @@ public:
   bool has_merge_operand_p () const override { return false; }
   bool apply_ime_vtype_op_p () const override { return true; }
 
-  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  /* See vmtl_ime: tile loads cannot be overloaded — args carry no
+     information about the data vector type, which is the return.  */
+  bool can_be_overloaded_p (enum predication_type_index) const override
   {
-    return pred != PRED_TYPE_none;
+    return false;
   }
 
   unsigned int call_properties (const function_instance &) const override
@@ -3967,9 +3976,11 @@ public:
   bool has_merge_operand_p () const override { return false; }
   bool apply_ime_vtype_op_p () const override { return true; }
 
-  bool can_be_overloaded_p (enum predication_type_index pred) const override
+  /* See vmtl_ime: tile loads cannot be overloaded — args carry no
+     information about the data vector type, which is the return.  */
+  bool can_be_overloaded_p (enum predication_type_index) const override
   {
-    return pred != PRED_TYPE_none;
+    return false;
   }
 
   unsigned int call_properties (const function_instance &) const override
