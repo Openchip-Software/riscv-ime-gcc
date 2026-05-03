@@ -3977,6 +3977,16 @@ static const rvv_type_info fiu_lmul_ge1_ops[]
      {VECTOR_TYPE_vfloat64m2_t, RVV_REQUIRE_ELEN_FP_64},
      {VECTOR_TYPE_vfloat64m4_t, RVV_REQUIRE_ELEN_FP_64},
      {VECTOR_TYPE_vfloat64m8_t, RVV_REQUIRE_ELEN_FP_64},
+     /* OFP8 (gap #14): tile load/store treats memory as opaque bytes,
+	so the OFP8 vector types share the same RVVM*QI mode as the
+	integer u8 entries above; the existing @pred_vmtl<mode> /
+	vmts / vmttl / vmtts patterns handle them unchanged.  The
+	canonical-type-keyed overload dispatch (commit 41568e53a15e)
+	keeps the OFP8 entries from aliasing onto the u8 slot.  */
+     {VECTOR_TYPE_vfloat8e4m3m1_t, 0}, {VECTOR_TYPE_vfloat8e4m3m2_t, 0},
+     {VECTOR_TYPE_vfloat8e4m3m4_t, 0}, {VECTOR_TYPE_vfloat8e4m3m8_t, 0},
+     {VECTOR_TYPE_vfloat8e5m2m1_t, 0}, {VECTOR_TYPE_vfloat8e5m2m2_t, 0},
+     {VECTOR_TYPE_vfloat8e5m2m4_t, 0}, {VECTOR_TYPE_vfloat8e5m2m8_t, 0},
      {NUM_VECTOR_TYPES, 0}};
 
 /* FP type sets at LMUL >= 1 for IME FP matrix multiply-accumulate.  */
@@ -7035,20 +7045,27 @@ registered_function::overloaded_hash () const
       if (TREE_CODE_CLASS (TREE_CODE (type)) != tcc_type)
 	continue;
 
-      /* Discriminate by canonical type identifier.  Hashing only on
-	 (mode, unsigned_p) -- as the original code did -- collapses
+      /* Discriminate by the per-DEF_RVV_TYPE TYPE_NAME.  Hashing only
+	 on (mode, unsigned_p) -- as the original code did -- collapses
 	 several genuinely-distinct RVV types onto the same slot:
 	 vuint8m1_t, vfloat8e4m3m1_t, vfloat8e5m2m1_t, vfloat4e2m1m1_t
-	 and vuint4m1_t are all (RVVM1QI, unsigned) at the GCC level.
-	 Use TYPE_CANONICAL of TYPE_MAIN_VARIANT (with TYPE_MAIN_VARIANT
-	 itself as a fallback when CANONICAL is NULL during early
-	 registration); this is the same key the C front end uses for
-	 type identity.  Mode is kept in the mix as a cheap second
-	 discriminator.  */
+	 and vuint4m1_t are all (RVVM1QI, unsigned) at the GCC level
+	 AND share the same underlying VECTOR_TYPE tree (all built from
+	 the same `uint8' element type), so even TYPE_CANONICAL aliases
+	 them.  The disambiguator that survives is TYPE_NAME, which
+	 each DEF_RVV_TYPE entry sets to its own unique TYPE_DECL
+	 (e.g. `__rvv_float8e4m3m1_t' vs `__rvv_uint8m1_t').
+
+	 Fall back through TYPE_CANONICAL and TYPE_MAIN_VARIANT for
+	 non-RVV types whose TYPE_NAME may be NULL.  Mode is kept in
+	 the mix as a cheap second discriminator.  */
       tree disc = POINTER_TYPE_P (type) ? TREE_TYPE (type) : type;
       tree mv = TYPE_MAIN_VARIANT (disc);
-      tree canon = TYPE_CANONICAL (mv);
-      tree key = canon ? canon : mv;
+      tree key = TYPE_NAME (mv);
+      if (!key)
+	key = TYPE_CANONICAL (mv);
+      if (!key)
+	key = mv;
       machine_mode mode_p = TYPE_MODE (disc);
 
       if (POINTER_TYPE_P (type) || lookup_vector_type_attribute (disc))
@@ -7162,10 +7179,12 @@ non_overloaded_registered_function_hasher::equal (value_type value,
 	}
       tree am = TYPE_MAIN_VARIANT (ad);
       tree bm = TYPE_MAIN_VARIANT (bd);
-      tree ac = TYPE_CANONICAL (am);
-      tree bc = TYPE_CANONICAL (bm);
-      tree ak = ac ? ac : am;
-      tree bk = bc ? bc : bm;
+      tree ak = TYPE_NAME (am);
+      if (!ak) ak = TYPE_CANONICAL (am);
+      if (!ak) ak = am;
+      tree bk = TYPE_NAME (bm);
+      if (!bk) bk = TYPE_CANONICAL (bm);
+      if (!bk) bk = bm;
       if (ak != bk)
 	return false;
     }
