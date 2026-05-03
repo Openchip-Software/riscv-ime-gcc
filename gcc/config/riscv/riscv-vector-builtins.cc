@@ -7025,7 +7025,6 @@ registered_function::overloaded_hash () const
 {
   inchash::hash h;
   tree type;
-  unsigned int unsigned_p, mode_p;
   h.add (overload_name, strlen (overload_name));
   for (unsigned int i = 0; i < argument_types.length (); i++)
     {
@@ -7036,14 +7035,26 @@ registered_function::overloaded_hash () const
       if (TREE_CODE_CLASS (TREE_CODE (type)) != tcc_type)
 	continue;
 
-      unsigned_p = POINTER_TYPE_P (type) ? TYPE_UNSIGNED (TREE_TYPE (type))
-					 : TYPE_UNSIGNED (type);
-      mode_p = POINTER_TYPE_P (type) ? TYPE_MODE (TREE_TYPE (type))
-				     : TYPE_MODE (type);
-      if (POINTER_TYPE_P (type) || lookup_vector_type_attribute (type))
+      /* Discriminate by canonical type identifier.  Hashing only on
+	 (mode, unsigned_p) -- as the original code did -- collapses
+	 several genuinely-distinct RVV types onto the same slot:
+	 vuint8m1_t, vfloat8e4m3m1_t, vfloat8e5m2m1_t, vfloat4e2m1m1_t
+	 and vuint4m1_t are all (RVVM1QI, unsigned) at the GCC level.
+	 Use TYPE_CANONICAL of TYPE_MAIN_VARIANT (with TYPE_MAIN_VARIANT
+	 itself as a fallback when CANONICAL is NULL during early
+	 registration); this is the same key the C front end uses for
+	 type identity.  Mode is kept in the mix as a cheap second
+	 discriminator.  */
+      tree disc = POINTER_TYPE_P (type) ? TREE_TYPE (type) : type;
+      tree mv = TYPE_MAIN_VARIANT (disc);
+      tree canon = TYPE_CANONICAL (mv);
+      tree key = canon ? canon : mv;
+      machine_mode mode_p = TYPE_MODE (disc);
+
+      if (POINTER_TYPE_P (type) || lookup_vector_type_attribute (disc))
 	{
-	  h.add_int (unsigned_p);
-	  h.add_int (mode_p);
+	  h.add_hwi ((HOST_WIDE_INT) (uintptr_t) key);
+	  h.add_int ((int) mode_p);
 	}
       else if (instance.base->may_require_vxrm_p ()
 	       || instance.base->may_require_frm_p ())
@@ -7078,8 +7089,87 @@ inline bool
 non_overloaded_registered_function_hasher::equal (value_type value,
 						  const compare_type &key)
 {
-  return ((strcmp (value->overload_name, key->overload_name) == 0)
-	  && value->overloaded_hash () == key->overloaded_hash ());
+  /* Two registered functions are the same overload iff they share
+     overload_name AND every argument the hash function considered
+     matches by canonical identity.  This must mirror overloaded_hash
+     exactly so the hash-table consistency invariant ("equal => same
+     hash") holds.
+
+     overloaded_hash's gating:
+       * Only pointer / vector args contribute -- canonical-type
+	 pointer is the discriminator.
+       * Scalars contribute nothing UNLESS the op is FRM/VXRM-sensitive,
+	 in which case the hash adds the arglist length and stops.
+       * No length is added for non-FRM ops, so two arglists with the
+	 same sequence of vector/pointer args but different scalar
+	 trailers hash identically -- and must compare equal.
+
+     This is what the user-side overload-resolution path relies on: a
+     short user call like __riscv_vand(vec, vl) -- 2 args -- must
+     resolve to e.g. vand_vx_i32m1 -- 3 args -- so the front end can
+     emit a meaningful "too few arguments" diagnostic against the
+     concrete intrinsic.
+
+     We iterate the longer of the two arglists.  Any "extra" arg on
+     the longer side must be a non-discriminating scalar (no
+     vector/pointer attribute) for non-FRM ops; an extra
+     vector/pointer arg means the hashes legitimately differ and the
+     two functions are not equal.  */
+  if (strcmp (value->overload_name, key->overload_name) != 0)
+    return false;
+  unsigned int v_len = value->argument_types.length ();
+  unsigned int k_len = key->argument_types.length ();
+  unsigned int n = std::max (v_len, k_len);
+  bool frm_op = (value->instance.base->may_require_vxrm_p ()
+		 || value->instance.base->may_require_frm_p ());
+  for (unsigned int i = 0; i < n; i++)
+    {
+      tree a = (i < v_len) ? value->argument_types[i] : NULL_TREE;
+      tree b = (i < k_len) ? key->argument_types[i] : NULL_TREE;
+
+      /* If only one side has an arg here, the other arglist is
+	 shorter.  Hashes will agree only if the extra arg contributes
+	 nothing to the hash (i.e. a scalar on a non-FRM op).  */
+      if (!a || !b)
+	{
+	  tree extra = a ? a : b;
+	  if (TREE_CODE_CLASS (TREE_CODE (extra)) != tcc_type)
+	    continue;
+	  tree xd = POINTER_TYPE_P (extra) ? TREE_TYPE (extra) : extra;
+	  if (POINTER_TYPE_P (extra) || lookup_vector_type_attribute (xd))
+	    return false;  /* Vector/pointer -- hash differs.  */
+	  if (frm_op)
+	    return false;  /* Hash adds length; lengths differ here.  */
+	  continue;	   /* Scalar on non-FRM op -- ignored by hash.  */
+	}
+
+      if (TREE_CODE_CLASS (TREE_CODE (a)) != tcc_type
+	  || TREE_CODE_CLASS (TREE_CODE (b)) != tcc_type)
+	continue;
+      if (POINTER_TYPE_P (a) != POINTER_TYPE_P (b))
+	return false;
+      tree ad = POINTER_TYPE_P (a) ? TREE_TYPE (a) : a;
+      tree bd = POINTER_TYPE_P (b) ? TREE_TYPE (b) : b;
+      bool a_disc = POINTER_TYPE_P (a) || lookup_vector_type_attribute (ad);
+      bool b_disc = POINTER_TYPE_P (b) || lookup_vector_type_attribute (bd);
+      if (a_disc != b_disc)
+	return false;  /* One is a discriminator, the other isn't.  */
+      if (!a_disc)
+	{
+	  if (frm_op)
+	    return v_len == k_len;  /* Hash broke after len.  */
+	  continue;
+	}
+      tree am = TYPE_MAIN_VARIANT (ad);
+      tree bm = TYPE_MAIN_VARIANT (bd);
+      tree ac = TYPE_CANONICAL (am);
+      tree bc = TYPE_CANONICAL (bm);
+      tree ak = ac ? ac : am;
+      tree bk = bc ? bc : bm;
+      if (ak != bk)
+	return false;
+    }
+  return true;
 }
 
 /* If TYPE is a built-in type defined by the RVV ABI, return the mangled name,
