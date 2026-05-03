@@ -2838,6 +2838,62 @@ ime_unspec_altfmt_b (int unspec)
     }
 }
 
+/* (altfmt_A, altfmt_B, altfmt) triple for OFP8 mmacc UNSPECs.  Mirrors
+   the per-pattern ime_fp_altfmt MD attribute that the static-VLEN path
+   reads in riscv_extract_ime_requirements (see riscv-vsetvl.cc).  Both
+   paths must agree, otherwise the runtime probe writes a vtype with
+   the wrong altfmt and the WARL readback traps (or worse, silently
+   computes in the wrong format).
+
+   Encoding per token: false = E4M3 (= 0), true = E5M2 (= 1).  The acc
+   bit (val) carries E4M3/E5M2 at SEW=8 (W=1) and FP16/BF16 at SEW=16
+   (W=2); at SEW>=32 (W=4, W=8) the acc altfmt is fixed at 0.  */
+
+struct ime_ofp8_altfmt
+{
+  bool a;    /* altfmt_A -- vs1 input format.  */
+  bool b;    /* altfmt_B -- vs2 input format.  */
+  bool val;  /* altfmt   -- accumulator/output format.  */
+};
+
+static ime_ofp8_altfmt
+ime_unspec_ofp8_altfmt (int unspec)
+{
+  switch (unspec)
+    {
+    /* W=1 vfmmacc OFP8 -> OFP8 (UNSPEC name: F8_<acc>_<vs1>_<vs2>).  */
+    case UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3: return { false, false, false };
+    case UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2: return { false, true,  false };
+    case UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3: return { true,  false, false };
+    case UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2: return { true,  true,  false };
+    case UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3: return { false, false, true  };
+    case UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2: return { false, true,  true  };
+    case UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3: return { true,  false, true  };
+    case UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2: return { true,  true,  true  };
+    /* W=2 vfwmmacc OFP8 -> FP16 (acc altfmt = 0).  */
+    case UNSPEC_VFWMMACC_OFP8_FP16_E4M3:      return { false, false, false };
+    case UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2: return { false, true,  false };
+    case UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3: return { true,  false, false };
+    case UNSPEC_VFWMMACC_OFP8_FP16_E5M2:      return { true,  true,  false };
+    /* W=2 vfwmmacc OFP8 -> BF16 (acc altfmt = 1).  */
+    case UNSPEC_VFWMMACC_OFP8_BF16_E4M3:      return { false, false, true };
+    case UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2: return { false, true,  true };
+    case UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3: return { true,  false, true };
+    case UNSPEC_VFWMMACC_OFP8_BF16_E5M2:      return { true,  true,  true };
+    /* W=4 / W=8 OFP8 (acc altfmt fixed at 0 for SEW>=32).  */
+    case UNSPEC_VFQWMMACC_F8E4M3:      return { false, false, false };
+    case UNSPEC_VFQWMMACC_F8E5M2:      return { true,  true,  false };
+    case UNSPEC_VFQWMMACC_F8E4M3_E5M2: return { false, true,  false };
+    case UNSPEC_VFQWMMACC_F8E5M2_E4M3: return { true,  false, false };
+    case UNSPEC_VF8WMMACC_F8E4M3:      return { false, false, false };
+    case UNSPEC_VF8WMMACC_F8E5M2:      return { true,  true,  false };
+    case UNSPEC_VF8WMMACC_F8E4M3_E5M2: return { false, true,  false };
+    case UNSPEC_VF8WMMACC_F8E5M2_E4M3: return { true,  false, false };
+    default:
+      gcc_unreachable ();
+    }
+}
+
 /* Anchor an IME consumer in scheduling order on the runtime-VLEN path.
 
    The instruction scheduler runs at sched1 (RTL pass 324r), well
@@ -3341,8 +3397,11 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  /* is_tile_op = */ false,
+				  af.a, af.b, af.val,
+				  /* bs = */ false);
     rtx result = e.use_exact_insn (
       code_for_pred_vfwmmacc_ofp8_fp16 (UNSPEC, e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
@@ -3378,8 +3437,11 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  /* is_tile_op = */ false,
+				  af.a, af.b, af.val,
+				  /* bs = */ false);
     rtx result = e.use_exact_insn (
       code_for_pred_vfwmmacc_ofp8_bf16 (UNSPEC, e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
@@ -3418,8 +3480,11 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  /* is_tile_op = */ false,
+				  af.a, af.b, af.val,
+				  /* bs = */ false);
     rtx result = e.use_exact_insn (
       code_for_pred_vfmmacc_ofp8 (UNSPEC, e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
@@ -3459,8 +3524,11 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  /* is_tile_op = */ false,
+				  af.a, af.b, af.val,
+				  /* bs = */ false);
     rtx result = e.use_exact_insn (
       code_for_pred_vfqwmmacc_ofp8 (UNSPEC, e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
@@ -3491,8 +3559,11 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  /* is_tile_op = */ false,
+				  af.a, af.b, af.val,
+				  /* bs = */ false);
     rtx result = e.use_exact_insn (
       code_for_pred_vf8wmmacc_ofp8 (UNSPEC, e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
