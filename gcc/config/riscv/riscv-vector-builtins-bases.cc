@@ -3809,7 +3809,6 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
 
   /* IME tile loads (vmtl, vmttl, vmtl_L<N>, vmttl_L<N>): the data
      vector is the RETURN type; the args are (T*, ptrdiff_t [, mask],
@@ -3828,12 +3827,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ true,
-				  false, false, false, false);
     rtx result
       = e.use_contiguous_load_insn (code_for_pred_vmtl (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
     return result;
   }
 };
@@ -3851,7 +3846,6 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
 
   /* See vmtl_ime: tile loads cannot be overloaded — args carry no
      information about the data vector type, which is the return.  */
@@ -3867,11 +3861,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
     rtx result = e.use_contiguous_load_insn (
       code_for_pred_vmtl (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
     return result;
   }
 };
@@ -3892,7 +3883,6 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
 
   unsigned int call_properties (const function_instance &) const override
   {
@@ -3906,11 +3896,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
     rtx result = e.use_contiguous_store_insn (
       code_for_pred_vmts (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
     return result;
   }
 };
@@ -3931,7 +3918,6 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
 
   /* See vmtl_ime: tile loads cannot be overloaded — args carry no
      information about the data vector type, which is the return.  */
@@ -3947,11 +3933,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
     rtx result = e.use_contiguous_load_insn (
       code_for_pred_vmttl (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
     return result;
   }
 };
@@ -3972,7 +3955,6 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
 
   unsigned int call_properties (const function_instance &) const override
   {
@@ -3986,11 +3968,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
     rtx result = e.use_contiguous_store_insn (
       code_for_pred_vmtts (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
     return result;
   }
 };
@@ -4012,7 +3991,6 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
 
   unsigned int call_properties (const function_instance &) const override
   {
@@ -4026,11 +4004,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
     rtx result
       = e.use_contiguous_store_insn (code_for_pred_vmts (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
     return result;
   }
 };
@@ -4045,7 +4020,6 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
 
   /* See vmtl_ime: tile loads cannot be overloaded — args carry no
      information about the data vector type, which is the return.  */
@@ -4061,11 +4035,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
     rtx result
       = e.use_contiguous_load_insn (code_for_pred_vmttl (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
     return result;
   }
 };
@@ -4080,7 +4051,6 @@ public:
   bool apply_tail_policy_p () const override { return false; }
   bool apply_mask_policy_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
 
   unsigned int call_properties (const function_instance &) const override
   {
@@ -4094,11 +4064,8 @@ public:
 
   rtx expand (function_expander &e) const override
   {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  true, false, false, false, false);
     rtx result
       = e.use_contiguous_store_insn (code_for_pred_vmtts (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
     return result;
   }
 };
