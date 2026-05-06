@@ -1058,14 +1058,10 @@
 	     (mem:BLK (scratch))
 	     (match_operand 4 "register_operand"             "    r")]
 	    UNSPEC_VMTL)
-	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))
-   (use (match_operand 9 "vtype_op_operand" "rJ"))]
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
   "TARGET_ZVVMTLS"
   "vmtl.v\t%0,%3,%4%p1"
   [(set_attr "type" "vlds")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "9")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
@@ -1180,15 +1176,10 @@
 	     (mem:BLK (scratch))
 	     (match_operand 4 "register_operand"             "    r")]
 	    VMTL_L)
-	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))
-   (use (match_operand 9 "vtype_op_operand" "rJ"))]
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
   "TARGET_ZVVMTLS"
   "vmtl.v\t%0,%3,%4,<vmtl_L_imm>%p1"
   [(set_attr "type" "vlds")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_lambda_immediate" "yes")
-   (set_attr "ime_vtype_op_idx" "9")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
@@ -1214,14 +1205,10 @@
 	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	   (match_operand 2 "register_operand"            "    r")
 	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
-	  UNSPEC_VMTS))
-   (use (match_operand 6 "vtype_op_operand" "rJ"))]
+	  UNSPEC_VMTS))]
   "TARGET_ZVVMTLS"
   "vmts.v\t%3,%0,%2%p1"
   [(set_attr "type" "vsts")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "6")
    (set_attr "mode" "<MODE>")
    (set (attr "avl_type_idx") (const_int 5))])
 
@@ -1240,15 +1227,10 @@
 	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	   (match_operand 2 "register_operand"            "    r")
 	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
-	  VMTS_L))
-   (use (match_operand 6 "vtype_op_operand" "rJ"))]
+	  VMTS_L))]
   "TARGET_ZVVMTLS"
   "vmts.v\t%3,%0,%2,<vmts_L_imm>%p1"
   [(set_attr "type" "vsts")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_lambda_immediate" "yes")
-   (set_attr "ime_vtype_op_idx" "6")
    (set_attr "mode" "<MODE>")
    (set (attr "avl_type_idx") (const_int 5))])
 
@@ -1275,14 +1257,10 @@
 	     (mem:BLK (scratch))
 	     (match_operand 4 "register_operand"             "    r")]
 	    UNSPEC_VMTTL)
-	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))
-   (use (match_operand 9 "vtype_op_operand" "rJ"))]
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
   "TARGET_ZVVMTTLS"
   "vmttl.v\t%0,%3,%4%p1"
   [(set_attr "type" "vlds")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "9")
    (set_attr "mode" "<MODE>")])
 
 ;; vmttl.v with immediate "Lλ" override.
@@ -1302,15 +1280,10 @@
 	     (mem:BLK (scratch))
 	     (match_operand 4 "register_operand"             "    r")]
 	    VMTTL_L)
-	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))
-   (use (match_operand 9 "vtype_op_operand" "rJ"))]
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
   "TARGET_ZVVMTTLS"
   "vmttl.v\t%0,%3,%4,<vmttl_L_imm>%p1"
   [(set_attr "type" "vlds")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_lambda_immediate" "yes")
-   (set_attr "ime_vtype_op_idx" "9")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
@@ -1328,14 +1301,10 @@
 	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	   (match_operand 2 "register_operand"            "    r")
 	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
-	  UNSPEC_VMTTS))
-   (use (match_operand 6 "vtype_op_operand" "rJ"))]
+	  UNSPEC_VMTTS))]
   "TARGET_ZVVMTTLS"
   "vmtts.v\t%3,%0,%2%p1"
   [(set_attr "type" "vsts")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "6")
    (set_attr "mode" "<MODE>")
    (set (attr "avl_type_idx") (const_int 5))])
 
@@ -1352,15 +1321,10 @@
 	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	   (match_operand 2 "register_operand"            "    r")
 	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")]
-	  VMTTS_L))
-   (use (match_operand 6 "vtype_op_operand" "rJ"))]
+	  VMTTS_L))]
   "TARGET_ZVVMTTLS"
   "vmtts.v\t%3,%0,%2,<vmtts_L_imm>%p1"
   [(set_attr "type" "vsts")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_lambda_immediate" "yes")
-   (set_attr "ime_vtype_op_idx" "6")
    (set_attr "mode" "<MODE>")
    (set (attr "avl_type_idx") (const_int 5))])
 
