@@ -3014,8 +3014,42 @@ collect_ime_mmacc_geometry_in_bb (basic_block bb, ime_function_geometry &result)
   return true;
 }
 
+/* Identify intrinsic calls that pass an mmacc accumulator through at
+   the same SEW, only re-shaping LMUL.  These do not change the
+   underlying (SEW, MUL_C) the surrounding tile op needs, so the
+   geometry walker should peel through them transparently to reach the
+   real mmacc.  The canonical user-facing pattern is
+
+       c    = vfmmacc/vfwmmacc(... acc=mN ...);
+       reg0 = __riscv_vget_v_f32mN_f32m1 (c, 0);
+       __riscv_vmts_v_f32m1 (ptr, ldc, reg0, vl);
+
+   where reg0's m1 store needs the mmacc's mN-derived lambda, not the
+   standalone-MUL_C=1 fallback.
+
+   vreinterpret is deliberately NOT included: it can change SEW (e.g.
+   u32mN -> f16mN/2) and so the geometry inheritance would be unsafe in
+   the general case.  vset is also excluded: it composes a wider group
+   from a narrower one, so the geometry-bearing operand is the
+   *inserted* arg (arg 2), not arg 0 — peel_to_mmacc_def follows arg 0
+   uniformly.  */
+
+static bool
+is_lossless_lmul_reshape (const char *name)
+{
+  if (!name || strncmp (name, "__riscv_v", 9) != 0)
+    return false;
+  const char *p = name + 9;
+  return strncmp (p, "get_v_",        6) == 0
+      || strncmp (p, "lmul_trunc_v_", 13) == 0
+      || strncmp (p, "lmul_ext_v_",   11) == 0;
+}
+
 /* Walk SSA copies/PHIs to peel through trivial pass-throughs and find a
-   plausible mmacc-defining call.  Bounded to avoid pathological CFGs.  */
+   plausible mmacc-defining call.  Lossless LMUL re-shape calls
+   (vget / vlmul_trunc / vlmul_ext) are followed transparently along
+   their primary vector input (arg 0).  Bounded to avoid pathological
+   CFGs.  */
 
 static gimple *
 peel_to_mmacc_def (tree val, int budget)
@@ -3026,7 +3060,18 @@ peel_to_mmacc_def (tree val, int budget)
       if (!def)
 	return NULL;
       if (is_gimple_call (def))
-	return def;
+	{
+	  tree fndecl = gimple_call_fndecl (def);
+	  const char *name
+	    = fndecl ? IDENTIFIER_POINTER (DECL_NAME (fndecl)) : NULL;
+	  if (is_lossless_lmul_reshape (name)
+	      && gimple_call_num_args (def) >= 1)
+	    {
+	      val = gimple_call_arg (def, 0);
+	      continue;
+	    }
+	  return def;
+	}
       if (gimple_code (def) == GIMPLE_ASSIGN
 	  && gimple_assign_single_p (def))
 	{
@@ -3128,6 +3173,27 @@ find_mmacc_geometry_via_ssa (gimple *stmt, ime_function_geometry &geo)
 		      && bitmap_set_bit (visited, SSA_NAME_VERSION (dst)))
 		    worklist.safe_push (dst);
 		  continue;
+		}
+	      /* Lossless LMUL re-shape call (vget / vlmul_trunc /
+		 vlmul_ext): only follow when val is the primary
+		 input (arg 0) -- skip the container side of a
+		 hypothetical vset.  */
+	      if (is_gimple_call (use_stmt))
+		{
+		  tree fndecl = gimple_call_fndecl (use_stmt);
+		  const char *cname
+		    = fndecl ? IDENTIFIER_POINTER (DECL_NAME (fndecl))
+			     : NULL;
+		  if (is_lossless_lmul_reshape (cname)
+		      && gimple_call_num_args (use_stmt) >= 1
+		      && gimple_call_arg (use_stmt, 0) == val)
+		    {
+		      tree dst = gimple_call_lhs (use_stmt);
+		      if (dst && TREE_CODE (dst) == SSA_NAME
+			  && bitmap_set_bit (visited,
+					     SSA_NAME_VERSION (dst)))
+			worklist.safe_push (dst);
+		    }
 		}
 	    }
 	}
