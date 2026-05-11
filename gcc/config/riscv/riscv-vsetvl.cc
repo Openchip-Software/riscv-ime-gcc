@@ -944,102 +944,6 @@ compute_ime_lambda_log2 (int sew_bits, int mul_c)
   return lambda_log2;
 }
 
-/* (sew_bits, mul_c) of an IME mmacc insn extracted from RTL.  Returned
-   by find_surrounding_ime_mmacc_geometry().  Both fields zero means no
-   unambiguous mmacc was found.  */
-
-struct ime_mmacc_rtl_geometry
-{
-  int sew_bits;
-  int mul_c;
-};
-
-/* Inspect RINSN; if it is an IME mmacc insn (requires_ime_vtype=yes,
-   type=vmmacc) populate G with its accumulator (sew, mul_c) and return
-   true; otherwise return false.  */
-
-static bool
-extract_mmacc_geometry (rtx_insn *rinsn, ime_mmacc_rtl_geometry &g)
-{
-  if (!INSN_P (rinsn) || !NONDEBUG_INSN_P (rinsn))
-    return false;
-  if (recog_memoized (rinsn) < 0)
-    return false;
-  if (get_attr_requires_ime_vtype (rinsn) != REQUIRES_IME_VTYPE_YES)
-    return false;
-  if (get_attr_type (rinsn) != TYPE_VMMACC)
-    return false;
-
-  /* Re-extract for safety; callers may have invalidated recog_data.  */
-  extract_insn_cached (rinsn);
-  for (int i = 0; i < recog_data.n_operands; i++)
-    if (REG_P (recog_data.operand[i])
-	&& VECTOR_MODE_P (GET_MODE (recog_data.operand[i])))
-      {
-	machine_mode acc_mode = GET_MODE (recog_data.operand[i]);
-	int mul_c;
-	switch (get_vlmul (acc_mode))
-	  {
-	  case riscv_vector::LMUL_1: mul_c = 1; break;
-	  case riscv_vector::LMUL_2: mul_c = 2; break;
-	  case riscv_vector::LMUL_4: mul_c = 4; break;
-	  case riscv_vector::LMUL_8: mul_c = 8; break;
-	  default: return false;  /* fractional / reserved */
-	  }
-	g.sew_bits = GET_MODE_UNIT_BITSIZE (acc_mode);
-	g.mul_c = mul_c;
-	return true;
-      }
-  return false;
-}
-
-/* Walk the BB containing TILE_INSN looking for a single dominant IME
-   mmacc geometry.  If the BB has no mmacc, fall back to a function-wide
-   walk -- ambiguity at either level returns {0, 0}.  Mirrors the GIMPLE-
-   based find_function_ime_geometry () in riscv-vector-builtins-bases.cc;
-   used here to give the post-reload static path the same MUL_C
-   inheritance that the runtime path already enjoys.  */
-
-static ime_mmacc_rtl_geometry
-find_surrounding_ime_mmacc_geometry (rtx_insn *tile_insn)
-{
-  ime_mmacc_rtl_geometry result = {0, 0};
-  basic_block tile_bb = BLOCK_FOR_INSN (tile_insn);
-
-  auto walk_bb = [&] (basic_block bb, ime_mmacc_rtl_geometry &out) -> bool {
-    if (!bb)
-      return true;
-    rtx_insn *insn;
-    FOR_BB_INSNS (bb, insn)
-      {
-	ime_mmacc_rtl_geometry g = {0, 0};
-	if (!extract_mmacc_geometry (insn, g))
-	  continue;
-	if (out.mul_c == 0)
-	  out = g;
-	else if (out.sew_bits != g.sew_bits || out.mul_c != g.mul_c)
-	  {
-	    out = ime_mmacc_rtl_geometry {0, 0};
-	    return false;
-	  }
-      }
-    return true;
-  };
-
-  if (tile_bb && walk_bb (tile_bb, result) && result.mul_c != 0)
-    return result;
-  result = ime_mmacc_rtl_geometry {0, 0};
-
-  if (cfun && cfun->cfg)
-    {
-      basic_block bb;
-      FOR_EACH_BB_FN (bb, cfun)
-	if (!walk_bb (bb, result))
-	  return result;
-    }
-  return result;
-}
-
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
    `requires_ime_vtype' attribute set to yes.  The returned record is
    fully determined by RINSN's operand modes; see §C-Language Intrinsics
@@ -1077,70 +981,13 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
   gcc_assert (acc_mode != VOIDmode);
   r.sew = GET_MODE_UNIT_BITSIZE (acc_mode);
 
-  /* Tile load/store instructions (vmtl.v, vmts.v, vmttl.v, vmtts.v)
-     move data between memory and a plain vector register group; there
-     is no accumulator, so the lambda constraint is computed with a
-     notional MUL_C=1.  The LMUL of the data vector is carried through
-     the vtype LMUL field separately, not folded into lambda.
-     The mmacc family uses the data register's LMUL as MUL_C because
-     its vd really is the accumulator register group.
-
-     Exception: the immediate-lambda tile variants (_L{N}) carry their
-     own lambda in the instruction encoding; vtype.lambda is unused by
-     the operation but vsetvl still requires (VLEN, SEW, MUL_C) to
-     yield a valid lambda.  Use the operation's own data LMUL as MUL_C
-     so the vtype always lands on a valid lambda regardless of the
-     immediate K.  Without this, e.g. vmtl_v_i8m2_L2 at VLEN=256 would
-     trap because VLEN/SEW = 32 has odd log2.  */
-  enum attr_type t = get_attr_type (rinsn);
-  bool is_tile = (t == TYPE_VLDS || t == TYPE_VSTS);
-  bool tile_imm_lambda
-    = is_tile && get_attr_ime_lambda_immediate (rinsn) == IME_LAMBDA_IMMEDIATE_YES;
-  if (tile_imm_lambda)
-    r.mul_c = get_vlmul (acc_mode);
-  else if (is_tile)
-    {
-      /* Match the runtime path's MUL_C inheritance for non-_L{N} tile
-	 ops: walk RTL for a surrounding IME mmacc and adopt its MUL_C
-	 (with widening detection: for an mmacc at wider SEW the tile
-	 probe needs MUL_C = W * MUL_C_acc so both probes compute the
-	 same lambda).  Falls through to LMUL_1 for standalone tile ops
-	 with no mmacc nearby.  */
-      r.mul_c = riscv_vector::LMUL_1;
-      ime_mmacc_rtl_geometry geo
-	= find_surrounding_ime_mmacc_geometry (rinsn);
-      /* The walk above calls extract_insn_cached on each candidate
-	 mmacc, leaving recog_data populated with operands from the last
-	 visited mmacc.  Re-extract our own insn before any subsequent
-	 read of recog_data.operand[]; otherwise downstream code reads
-	 the wrong insn's operands and trips the SEW assertion (see
-	 reproducer at examples/src/repro-vfwmmacc-O3-ice.cxx, where
-	 multiple widening callsites in one function caused vmtl probes
-	 to inherit acc_mode from a sibling vfwmmacc).  */
-      extract_insn_cached (rinsn);
-      if (geo.mul_c != 0)
-	{
-	  int inherited_mul_c = 0;
-	  if (geo.sew_bits == r.sew)
-	    inherited_mul_c = geo.mul_c;
-	  else if (geo.sew_bits > r.sew && (geo.sew_bits % r.sew) == 0)
-	    inherited_mul_c = (geo.sew_bits / r.sew) * geo.mul_c;
-	  switch (inherited_mul_c)
-	    {
-	    case 1: r.mul_c = riscv_vector::LMUL_1; break;
-	    case 2: r.mul_c = riscv_vector::LMUL_2; break;
-	    case 4: r.mul_c = riscv_vector::LMUL_4; break;
-	    case 8: r.mul_c = riscv_vector::LMUL_8; break;
-	    default:
-	      /* Inherited MUL_C exceeds the {1,2,4,8} encoding (or zero
-		 from a non-matching widening); leave at LMUL_1, the
-		 lambda check below will sorry () if invalid.  */
-	      break;
-	    }
-	}
-    }
-  else
-    r.mul_c = get_vlmul (acc_mode);
+  /* MUL_C is the accumulator's register-group multiplier, encoded as
+     vlmul.  Tile load/store insns no longer reach this extractor --
+     their MD patterns dropped the requires_ime_vtype attribute when
+     the lambda inheritance was decoupled from the tile-op path -- so
+     RINSN here is always an mmacc family insn with a real
+     accumulator.  */
+  r.mul_c = get_vlmul (acc_mode);
 
   /* For the mmacc family operand 2 is vs1 and may have a different
      LMUL (input LMUL) and/or a narrower SEW (widening variants).

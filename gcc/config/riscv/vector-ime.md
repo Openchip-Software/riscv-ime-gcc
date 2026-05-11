@@ -178,17 +178,6 @@
 (define_attr "ime_bs" "none,bs16,bs32"
   (const_string "none"))
 
-;; Set on tile load/store patterns whose lambda is encoded in the
-;; instruction itself (the _L{N} family: vmtl_L*, vmts_L*, vmttl_L*,
-;; vmtts_L*).  vtype.lambda is irrelevant to the operation but vsetvl
-;; still requires a valid (VLEN, SEW, MUL_C) triple.  When this attr
-;; is "yes", the vsetvl/runtime path uses the operation's own data
-;; LMUL as the MUL_C divisor (mirroring mmacc inheritance) so that
-;; vtype always lands on a valid lambda regardless of the immediate
-;; lambda chosen.  Default "no" keeps the standalone-MUL_C=1 path.
-(define_attr "ime_lambda_immediate" "no,yes"
-  (const_string "no"))
-
 ;; Operand index of the hidden "vtype source" operand on IME consumer
 ;; patterns.  Default INVALID_ATTRIBUTE (no such operand).  Otherwise
 ;; this is the index of a `(use (match_operand N "vtype_op_operand"))'

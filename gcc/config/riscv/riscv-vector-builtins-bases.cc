@@ -2897,370 +2897,6 @@ ime_unspec_ofp8_altfmt (int unspec)
     }
 }
 
-/* Walk the current function's GIMPLE body looking for IME multiply-
-   accumulate calls, and report the dominant (SEW_bits, MUL_C) tuple.
-
-   Returned mul_c == 0 means "no mmacc found" or "multiple mmaccs with
-   different geometries".  The caller falls back to standalone tile
-   geometry (MUL_C=1) in that case.
-
-   This is used by tile load/store expanders to inherit a surrounding
-   mmacc's lambda geometry: a non-_L tile load/store carries 0b000 in
-   its lambda-select field (i.e., "fall back to vtype.lambda"), so the
-   tile shape is determined by whatever vtype is active at runtime --
-   typically established by the surrounding mmacc.  Standalone tile
-   geometry (MUL_C=1) often yields a different lambda than the mmacc's
-   geometry (MUL_C=N), and at non-trivial VLENs the tile load's
-   standalone lambda either disagrees with the mmacc's (data corruption)
-   or fails the perfect-square parity check (spurious trap).  Inheriting
-   the mmacc's MUL_C makes the tile setup compute the same lambda as
-   the mmacc.  */
-
-struct ime_function_geometry {
-  int sew_bits;   /* 0 if unknown / no match.  */
-  int mul_c;      /* 0 if unknown / mixed.  */
-};
-
-static bool
-is_ime_mmacc_builtin_name (const char *name)
-{
-  if (!name)
-    return false;
-  if (strncmp (name, "__riscv_v", 9) != 0)
-    return false;
-  const char *p = name + 9;
-  /* Match: vmmacc, vwmmacc, vqwmmacc, v8wmmacc, vfmmacc, vfwmmacc,
-     vfqwmmacc, vf8wmmacc -- with any sign/format suffix.  Tile load/
-     store names start with vmtl/vmts/vmttl/vmtts which we exclude.  */
-  if (strncmp (p, "mt", 2) == 0)
-    return false;  /* tile load/store family */
-  if (strncmp (p, "mmacc", 5) == 0
-      || strncmp (p, "wmmacc", 6) == 0
-      || strncmp (p, "qwmmacc", 7) == 0
-      || strncmp (p, "8wmmacc", 7) == 0
-      || strncmp (p, "fmmacc", 6) == 0
-      || strncmp (p, "fwmmacc", 7) == 0
-      || strncmp (p, "fqwmmacc", 8) == 0
-      || strncmp (p, "f8wmmacc", 8) == 0
-      || strncmp (p, "fwimmacc", 8) == 0
-      || strncmp (p, "fqwimmacc", 9) == 0
-      || strncmp (p, "f8wimmacc", 9) == 0)
-    return true;
-  return false;
-}
-
-/* If STMT is a call to an ime mmacc builtin, fill GEO with its
-   accumulator's (sew, mul_c) and return true; otherwise return false.  */
-
-static bool
-mmacc_call_geometry (gimple *stmt, ime_function_geometry &geo)
-{
-  if (!stmt || !is_gimple_call (stmt))
-    return false;
-  tree fndecl = gimple_call_fndecl (stmt);
-  if (!fndecl)
-    return false;
-  const char *name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
-  if (!is_ime_mmacc_builtin_name (name))
-    return false;
-  if (gimple_call_num_args (stmt) < 1)
-    return false;
-  tree acc = gimple_call_arg (stmt, 0);
-  tree acc_type = TREE_TYPE (acc);
-  if (!acc_type || !VECTOR_TYPE_P (acc_type))
-    return false;
-  machine_mode acc_mode = TYPE_MODE (acc_type);
-  if (!VECTOR_MODE_P (acc_mode))
-    return false;
-  int sew = GET_MODE_UNIT_BITSIZE (acc_mode);
-  vlmul_type vlmul = get_vlmul (acc_mode);
-  int mul_c;
-  switch (vlmul)
-    {
-    case LMUL_1: mul_c = 1; break;
-    case LMUL_2: mul_c = 2; break;
-    case LMUL_4: mul_c = 4; break;
-    case LMUL_8: mul_c = 8; break;
-    default: return false;
-    }
-  geo.sew_bits = sew;
-  geo.mul_c = mul_c;
-  return true;
-}
-
-/* Scan one BB for ime mmacc calls and accumulate the (sew, mul_c) of
-   each into RESULT.  Sets RESULT to {0,0} and returns false if the BB
-   contains conflicting geometries.  */
-
-static bool
-collect_ime_mmacc_geometry_in_bb (basic_block bb, ime_function_geometry &result)
-{
-  if (!bb || (bb->flags & BB_RTL))
-    return true;
-  for (gimple_stmt_iterator gsi = gsi_start_bb (bb);
-       !gsi_end_p (gsi); gsi_next (&gsi))
-    {
-      ime_function_geometry g = {0, 0};
-      if (!mmacc_call_geometry (gsi_stmt (gsi), g))
-	continue;
-      if (result.mul_c == 0)
-	result = g;
-      else if (result.sew_bits != g.sew_bits || result.mul_c != g.mul_c)
-	{
-	  result = ime_function_geometry {0, 0};
-	  return false;
-	}
-    }
-  return true;
-}
-
-/* Identify intrinsic calls that pass an mmacc accumulator through at
-   the same SEW, only re-shaping LMUL.  These do not change the
-   underlying (SEW, MUL_C) the surrounding tile op needs, so the
-   geometry walker should peel through them transparently to reach the
-   real mmacc.  The canonical user-facing pattern is
-
-       c    = vfmmacc/vfwmmacc(... acc=mN ...);
-       reg0 = __riscv_vget_v_f32mN_f32m1 (c, 0);
-       __riscv_vmts_v_f32m1 (ptr, ldc, reg0, vl);
-
-   where reg0's m1 store needs the mmacc's mN-derived lambda, not the
-   standalone-MUL_C=1 fallback.
-
-   vreinterpret is deliberately NOT included: it can change SEW (e.g.
-   u32mN -> f16mN/2) and so the geometry inheritance would be unsafe in
-   the general case.  vset is also excluded: it composes a wider group
-   from a narrower one, so the geometry-bearing operand is the
-   *inserted* arg (arg 2), not arg 0 — peel_to_mmacc_def follows arg 0
-   uniformly.  */
-
-static bool
-is_lossless_lmul_reshape (const char *name)
-{
-  if (!name || strncmp (name, "__riscv_v", 9) != 0)
-    return false;
-  const char *p = name + 9;
-  return strncmp (p, "get_v_",        6) == 0
-      || strncmp (p, "lmul_trunc_v_", 13) == 0
-      || strncmp (p, "lmul_ext_v_",   11) == 0;
-}
-
-/* Walk SSA copies/PHIs to peel through trivial pass-throughs and find a
-   plausible mmacc-defining call.  Lossless LMUL re-shape calls
-   (vget / vlmul_trunc / vlmul_ext) are followed transparently along
-   their primary vector input (arg 0).  Bounded to avoid pathological
-   CFGs.  */
-
-static gimple *
-peel_to_mmacc_def (tree val, int budget)
-{
-  while (val && TREE_CODE (val) == SSA_NAME && budget-- > 0)
-    {
-      gimple *def = SSA_NAME_DEF_STMT (val);
-      if (!def)
-	return NULL;
-      if (is_gimple_call (def))
-	{
-	  tree fndecl = gimple_call_fndecl (def);
-	  const char *name
-	    = fndecl ? IDENTIFIER_POINTER (DECL_NAME (fndecl)) : NULL;
-	  if (is_lossless_lmul_reshape (name)
-	      && gimple_call_num_args (def) >= 1)
-	    {
-	      val = gimple_call_arg (def, 0);
-	      continue;
-	    }
-	  return def;
-	}
-      if (gimple_code (def) == GIMPLE_ASSIGN
-	  && gimple_assign_single_p (def))
-	{
-	  val = gimple_assign_rhs1 (def);
-	  continue;
-	}
-      if (gimple_code (def) == GIMPLE_PHI)
-	{
-	  /* Take the first non-self phi argument; cheap and good enough
-	     for the common loop-carried accumulator pattern.  */
-	  gphi *phi = as_a<gphi *> (def);
-	  for (unsigned i = 0; i < gimple_phi_num_args (phi); i++)
-	    {
-	      tree arg = gimple_phi_arg_def (phi, i);
-	      if (arg != val)
-		{
-		  val = arg;
-		  goto next;
-		}
-	    }
-	  return NULL;
-	next:;
-	  continue;
-	}
-      return NULL;
-    }
-  return NULL;
-}
-
-/* If STMT is a tile-load call (vmtl/vmttl), follow its lhs forward to a
-   consumer mmacc.  If STMT is a tile-store call (vmts/vmtts), follow its
-   data argument backward to a producing mmacc.  Returns true on success
-   with GEO populated; false if no unambiguous match.  */
-
-static bool
-find_mmacc_geometry_via_ssa (gimple *stmt, ime_function_geometry &geo)
-{
-  if (!stmt || !is_gimple_call (stmt))
-    return false;
-  tree fndecl = gimple_call_fndecl (stmt);
-  if (!fndecl)
-    return false;
-  const char *name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
-  if (!name || strncmp (name, "__riscv_v", 9) != 0)
-    return false;
-  const char *p = name + 9;
-  bool is_load = (strncmp (p, "mtl", 3) == 0
-		  || strncmp (p, "mttl", 4) == 0);
-  bool is_store = (strncmp (p, "mts", 3) == 0
-		   || strncmp (p, "mtts", 4) == 0);
-
-  if (is_load)
-    {
-      tree lhs = gimple_call_lhs (stmt);
-      if (!lhs || TREE_CODE (lhs) != SSA_NAME)
-	return false;
-      /* Walk uses transitively through copies and PHIs; an mmacc
-	 consumer reached via any path determines the geometry.  Bound
-	 the worklist depth and dedupe to handle loop-carried PHIs.  */
-      ime_function_geometry found = {0, 0};
-      auto_vec<tree, 8> worklist;
-      auto_bitmap visited;
-      worklist.safe_push (lhs);
-      bitmap_set_bit (visited, SSA_NAME_VERSION (lhs));
-      int budget = 32;
-      while (!worklist.is_empty () && budget-- > 0)
-	{
-	  tree val = worklist.pop ();
-	  use_operand_p use_p;
-	  imm_use_iterator iter;
-	  gimple *use_stmt;
-	  FOR_EACH_IMM_USE_STMT (use_stmt, iter, val)
-	    {
-	      ime_function_geometry g = {0, 0};
-	      if (mmacc_call_geometry (use_stmt, g))
-		{
-		  if (found.mul_c == 0)
-		    found = g;
-		  else if (found.sew_bits != g.sew_bits
-			   || found.mul_c != g.mul_c)
-		    return false;  /* Multiple distinct consumers.  */
-		  continue;
-		}
-	      /* Trivial copy: recurse into the lhs.  */
-	      if (gimple_code (use_stmt) == GIMPLE_ASSIGN
-		  && gimple_assign_single_p (use_stmt))
-		{
-		  tree dst = gimple_assign_lhs (use_stmt);
-		  if (dst && TREE_CODE (dst) == SSA_NAME
-		      && bitmap_set_bit (visited, SSA_NAME_VERSION (dst)))
-		    worklist.safe_push (dst);
-		  continue;
-		}
-	      /* PHI: recurse into the result.  */
-	      if (gimple_code (use_stmt) == GIMPLE_PHI)
-		{
-		  tree dst = gimple_phi_result (use_stmt);
-		  if (dst && TREE_CODE (dst) == SSA_NAME
-		      && bitmap_set_bit (visited, SSA_NAME_VERSION (dst)))
-		    worklist.safe_push (dst);
-		  continue;
-		}
-	      /* Lossless LMUL re-shape call (vget / vlmul_trunc /
-		 vlmul_ext): only follow when val is the primary
-		 input (arg 0) -- skip the container side of a
-		 hypothetical vset.  */
-	      if (is_gimple_call (use_stmt))
-		{
-		  tree fndecl = gimple_call_fndecl (use_stmt);
-		  const char *cname
-		    = fndecl ? IDENTIFIER_POINTER (DECL_NAME (fndecl))
-			     : NULL;
-		  if (is_lossless_lmul_reshape (cname)
-		      && gimple_call_num_args (use_stmt) >= 1
-		      && gimple_call_arg (use_stmt, 0) == val)
-		    {
-		      tree dst = gimple_call_lhs (use_stmt);
-		      if (dst && TREE_CODE (dst) == SSA_NAME
-			  && bitmap_set_bit (visited,
-					     SSA_NAME_VERSION (dst)))
-			worklist.safe_push (dst);
-		    }
-		}
-	    }
-	}
-      if (found.mul_c == 0)
-	return false;
-      geo = found;
-      return true;
-    }
-
-  if (is_store)
-    {
-      /* vmts / vmtts: signature (ptr, stride, data, vl); data at index 2.  */
-      if (gimple_call_num_args (stmt) < 3)
-	return false;
-      gimple *def = peel_to_mmacc_def (gimple_call_arg (stmt, 2), 8);
-      return def && mmacc_call_geometry (def, geo);
-    }
-
-  return false;
-}
-
-/* Find the dominant mmacc geometry for the surrounding context of the
-   tile op currently being expanded.  Strategy, in order of precision:
-
-     1. SSA dataflow on the tile op itself: a tile load's lhs is
-	consumed by an mmacc; a tile store's data argument is produced
-	by an mmacc.  When this match exists it is unambiguous and
-	correct even when the tile op and the mmacc live in different
-	basic blocks (loop-hoisted loads, joins after dispatch, etc.).
-
-     2. The basic block enclosing the tile op.  In dispatch-style
-	code where IPA/inline collapsed several LMUL variants into one
-	function each dispatched BB still contains exactly one mmacc
-	geometry, so a per-BB walk picks the local one.
-
-     3. Whole-function scan: covers functions that contain a single
-	mmacc geometry; ambiguity at this level returns {0,0} and the
-	caller falls back to standalone MUL_C=1.  */
-
-static ime_function_geometry
-find_function_ime_geometry ()
-{
-  ime_function_geometry result = {0, 0};
-
-  if (!cfun || !cfun->cfg)
-    return result;
-
-  if (currently_expanding_gimple_stmt
-      && find_mmacc_geometry_via_ssa (currently_expanding_gimple_stmt,
-				      result))
-    return result;
-
-  if (currently_expanding_gimple_stmt)
-    {
-      basic_block local_bb = gimple_bb (currently_expanding_gimple_stmt);
-      if (local_bb && collect_ime_mmacc_geometry_in_bb (local_bb, result)
-	  && result.mul_c != 0)
-	return result;
-      result = ime_function_geometry {0, 0};
-    }
-
-  basic_block bb;
-  FOR_EACH_BB_FN (bb, cfun)
-    if (!collect_ime_mmacc_geometry_in_bb (bb, result))
-      return result;
-  return result;
-}
 
 /* Anchor an IME consumer in scheduling order on the runtime-VLEN path.
 
@@ -3293,13 +2929,29 @@ emit_ime_post_consumer_blockage ()
     emit_insn (gen_blockage ());
 }
 
+/* Emit the runtime-VLEN IME vtype setup for an mmacc expander.
+   `acc_mode' is the accumulator's mode (gives SEW and MUL_C).  The
+   altfmt_* / bs flags carry per-UNSPEC IME format bits (defaulted to
+   false at the call site for integer / non-microscaled mmacc).  No
+   work is needed on the static-VLEN path: the vsetvl pass derives
+   the same vtype from `requires_ime_vtype = yes' on the mmacc
+   pattern.
+
+   IME tile load/store ops do *not* call this helper.  Per the IME
+   spec they read vtype.lambda dynamically (or override it via the
+   `Lλ' immediate); the surrounding mmacc -- not the tile op --
+   programs the lambda field.  An ordinary `vsetvli' for the tile
+   op's vsew/vlmul/vl is enough; vtype.lambda survives across it via
+   WARL.  See the commit history for the rationale (the previous
+   "tile ops infer their MUL_C from a function-wide mmacc walker"
+   approach was both conceptually wrong and a source of silent
+   miscompares when the walker hit ambiguous geometries).  */
+
 static void
 maybe_emit_ime_runtime_vtype (function_expander &e,
 			      machine_mode acc_mode,
-			      bool is_tile_op,
 			      bool altfmt_a, bool altfmt_b,
-			      bool altfmt_val, bool bs_val,
-			      bool tile_imm_lambda = false)
+			      bool altfmt_val, bool bs_val)
 {
   if (BYTES_PER_RISCV_VECTOR.is_constant ())
     return;  /* Static path: vsetvl pass handles it.  */
@@ -3307,111 +2959,33 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
   int sew_bits = GET_MODE_UNIT_BITSIZE (acc_mode);
   vlmul_type acc_vlmul = get_vlmul (acc_mode);
 
-  /* For mmacc: MUL_C equals the accumulator's register-group multiplier.
-     For tile load/store: by spec the instruction encodes lambda 0b000
-     (fall back to vtype.lambda); standalone, MUL_C=1 yields its own
-     lambda.  But when the tile op is feeding (or storing for) an mmacc
-     in the same function, the shared vtype.lambda must match the
-     mmacc's geometry -- otherwise data layout disagrees.  Look up the
-     surrounding function's mmacc geometry and adopt its MUL_C if found
-     and the SEW matches.  */
+  /* MUL_C equals the accumulator's register-group multiplier.  */
   int mul_c;
-  /* For tile_imm_lambda the instruction encodes its own lambda and
-     vtype.lambda is don't-care for the operation.  But there are two
-     distinct cases at the call site:
-
-     a. The function also contains an mmacc whose vtype.lambda must be
-	preserved.  Use the mmacc's MUL_C and let the runtime probe
-	derive the same lambda the mmacc would (-> static_lambda_log2
-	stays -1, full probe runs).
-
-     b. No surrounding mmacc.  vtype.lambda just needs a hardware-
-	valid value.  Picking it from VLEN/(SEW*data_LMUL) at runtime
-	can yield a non-power-of-2 lambda^2 (e.g. VLEN=128, SEW=8,
-	LMUL=2 gives lambda^2=8) and trap on the perfect-square check
-	even though the consumer doesn't care.  Hardcode lambda=1
-	(always supported, smallest valid encoding) and skip the probe
-	entirely (-> static_lambda_log2 = 0).
-
-     For the non-imm tile path we follow the existing mmacc-inheritance
-     logic.  */
-  int static_lambda_log2 = -1;
-  if (tile_imm_lambda)
+  switch (acc_vlmul)
     {
-      ime_function_geometry geo = find_function_ime_geometry ();
-      if (geo.mul_c != 0 && geo.sew_bits == sew_bits)
-	{
-	  /* Case (a): inherit the surrounding mmacc's geometry.  */
-	  mul_c = geo.mul_c;
-	}
-      else
-	{
-	  /* Case (b): no constraint, pick lambda=1 statically.  */
-	  mul_c = 1;
-	  static_lambda_log2 = 0;
-	}
+    case LMUL_1: mul_c = 1; break;
+    case LMUL_2: mul_c = 2; break;
+    case LMUL_4: mul_c = 4; break;
+    case LMUL_8: mul_c = 8; break;
+    default:
+      /* Fractional LMUL: invalid for IME accumulators.  */
+      gcc_unreachable ();
     }
-  else if (is_tile_op)
-    {
-      mul_c = 1;
-      ime_function_geometry geo = find_function_ime_geometry ();
-      if (geo.mul_c != 0)
-	{
-	  if (geo.sew_bits == sew_bits)
-	    mul_c = geo.mul_c;
-	  else if (geo.sew_bits > sew_bits
-		   && (geo.sew_bits % sew_bits) == 0)
-	    {
-	      /* Widening case: the surrounding mmacc consumes inputs at
-		 a wider SEW than this tile op produces (W=2/4/8).  The
-		 input-side vmtl and the mmacc share vtype.lambda, so the
-		 tile probe at the narrower ISEW must compute the SAME
-		 lambda the mmacc would: with VLEN/(ASEW*MUL_C_acc) =
-		 lambda^2 and ASEW = W*ISEW, that means MUL_C for the
-		 tile op is W*MUL_C_acc.  Without this, the input-side
-		 probe (VLEN/ISEW) and the mmacc-side probe
-		 (VLEN/(ASEW*MUL_C_acc)) end up with different lambdas
-		 and the data layout disagrees.  */
-	      int w = geo.sew_bits / sew_bits;
-	      mul_c = w * geo.mul_c;
-	    }
-	}
-    }
-  else
-    switch (acc_vlmul)
-      {
-      case LMUL_1: mul_c = 1; break;
-      case LMUL_2: mul_c = 2; break;
-      case LMUL_4: mul_c = 4; break;
-      case LMUL_8: mul_c = 8; break;
-      default:
-	/* Fractional LMUL: invalid for IME accumulators.  */
-	gcc_unreachable ();
-      }
 
-  /* The vtype LMUL field encodes the SOURCE register-group size, not
-     the accumulator's MUL_C (MUL_C is derived in hardware from VLEN,
-     SEW, and lambda).  For mmacc, vs1 is e.arg_mode(1); its LMUL
-     reflects the user-selected _lm{N} variant (LMUL=1 by default,
-     2/4/8 for the _lm{N} variants).  For tile load/store, the data
-     vector is the source and its LMUL equals the acc_mode's LMUL.  */
-  vlmul_type src_vlmul = is_tile_op ? acc_vlmul : get_vlmul (e.arg_mode (1));
+  /* vs1's LMUL is the source-side LMUL (the _lm{N} variant choice).  */
+  vlmul_type src_vlmul = get_vlmul (e.arg_mode (1));
 
   /* For FP mmacc, derive altfmt bits from BFmode operands per the IME
      spec (mirrors the vsetvl pass logic in riscv_extract_ime_requirements).
      Per-input inspection lets a future mixed-format intrinsic (e.g.
-     fp16 x bf16) drop in without further changes.  Tile load/store has
-     no FP-format choice -- it just moves bytes -- so skip there.  */
-  if (!is_tile_op)
-    {
-      if (GET_MODE_INNER (acc_mode) == E_BFmode)
-	altfmt_val = true;
-      if (GET_MODE_INNER (e.arg_mode (1)) == E_BFmode)
-	altfmt_a = true;
-      if (e.op_info->args[2].base_type != NUM_BASE_TYPES
-	  && GET_MODE_INNER (e.arg_mode (2)) == E_BFmode)
-	altfmt_b = true;
-    }
+     fp16 x bf16) drop in without further changes.  */
+  if (GET_MODE_INNER (acc_mode) == E_BFmode)
+    altfmt_val = true;
+  if (GET_MODE_INNER (e.arg_mode (1)) == E_BFmode)
+    altfmt_a = true;
+  if (e.op_info->args[2].base_type != NUM_BASE_TYPES
+      && GET_MODE_INNER (e.arg_mode (2)) == E_BFmode)
+    altfmt_b = true;
 
   /* The VL argument is always the last call argument.  */
   int vl_argno = call_expr_nargs (e.exp) - 1;
@@ -3421,7 +2995,7 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 				altfmt_a, altfmt_b,
 				altfmt_val, bs_val,
 				/* ta = */ true, /* ma = */ true,
-				avl, static_lambda_log2);
+				avl, /* static_lambda_log2 = */ -1);
 }
 
 /* IME vector integer matrix multiply-accumulate (W=1).  Expands to
@@ -3444,7 +3018,6 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  ime_unspec_altfmt_a (UNSPEC),
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
@@ -3502,7 +3075,6 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  ime_unspec_altfmt_a (UNSPEC),
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
@@ -3562,7 +3134,6 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  ime_unspec_altfmt_a (UNSPEC),
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
@@ -3628,7 +3199,6 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  ime_unspec_altfmt_a (UNSPEC),
 				  ime_unspec_altfmt_b (UNSPEC),
 				  /* altfmt = */ false,
@@ -3695,7 +3265,6 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  /* altfmt_a = */ false,
 				  /* altfmt_b = */ false,
 				  /* altfmt = */ false,
@@ -3726,7 +3295,7 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  false, false, false, false);
     rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_f16 (e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
@@ -3746,7 +3315,7 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  false, false, false, false);
     rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_bf16 (e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
@@ -3766,7 +3335,7 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  false, false, false, false);
     rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_f32 (e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
@@ -3787,7 +3356,7 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  false, false, false, false);
     rtx result = e.use_exact_insn (code_for_pred_vfqwmmacc_f16 (e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
@@ -3807,7 +3376,7 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  false, false, false, false);
     rtx result = e.use_exact_insn (code_for_pred_vfqwmmacc_bf16 (e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
@@ -3834,7 +3403,6 @@ public:
   {
     ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  af.a, af.b, af.val,
 				  /* bs = */ false);
     rtx result = e.use_exact_insn (
@@ -3874,7 +3442,6 @@ public:
   {
     ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  af.a, af.b, af.val,
 				  /* bs = */ false);
     rtx result = e.use_exact_insn (
@@ -3917,7 +3484,6 @@ public:
   {
     ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  af.a, af.b, af.val,
 				  /* bs = */ false);
     rtx result = e.use_exact_insn (
@@ -3961,7 +3527,6 @@ public:
   {
     ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  af.a, af.b, af.val,
 				  /* bs = */ false);
     rtx result = e.use_exact_insn (
@@ -3996,7 +3561,6 @@ public:
   {
     ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  af.a, af.b, af.val,
 				  /* bs = */ false);
     rtx result = e.use_exact_insn (
@@ -4028,7 +3592,7 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
+				  false, false, false, false);
     rtx result
       = e.use_exact_insn (code_for_pred_vf8wmmacc_f4e2m1 (e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
@@ -4083,7 +3647,6 @@ public:
   rtx expand (function_expander &e) const override
   {
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
 				  /* altfmt_a = */ false,
 				  /* altfmt_b = */ false,
 				  /* altfmt = */ false,
