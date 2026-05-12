@@ -1169,6 +1169,23 @@ classify_lambda_effect (rtx_insn *rinsn)
 static bool lambda_reach_at_block_entry_matches_p (basic_block,
 						   int demand_lambda_log2);
 
+/* Return the log2(lambda) value the dataflow's entry state holds for
+   block BB, or -1 if the entry state isn't DEFINED.  Defined AFTER
+   the lambda_dataflow class so the body can reach into it.  */
+static int lambda_reach_at_block_entry_log2 (basic_block);
+
+/* Return the lambda_log2 that the lambda lattice statically reaches
+   immediately before CONSUMER, or -1 if no static DEF reaches.  This
+   is the same walk as `lambda_already_established_p' but returns the
+   value found rather than testing it against a demand.  */
+static int lambda_reach_log2_before (rtx_insn *consumer);
+
+/* Return true if RINSN is a USE of vtype.lambda -- i.e. an IME tile
+   load/store or multiply-accumulate.  Such an insn must not have its
+   lambda silently clobbered by a vtype-config insn inserted between
+   the most recent DEF and itself.  */
+static bool insn_uses_lambda_p (rtx_insn *rinsn);
+
 static bool
 lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
 {
@@ -1213,6 +1230,68 @@ lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
      matching DEFINED(N) on every predecessor path, the lambda is
      already established at block entry.  */
   return lambda_reach_at_block_entry_matches_p (bb, demand_lambda_log2);
+}
+
+/* Return the lambda_log2 that statically reaches CONSUMER, or -1 if
+   no static DEF reaches before a kill.  Intra-block walk first, then
+   the cross-block dataflow's entry state.  */
+
+static int
+lambda_reach_log2_before (rtx_insn *consumer)
+{
+  const int max_walk = 64;
+  basic_block bb = BLOCK_FOR_INSN (consumer);
+  if (!bb)
+    return -1;
+
+  int steps = 0;
+  for (rtx_insn *p = PREV_INSN (consumer);
+       p && steps < max_walk;
+       p = PREV_INSN (p), ++steps)
+    {
+      if (BLOCK_FOR_INSN (p) != bb)
+	break;
+      if (!NONDEBUG_INSN_P (p))
+	continue;
+      lambda_state s = classify_lambda_effect (p);
+      switch (s.kind)
+	{
+	case lambda_state_kind::DEFINED:
+	  return s.known_log2;
+	case lambda_state_kind::KILLED:
+	  return -1;
+	case lambda_state_kind::USE_ONLY:
+	case lambda_state_kind::NOT_TOUCHED:
+	  continue;
+	}
+    }
+  /* Cross-block fall-through.  */
+  return lambda_reach_at_block_entry_log2 (bb);
+}
+
+/* True for IME tile loads/stores and multiply-accumulates -- the
+   insns that consume vtype.lambda implicitly.  The conservative test
+   is `requires_ime_vtype == REQUIRES_IME_VTYPE_YES' (mmacc family);
+   tile ops have type `vlds'/'vsts' and read vtype.lambda dynamically.
+
+   `requires_ime_vtype' is the cleanest test where the attribute is
+   set; for tile ops that no longer carry it (per the architectural
+   change in commit e69d583b9aa0), fall back on the type attribute.  */
+
+static bool
+insn_uses_lambda_p (rtx_insn *rinsn)
+{
+  if (!NONDEBUG_INSN_P (rinsn))
+    return false;
+  if (recog_memoized (rinsn) < 0)
+    return false;
+  if (get_attr_requires_ime_vtype (rinsn) == REQUIRES_IME_VTYPE_YES)
+    return true;
+  enum attr_type t = get_attr_type (rinsn);
+  /* vlds/vsts are strided load/store -- the IME tile load/store ops
+     are encoded as these types.  Strict gating: only treat them as
+     lambda consumers when emitted by the IME tile builtins.  */
+  return t == TYPE_VLDS || t == TYPE_VSTS;
 }
 
 /* Forward CFG dataflow for the lambda lattice.
@@ -1386,6 +1465,7 @@ lambda_dataflow::run ()
    pass end.  */
 static lambda_dataflow *g_lambda_df;
 
+
 /* Cross-block extension of `lambda_already_established_p': if the
    intra-block walk reaches block start without resolving, consult the
    dataflow's entry state for the block.  Returns true iff the
@@ -1400,6 +1480,19 @@ lambda_reach_at_block_entry_matches_p (basic_block bb,
   lambda_state s = g_lambda_df->entry_state_of (bb);
   return s.kind == lambda_state_kind::DEFINED
 	 && s.known_log2 == demand_lambda_log2;
+}
+
+/* Return the lambda_log2 in the dataflow's entry state for BB, or -1
+   if not DEFINED.  Counterpart of the matches_p helper above used by
+   `lambda_reach_log2_before' when its intra-block walk crosses the
+   block boundary.  */
+static int
+lambda_reach_at_block_entry_log2 (basic_block bb)
+{
+  if (!g_lambda_df)
+    return -1;
+  lambda_state s = g_lambda_df->entry_state_of (bb);
+  return s.kind == lambda_state_kind::DEFINED ? s.known_log2 : -1;
 }
 
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
@@ -1854,6 +1947,20 @@ public:
     if (optimize == 0 && !has_vtype_op (rinsn))
       return;
     gcc_assert (!vsetvl_discard_result_insn_p (rinsn));
+
+    /* `riscv_vsetlambda_install' is transparent for the SEW/LMUL/
+       policy/AVL demand analysis: it only modifies vtype.lambda.
+       Leave m_state UNINITIALIZED (no demand opinion) and just record
+       the lambda effect; see the corresponding branch in
+       `parse_insn(insn_info *)' for the full rationale.  */
+    int code = INSN_CODE (rinsn);
+    if (code == CODE_FOR_riscv_vsetlambda_installdi
+	|| code == CODE_FOR_riscv_vsetlambda_installsi)
+      {
+	m_lambda = classify_lambda_effect (rinsn);
+	return;
+      }
+
     set_valid ();
     extract_insn_cached (rinsn);
     m_avl = ::get_avl (rinsn);
@@ -1904,21 +2011,38 @@ public:
     if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
 	|| code == CODE_FOR_vsetvl_ime_regdi
 	|| code == CODE_FOR_vsetvl_ime_regsi
-	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi
-	|| code == CODE_FOR_riscv_vsetlambda_installdi
-	|| code == CODE_FOR_riscv_vsetlambda_installsi)
+	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
       {
 	set_unknown ();
 	/* Per-pattern lambda classification:
-	     read_vtype                -> USE_ONLY (pure read);
-	     riscv_vsetlambda_install  -> DEFINED(N) from the hint;
-	     IME-helper vsetvls        -> KILLED (writes full vtype).  */
+	     read_vtype          -> USE_ONLY (pure read);
+	     IME-helper vsetvls  -> KILLED (writes full vtype).  */
 	if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
 	  m_lambda = lambda_state::make_use_only ();
 	else
-	  m_lambda = classify_lambda_effect (insn->rtl ());
-	if (m_lambda.kind == lambda_state_kind::NOT_TOUCHED)
 	  m_lambda = lambda_state::make_killed ();
+	return;
+      }
+
+    /* `riscv_vsetlambda_install' is special: it issues a register-form
+       `vsetvl x0, x0, t' where t is constructed from the current vtype
+       with ONLY the lambda field modified.  All other vtype bits
+       (SEW, LMUL, ratio, ta, ma) are preserved by construction; in
+       SEW/LMUL/policy/AVL demand analysis the install is transparent.
+
+       If we called `set_unknown()' here (as the bug originally did),
+       the demand chain from the upstream vsetvli would break and the
+       pass would re-insert a vsetvli before the next consumer -- and
+       that re-inserted vsetvli would WARL-clobber the lambda we just
+       established.
+
+       Leave m_state UNINITIALIZED so the demand analysis treats this
+       insn as a no-op for (SEW, LMUL, ratio, ta, ma); the lambda
+       lattice in `m_lambda' tracks the actual DEF of vtype.lambda.  */
+    if (code == CODE_FOR_riscv_vsetlambda_installdi
+	|| code == CODE_FOR_riscv_vsetlambda_installsi)
+      {
+	m_lambda = classify_lambda_effect (insn->rtl ());
 	return;
       }
 
@@ -3508,8 +3632,49 @@ private:
 	return;
       }
 
-    rtx pat = info.get_vsetvl_pat ();
     rtx_insn *rinsn = info.get_insn ()->rtl ();
+
+    /* Lambda-preserving insertion: a regular vsetvli writes vtype and
+       (per WARL) may clobber the lambda field.  If RINSN consumes
+       vtype.lambda (an IME tile load/store or mmacc reached via the
+       non-IME path) and a static DEF reaches at this insertion point,
+       emit a `vsetvl_ime' register-form vsetvl with the full vtype
+       (consumer's SEW/LMUL/ta/ma + the lattice's lambda) instead of
+       a plain vsetvli.  This preserves the user-established lambda
+       in a single atomic vtype write.  */
+    if (emit_type == EMIT_BEFORE
+	&& riscv_track_user_lambda
+	&& insn_uses_lambda_p (rinsn))
+      {
+	int log2 = lambda_reach_log2_before (rinsn);
+	if (log2 >= 0)
+	  {
+	    int xlen = GET_MODE_BITSIZE (Pmode);
+	    HOST_WIDE_INT vtype
+	      = compute_static_vtype_without_lambda (info, xlen);
+	    int enc = log2 + 1;
+	    vtype |= (HOST_WIDE_INT) enc << (xlen - 4);
+
+	    rtx avl = info.get_avl ();
+	    if (!avl)
+	      avl = const0_rtx;
+	    rtx dest_vl
+	      = info.has_vl () ? info.get_vl ()
+			       : gen_rtx_REG (Pmode,
+					      RISCV_PROLOGUE_TEMP_REGNUM);
+	    rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl,
+				      gen_int_mode (vtype, Pmode));
+	    emit_insn_before (pat, rinsn);
+	    if (dump_file)
+	      fprintf (dump_file,
+		       "  Insert lambda-preserving vsetvl (lambda=%d) "
+		       "before insn %d\n",
+		       1 << log2, INSN_UID (rinsn));
+	    return;
+	  }
+      }
+
+    rtx pat = info.get_vsetvl_pat ();
 
     if (emit_type == EMIT_DIRECT)
       {

@@ -135,7 +135,10 @@
   ;; vtype value.
   UNSPEC_VSETVL_IME
 
-  ;; Read back the hardware vtype CSR (for WARL verification).
+  ;; (kept for backwards-compatible consumers; the new read pattern
+  ;; below uses UNSPECV_READ_VTYPE so the csrr cannot be hoisted past
+  ;; placeholder vsetvls that DEF VTYPE_REGNUM only after the vsetvl
+  ;; pass runs).
   UNSPEC_READ_VTYPE
 ])
 
@@ -150,6 +153,16 @@
   ;; pass treats this as a hard DEF of vtype.lambda when operand 0 is
   ;; a const_int in the supported set, and as a may-DEF otherwise.
   UNSPECV_VSETLAMBDA
+
+  ;; Volatile-read of the hardware vtype CSR.  Used inside the
+  ;; vsetlambda RMW (csrr -> mask -> OR -> install) and inside the
+  ;; runtime-VLEN WARL verification sequence.  Must remain ordered
+  ;; with respect to surrounding vtype writes; the pre-vsetvl-pass
+  ;; placeholder `vsetvl_no_side_effects' does not DEF VTYPE_REGNUM
+  ;; in dataflow terms, so a plain `unspec' read could be hoisted
+  ;; above it and observe stale vtype after the pass materialises a
+  ;; real vsetvli at the placeholder's site.
+  UNSPECV_READ_VTYPE
 ])
 
 ;; Signedness encoding for the two integer-input operands of IME
@@ -634,10 +647,19 @@
 
 ;; Read back the hardware vtype CSR.  Used by the runtime-lambda WARL
 ;; verification sequence to compare the written vtype against what the
-;; hardware actually accepted.
+;; hardware actually accepted, and by the vsetlambda RMW.
+;;
+;; This is an unspec_volatile (rather than a plain unspec) so the
+;; csrr cannot be reordered past surrounding vtype writers.  Before
+;; the vsetvl pass runs, the placeholder pattern
+;; `vsetvl_no_side_effects' does not DEF VTYPE_REGNUM in dataflow
+;; terms; a non-volatile read could therefore be scheduled above
+;; such placeholders and observe a stale vtype after the placeholder
+;; is later materialised as a real vsetvli at the placeholder's
+;; original site.  Marking the read volatile pins it in source order.
 (define_insn "@read_vtype<mode>"
   [(set (match_operand:P 0 "register_operand" "=r")
-	(unspec:P [(reg:SI VTYPE_REGNUM)] UNSPEC_READ_VTYPE))]
+	(unspec_volatile:P [(reg:SI VTYPE_REGNUM)] UNSPECV_READ_VTYPE))]
   "TARGET_VECTOR"
   "csrr\t%0,vtype"
   [(set_attr "type" "rdvl")
