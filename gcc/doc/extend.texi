@@ -27159,6 +27159,65 @@ release page:
 @uref{https://github.com/riscv-non-isa/rvv-intrinsic-doc/releases/tag/v1.0-ratified}.
 All of these functions are declared in the include file @file{riscv_vector.h}.
 
+@heading Integrated Matrix Extension (IME) intrinsics
+
+When the Zvmma extension (or any of its sub-extensions) is enabled,
+GCC additionally exposes three geometry-related primitives that are
+declared in @file{riscv_vector.h}:
+
+@defbuiltin{size_t __riscv_ime_vlen (void)}
+Returns the current VLEN in bits.  Folds to a constant when VLEN is
+compile-time known (@option{-mrvv-vector-bits=zvl} or an explicit
+@code{zvl*b} extension); otherwise expands to a runtime @code{csrr
+vlenb} sequence.
+@enddefbuiltin
+
+@defbuiltin{size_t __riscv_ime_lambda (void)}
+Returns the maximum IME lambda value supported by the hardware for
+the default geometry (@math{SEW=8}, @math{MUL_C=1}), i.e.@:
+@math{\sqrt{VLEN/8}}.  Folds at compile time when VLEN is known.
+@enddefbuiltin
+
+@defbuiltin{size_t __riscv_vsetlambda (size_t @var{requested_lambda})}
+Establishes or queries the @code{lambda} field of @code{vtype} (the
+3-bit field that, together with the standard @math{(SEW, LMUL)} pair,
+selects the matrix engine's @math{MUL_C}).  Two argument forms:
+
+@itemize @bullet
+@item
+@var{requested_lambda} is a positive power of two in
+@code{@{1, 2, 4, 8, 16, 32, 64@}}: writes the corresponding 3-bit
+encoding into @code{vtype.lambda}, preserves all other @code{vtype}
+fields and @code{vl}, and returns the lambda actually established.
+Because @code{lambda} is WARL, the returned value may be smaller than
+the request (the hardware clamps to the largest supported value for
+the current @math{(VLEN, SEW, LMUL)}).  A zero return indicates the
+current geometry supports no lambda value at all; the caller must
+check.
+
+@item
+@var{requested_lambda} equals 0: read-only query.  No write to
+@code{vtype}; the return value is the currently active lambda
+(@code{0} for the not-configured encoding).
+@end itemize
+
+Compile-time constant arguments outside the supported set are
+diagnosed at expand time.  A non-constant argument currently issues a
+@samp{sorry} (a later release will lower it to a runtime branch on
+zero plus a CTZ-based encoding step, gated on Zbb).
+
+The lambda established by @code{__riscv_vsetlambda} does not survive
+across any @code{vsetvli}/@code{vsetivli} that changes @math{SEW} or
+@math{LMUL}; portable code re-establishes (or re-reads) lambda after
+such calls.  GCC's vsetvl pass models this conservatively: see the
+non-normative compiler-modelling note in the IME specification for
+details.
+@enddefbuiltin
+
+Two target flags govern the lambda-aware optimisations enabled by
+these intrinsics: @option{-melide-ime-lambda} and
+@option{-mtrack-user-lambda}.  See @ref{RISC-V Options} for details.
+
 @node CORE-V Built-in Functions
 @subsection CORE-V Built-in Functions
 For more information on all CORE-V built-ins, please see

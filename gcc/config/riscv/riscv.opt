@@ -430,3 +430,18 @@ Comma-separated list of supported IME lambda values (subset of 1,2,4,8,16,32,64)
 
 TargetVariable
 int riscv_ime_lambda_mask = RISCV_IME_LAMBDA_MASK_ALL
+
+melide-ime-lambda
+Target Var(riscv_ime_elide_redundant_vsetvl_lambda) Init(1)
+Elide auto-emitted IME vsetvl when a preceding user
+`__riscv_vsetlambda' (in the same basic block, with no intervening
+kill) already established the demanded lambda.  Defaults to on;
+disable with -mno-elide-ime-lambda for bisection.
+
+mtrack-user-lambda
+Target Var(riscv_track_user_lambda) Init(1)
+Run a CFG-level dataflow for vtype.lambda values established by
+user `__riscv_vsetlambda' calls.  Enables cross-block elision of
+IME auto-vsetvls and dead-code elimination of redundant vsetlambda
+installs.  Defaults to on; disable with -mno-track-user-lambda
+for bisection.

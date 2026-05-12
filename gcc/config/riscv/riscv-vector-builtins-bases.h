@@ -500,6 +500,7 @@ extern const function_base *const vmtts_L32;
 extern const function_base *const vmtts_L64;
 extern const function_base *const ime_vlen;
 extern const function_base *const ime_lambda;
+extern const function_base *const vsetlambda;
 }
 
 } // end namespace riscv_vector

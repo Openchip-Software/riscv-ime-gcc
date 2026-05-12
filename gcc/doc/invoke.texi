@@ -1350,6 +1350,8 @@ See RS/6000 and PowerPC Options.
 -mtls-dialect=desc  -mtls-dialect=trad
 -mrvv-vector-bits=@var{value}  -mrvv-max-lmul=@var{value}
 -mrvv-ime-lambda=@var{list}
+-melide-ime-lambda  -mno-elide-ime-lambda
+-mtrack-user-lambda  -mno-track-user-lambda
 -madjust-lmul-cost  -mmax-vectorization  -mno-autovec-segment}
 
 @emph{RL78 Options} (@ref{RL78 Options})
@@ -31468,6 +31470,32 @@ candidate in the set, the compiler can skip the runtime verification branch.
 @itemx -mno-autovec-segment
 Enable or disable generation of vector segment load/store instructions.
 This option is enabled by default.
+
+@opindex melide-ime-lambda
+@opindex mno-elide-ime-lambda
+@item -melide-ime-lambda
+@itemx -mno-elide-ime-lambda
+When an IME multiply-accumulate is preceded in the same basic block
+by a @code{__riscv_vsetlambda} call (or by another mmacc) that has
+already established the demanded @code{vtype.lambda}, elide the
+auto-emitted @code{vsetvl} that the IME pipeline would otherwise
+insert.  This option is enabled by default; use
+@option{-mno-elide-ime-lambda} to bisect regressions involving
+lambda-aware @code{vsetvl} placement.
+
+@opindex mtrack-user-lambda
+@opindex mno-track-user-lambda
+@item -mtrack-user-lambda
+@itemx -mno-track-user-lambda
+Run a CFG-level dataflow for @code{vtype.lambda} values established
+by @code{__riscv_vsetlambda} calls.  Enables cross-block elision of
+IME auto-emitted @code{vsetvl}s (the consumer is in a different
+basic block from the user's setter, with no killing operation on
+any predecessor path) and dead-code elimination of redundant
+@code{__riscv_vsetlambda} calls.  This option is enabled by default
+and composes orthogonally with @option{-melide-ime-lambda}; use
+@option{-mno-track-user-lambda} to bisect regressions involving the
+cross-block analysis.
 @end table
 
 @node RL78 Options

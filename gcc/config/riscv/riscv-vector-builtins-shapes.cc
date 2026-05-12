@@ -1074,6 +1074,34 @@ struct vlenb_def : public function_shape
   }
 };
 
+/* vsetlambda_def class.  Single non-overloaded function taking one
+   size_t and returning size_t -- the C surface for
+   `__riscv_vsetlambda(requested_lambda)'.  */
+struct vsetlambda_def : public function_shape
+{
+  void build (function_builder &b,
+	      const function_group_info &group) const override
+  {
+    auto_vec<tree> argument_types;
+    argument_types.safe_push (size_type_node);
+    function_instance function_instance (group.base_name, *group.base,
+					 *group.shape, group.ops_infos.types[0],
+					 group.preds[0], &group.ops_infos);
+    b.add_unique_function (function_instance, (*group.shape),
+			   long_unsigned_type_node, argument_types,
+			   group.required_extensions);
+  }
+
+  char *get_name (function_builder &b, const function_instance &instance,
+		  bool overloaded_p) const override
+  {
+    if (overloaded_p)
+      return nullptr;
+    b.append_base_name (instance.base_name);
+    return b.finish_name ();
+  }
+};
+
 /* seg_loadstore_def class.  */
 struct seg_loadstore_def : public build_base
 {
@@ -1869,4 +1897,5 @@ SHAPE(sf_vcix_se, sf_vcix_se)
 SHAPE(sf_vcix, sf_vcix)
 SHAPE (ime_mmacc, ime_mmacc)
 SHAPE (ime_tile, ime_tile)
+SHAPE (vsetlambda, vsetlambda)
 } // end namespace riscv_vector
