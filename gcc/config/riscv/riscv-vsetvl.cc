@@ -1103,10 +1103,36 @@ classify_lambda_effect (rtx_insn *rinsn)
       return lambda_state::make_killed ();
     }
 
+  /* The static-VLEN IME auto-emission `@vsetvl_ime<mode>' encodes the
+     full vtype (including the 3-bit lambda field) as a const_int in
+     operand 2.  Decode it so that back-to-back mmaccs sharing a
+     geometry can elide each other's auto-vsetvls: when the walk in
+     `lambda_already_established_p' visits a previously-emitted
+     `vsetvl_ime', it now recovers DEFINED(N) instead of treating
+     the insn as opaque KILLED.
+
+     The runtime-VLEN `@vsetvl_ime_reg<mode>' takes vtype in a register
+     instead of a const_int, so we cannot statically extract lambda;
+     it stays KILLED.  */
+  if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi)
+    {
+      extract_insn_cached (rinsn);
+      rtx vtype = recog_data.operand[2];
+      if (CONST_INT_P (vtype))
+	{
+	  int xlen = GET_MODE_BITSIZE (Pmode);
+	  HOST_WIDE_INT v = INTVAL (vtype);
+	  int enc = (int) ((unsigned HOST_WIDE_INT) v >> (xlen - 4)) & 7;
+	  if (enc >= 1 && enc <= 7)
+	    return lambda_state::make_defined (enc - 1);
+	}
+      return lambda_state::make_killed ();
+    }
+
   /* Anything else that writes VTYPE_REGNUM is a may-DEF of lambda.
      This includes plain vsetvli/vsetivli (WARL re-clamp on SEW/LMUL
-     change), register-form vsetvl, the IME helpers
-     `@vsetvl_ime<mode>' / `@vsetvl_ime_reg<mode>', and asm clobbers.
+     change), register-form vsetvl, the runtime-VLEN IME helper
+     `@vsetvl_ime_reg<mode>', and asm clobbers.
      A more precise classification (e.g. recognise that a vsetvli with
      unchanged SEW/LMUL is not a kill) requires predecessor knowledge
      and is left for commit 4.  */
