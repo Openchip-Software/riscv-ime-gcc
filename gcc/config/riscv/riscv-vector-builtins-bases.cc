@@ -3754,9 +3754,8 @@ public:
 	   More precisely: VLEN_bits = vlenb * 8; lambda_sq = VLEN_bits / 8
 	   = vlenb; lambda = sqrt(vlenb).  */
 	HOST_WIDE_INT vlenb_val = BYTES_PER_RISCV_VECTOR.to_constant ();
-	HOST_WIDE_INT vlen_bits = vlenb_val * 8;
 	/* For the default query (SEW=8, MUL_C=1):
-	   lambda_sq = vlen_bits / (8 * 1) = vlen_bits / 8 = vlenb.  */
+	   lambda_sq = VLEN_bits / (8 * 1) = VLEN_bits / 8 = vlenb.  */
 	HOST_WIDE_INT lambda_sq = vlenb_val;
 	int log_sq = exact_log2 (lambda_sq);
 	if (log_sq >= 0 && (log_sq & 1) == 0)
