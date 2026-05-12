@@ -3897,18 +3897,100 @@ public:
       emit_move_insn (target, decoded);
   }
 
+  /* Emit the vtype RMW + install sequence given an encoded lambda
+     value (1..7) in ENC.  ENC may be a const_int (compile-time const
+     arg) or a register (runtime arg, computed from `ctz(arg) + 1').
+     LATTICE_HINT is the const_int passed as the install pattern's
+     metadata operand: 1..7 for a statically-known encoding (lattice
+     records DEFINED(N)), 0 for "unknown at compile time" (lattice
+     records KILLED).  */
+  static void emit_rmw_install (rtx enc, rtx lattice_hint)
+  {
+    machine_mode m = Pmode;
+    int xlen = GET_MODE_BITSIZE (m).to_constant ();
+
+    rtx vt_in = gen_reg_rtx (m);
+    emit_insn (gen_read_vtype (m, vt_in));
+
+    /* masked = vt_in & ~(7 << (xlen-4))  -- clear the lambda field.  */
+    unsigned HOST_WIDE_INT clear_mask
+      = ~((unsigned HOST_WIDE_INT) 7 << (xlen - 4));
+    rtx masked = expand_simple_binop (m, AND, vt_in,
+				      gen_int_mode (clear_mask, m),
+				      NULL_RTX, 1, OPTAB_DIRECT);
+
+    /* set_bits = enc << (xlen-4).  For a const enc this folds at
+       expand-time; for a runtime enc we emit a shift.  */
+    rtx set_bits;
+    if (CONST_INT_P (enc))
+      {
+	unsigned HOST_WIDE_INT v
+	  = (unsigned HOST_WIDE_INT) INTVAL (enc) << (xlen - 4);
+	set_bits = gen_int_mode (v, m);
+      }
+    else
+      set_bits = expand_simple_binop (m, ASHIFT, enc, GEN_INT (xlen - 4),
+				      NULL_RTX, 1, OPTAB_DIRECT);
+
+    rtx new_vt = expand_simple_binop (m, IOR, masked, set_bits,
+				      NULL_RTX, 1, OPTAB_DIRECT);
+    new_vt = force_reg (m, new_vt);
+    emit_insn (gen_riscv_vsetlambda_install (m, new_vt, lattice_hint));
+  }
+
   rtx expand (function_expander &e) const override
   {
     tree arg = CALL_EXPR_ARG (e.exp, 0);
     machine_mode m = Pmode;
-    int xlen = GET_MODE_BITSIZE (m).to_constant ();
 
     if (!CONSTANT_CLASS_P (arg))
       {
-	sorry ("%<__riscv_vsetlambda%> with a non-constant argument "
-	       "is not yet supported");
-	if (e.target)
-	  emit_move_insn (e.target, const0_rtx);
+	/* Runtime-arg path.  The expansion is:
+
+	     if (arg == 0) goto Lread;
+	     enc = ctz(arg) + 1;
+	     <RMW vtype, install>;
+	   Lread:
+	     <readback + decode>;
+
+	   The encoding step needs a CTZ; gate on Zbb where `ctz' is
+	   a single instruction.  The middle-end could synthesise a
+	   software ctz from primitives, but that bloat is rarely
+	   worth it on this hot path -- callers without Zbb can
+	   dispatch through a small switch (the prelude does exactly
+	   that today).  */
+	if (!TARGET_ZBB)
+	  {
+	    sorry ("%<__riscv_vsetlambda%> with a non-constant argument "
+		   "requires the %<Zbb%> extension; pass a compile-time "
+		   "constant or dispatch through a switch");
+	    if (e.target)
+	      emit_move_insn (e.target, const0_rtx);
+	    return e.target;
+	  }
+
+	rtx arg_rtx = expand_normal (arg);
+	arg_rtx = force_reg (m, arg_rtx);
+
+	rtx skip_label = gen_label_rtx ();
+	emit_cmp_and_jump_insns (arg_rtx, const0_rtx, EQ, NULL_RTX, m, 1,
+				 skip_label);
+
+	rtx ctz = gen_reg_rtx (m);
+	rtx ctz_res = expand_unop (m, ctz_optab, arg_rtx, ctz, 1);
+	gcc_assert (ctz_res);
+	if (ctz_res != ctz)
+	  emit_move_insn (ctz, ctz_res);
+	rtx enc_reg = expand_simple_binop (m, PLUS, ctz, const1_rtx,
+					   NULL_RTX, 1, OPTAB_DIRECT);
+
+	/* The install's lattice-hint operand is 0 -- the runtime
+	   value is unknown at compile time, so
+	   `classify_lambda_effect' marks the install as KILLED in
+	   the dataflow.  */
+	emit_rmw_install (enc_reg, const0_rtx);
+	emit_label (skip_label);
+	emit_readback_decode (e.target);
 	return e.target;
       }
 
@@ -3926,33 +4008,7 @@ public:
     /* Write half: emit only when requested_lambda is non-zero.  The
        compile-time-0 form is a pure read.  */
     if (req != 0)
-      {
-	rtx vt_in = gen_reg_rtx (m);
-	emit_insn (gen_read_vtype (m, vt_in));
-
-	/* clear_mask = ~(7 << (xlen-4)).  */
-	unsigned HOST_WIDE_INT clear_mask
-	  = ~((unsigned HOST_WIDE_INT) 7 << (xlen - 4));
-	rtx masked = expand_simple_binop (m, AND, vt_in,
-					  gen_int_mode (clear_mask, m),
-					  NULL_RTX, 1, OPTAB_DIRECT);
-
-	/* set_bits = enc << (xlen-4).  */
-	unsigned HOST_WIDE_INT set_bits
-	  = (unsigned HOST_WIDE_INT) enc << (xlen - 4);
-	rtx new_vt = expand_simple_binop (m, IOR, masked,
-					  gen_int_mode (set_bits, m),
-					  NULL_RTX, 1, OPTAB_DIRECT);
-
-	/* Force into a single register; the install pattern wants a
-	   plain register operand.  */
-	new_vt = force_reg (m, new_vt);
-	/* The install pattern carries the 3-bit lambda encoding as a
-	   metadata operand so the vsetvl pass can recognise it as a
-	   DEF of vtype.lambda with a statically known value (used by
-	   the lattice introduced in commit 2 of this series).  */
-	emit_insn (gen_riscv_vsetlambda_install (m, new_vt, GEN_INT (enc)));
-      }
+      emit_rmw_install (GEN_INT (enc), GEN_INT (enc));
 
     /* Read-only half: decode the (possibly WARL-clamped) readback and
        return it.  This is the return value of both forms.  */

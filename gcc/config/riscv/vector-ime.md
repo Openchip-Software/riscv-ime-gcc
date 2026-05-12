@@ -135,7 +135,10 @@
   ;; vtype value.
   UNSPEC_VSETVL_IME
 
-  ;; Read back the hardware vtype CSR (for WARL verification).
+  ;; (kept for backwards-compatible consumers; the new read pattern
+  ;; below uses UNSPECV_READ_VTYPE so the csrr cannot be hoisted past
+  ;; placeholder vsetvls that DEF VTYPE_REGNUM only after the vsetvl
+  ;; pass runs).
   UNSPEC_READ_VTYPE
 ])
 
@@ -150,6 +153,28 @@
   ;; pass treats this as a hard DEF of vtype.lambda when operand 0 is
   ;; a const_int in the supported set, and as a may-DEF otherwise.
   UNSPECV_VSETLAMBDA
+
+  ;; Volatile-read of the hardware vtype CSR.  Used inside the
+  ;; vsetlambda RMW (csrr -> mask -> OR -> install) and inside the
+  ;; runtime-VLEN WARL verification sequence.  Must remain ordered
+  ;; with respect to surrounding vtype writes; the pre-vsetvl-pass
+  ;; placeholder `vsetvl_no_side_effects' does not DEF VTYPE_REGNUM
+  ;; in dataflow terms, so a plain `unspec' read could be hoisted
+  ;; above it and observe stale vtype after the pass materialises a
+  ;; real vsetvli at the placeholder's site.
+  UNSPECV_READ_VTYPE
+
+  ;; Lambda-preserving vsetvl: read current vtype.lambda dynamically
+  ;; and merge it with a compile-time-known (SEW, LMUL, ta, ma,
+  ;; altfmt, bs) bit pattern, then issue a register-form vsetvl.
+  ;; Emitted by the vsetvl pass before an IME tile/mmacc consumer
+  ;; whose lambda reach-state in the lambda lattice is
+  ;; DEFINED_RUNTIME (a `__riscv_vsetlambda(v)' with a runtime arg
+  ;; established lambda earlier; the value is unknown statically but
+  ;; must be preserved across the implicit vtype reconfiguration
+  ;; this insn performs).  See the corresponding emission branch in
+  ;; `pre_vsetvl::insert_vsetvl_insn'.
+  UNSPECV_VSETVL_PRESERVE_LAMBDA
 ])
 
 ;; Signedness encoding for the two integer-input operands of IME
@@ -634,10 +659,19 @@
 
 ;; Read back the hardware vtype CSR.  Used by the runtime-lambda WARL
 ;; verification sequence to compare the written vtype against what the
-;; hardware actually accepted.
+;; hardware actually accepted, and by the vsetlambda RMW.
+;;
+;; This is an unspec_volatile (rather than a plain unspec) so the
+;; csrr cannot be reordered past surrounding vtype writers.  Before
+;; the vsetvl pass runs, the placeholder pattern
+;; `vsetvl_no_side_effects' does not DEF VTYPE_REGNUM in dataflow
+;; terms; a non-volatile read could therefore be scheduled above
+;; such placeholders and observe a stale vtype after the placeholder
+;; is later materialised as a real vsetvli at the placeholder's
+;; original site.  Marking the read volatile pins it in source order.
 (define_insn "@read_vtype<mode>"
   [(set (match_operand:P 0 "register_operand" "=r")
-	(unspec:P [(reg:SI VTYPE_REGNUM)] UNSPEC_READ_VTYPE))]
+	(unspec_volatile:P [(reg:SI VTYPE_REGNUM)] UNSPECV_READ_VTYPE))]
   "TARGET_VECTOR"
   "csrr\t%0,vtype"
   [(set_attr "type" "rdvl")
@@ -667,6 +701,73 @@
 	  UNSPECV_VSETLAMBDA))]
   "TARGET_VECTOR && IN_RANGE (INTVAL (operands[1]), 0, 7)"
   "vsetvl\tx0,x0,%0"
+  [(set_attr "type" "vsetvl")
+   (set_attr "mode" "<MODE>")])
+
+;; Lambda-preserving vsetvl.  Reads current vtype.lambda dynamically
+;; and merges it with the static (SEW, LMUL, ta, ma, altfmt, bs) bits
+;; supplied in operand 2, then issues a register-form vsetvl that
+;; writes the resulting vtype value while computing VL from operand 1
+;; (the AVL).
+;;
+;; Used by the vsetvl pass when it needs to insert a vsetvli before
+;; an IME tile/mmacc consumer that follows a runtime-arg
+;; `__riscv_vsetlambda' (lambda lattice reach: DEFINED_RUNTIME).  A
+;; plain vsetvli would WARL-clobber the user's lambda; this pattern
+;; transplants the live vtype.lambda field into the new vtype.
+;;
+;; Operands:
+;;   0: destination VL register (also used as the scratch for csrr
+;;      and the result of the bit-manipulation chain)
+;;   1: AVL -- register or zero for VLMAX
+;;   2: static vtype bits as const_int, with the lambda field == 0
+;;      (the SEW/LMUL/ta/ma/altfmt/bs encoding from the consumer's
+;;      demand)
+;;
+;; Scratch:
+;;   3: additional GPR for the mask and the static-bits load
+;;
+;; Asm template (RV64; RV32 differs only in the shift amount):
+;;   csrr   %0, vtype                ; %0 = current vtype
+;;   li     %3, 7
+;;   slli   %3, %3, XLEN-4           ; %3 = lambda mask = 0x7 << (XLEN-4)
+;;   and    %0, %0, %3               ; %0 = vtype & lambda_mask (only λ bits set)
+;;   li     %3, %c2                  ; %3 = static_bits (λ field == 0)
+;;   or     %0, %0, %3               ; %0 = combined vtype
+;;   vsetvl %0, %z1, %0              ; install and produce VL
+(define_insn "@riscv_vsetvl_preserve_lambda<mode>"
+  [(set (match_operand:P 0 "register_operand"            "=&r")
+	(unspec_volatile:P
+	  [(match_operand:P 1 "pmode_reg_or_0_operand"   " rJ")
+	   (match_operand   2 "const_int_operand"        "  i")
+	   (reg:SI VTYPE_REGNUM)]
+	  UNSPECV_VSETVL_PRESERVE_LAMBDA))
+   (set (reg:SI VL_REGNUM)
+	(unspec_volatile:SI [(match_dup 1) (match_dup 2)
+			     (reg:SI VTYPE_REGNUM)]
+			    UNSPECV_VSETVL_PRESERVE_LAMBDA))
+   (set (reg:SI VTYPE_REGNUM)
+	(unspec_volatile:SI [(match_dup 2) (reg:SI VTYPE_REGNUM)]
+			    UNSPECV_VSETVL_PRESERVE_LAMBDA))
+   (clobber (match_operand:P 3 "register_operand"        "=&r"))]
+  "TARGET_VECTOR"
+  {
+    return TARGET_64BIT
+      ? "csrr\t%0,vtype\n\t"
+	"li\t%3,7\n\t"
+	"slli\t%3,%3,60\n\t"
+	"and\t%0,%0,%3\n\t"
+	"li\t%3,%2\n\t"
+	"or\t%0,%0,%3\n\t"
+	"vsetvl\t%0,%z1,%0"
+      : "csrr\t%0,vtype\n\t"
+	"li\t%3,7\n\t"
+	"slli\t%3,%3,28\n\t"
+	"and\t%0,%0,%3\n\t"
+	"li\t%3,%2\n\t"
+	"or\t%0,%0,%3\n\t"
+	"vsetvl\t%0,%z1,%0";
+  }
   [(set_attr "type" "vsetvl")
    (set_attr "mode" "<MODE>")])
 
