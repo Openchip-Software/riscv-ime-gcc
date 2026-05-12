@@ -3837,6 +3837,15 @@ class vsetlambda : public function_base
 public:
   bool apply_vl_p () const override { return false; }
 
+  /* Reads vtype unconditionally (return value) and writes vtype on a
+     non-zero argument.  Reporting both prevents the middle-end from
+     DCE'ing a discarded-return call and from CSE'ing two distinct
+     requested-lambda calls.  */
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_READ_CSR | CP_WRITE_CSR;
+  }
+
   /* Map a positive power-of-two lambda value to its 3-bit encoding.
      The not-configured / read-only encoding (0) maps to 0.  */
   static int encode_lambda (HOST_WIDE_INT v)
@@ -3855,9 +3864,14 @@ public:
       }
   }
 
-  /* Emit the readback+decode sequence into TARGET (Pmode).  */
+  /* Emit the readback+decode sequence into TARGET (Pmode).  If TARGET
+     is null the caller is discarding the return value -- skip the
+     entire sequence; the only observable effect of vsetlambda is the
+     vtype write, which the install pattern (when emitted) provides.  */
   static void emit_readback_decode (rtx target)
   {
+    if (!target)
+      return;
     machine_mode m = Pmode;
     int xlen = GET_MODE_BITSIZE (m).to_constant ();
 
@@ -3891,7 +3905,8 @@ public:
       {
 	sorry ("%<__riscv_vsetlambda%> with a non-constant argument "
 	       "is not yet supported");
-	emit_move_insn (e.target, const0_rtx);
+	if (e.target)
+	  emit_move_insn (e.target, const0_rtx);
 	return e.target;
       }
 
@@ -3901,7 +3916,8 @@ public:
       {
 	error ("argument to %<__riscv_vsetlambda%> must be 0 or a positive "
 	       "power of two in %<{1, 2, 4, 8, 16, 32, 64}%>");
-	emit_move_insn (e.target, const0_rtx);
+	if (e.target)
+	  emit_move_insn (e.target, const0_rtx);
 	return e.target;
       }
 
@@ -3929,7 +3945,11 @@ public:
 	/* Force into a single register; the install pattern wants a
 	   plain register operand.  */
 	new_vt = force_reg (m, new_vt);
-	emit_insn (gen_riscv_vsetlambda_install (m, new_vt));
+	/* The install pattern carries the 3-bit lambda encoding as a
+	   metadata operand so the vsetvl pass can recognise it as a
+	   DEF of vtype.lambda with a statically known value (used by
+	   the lattice introduced in commit 2 of this series).  */
+	emit_insn (gen_riscv_vsetlambda_install (m, new_vt, GEN_INT (enc)));
       }
 
     /* Read-only half: decode the (possibly WARL-clamped) readback and

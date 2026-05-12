@@ -650,17 +650,22 @@
 ;; preserves VL (rd == rs1 == x0) -- only vtype is rewritten.
 ;;
 ;; Operand 0: full vtype value to install (in a register).
+;; Operand 1: 3-bit lambda encoding hint (const_int 1..7), or 0 if the
+;;            install was synthesised from a runtime argument and the
+;;            compile-time encoding is unknown.  This is a metadata
+;;            operand only -- the assembly output ignores it -- but
+;;            the vsetvl pass reads it to identify the install as a
+;;            DEF of vtype.lambda with a statically known value.
 ;;
-;; This is an unspec_volatile so that the optimizer never reorders
-;; user-visible vtype writes against intervening vector operations,
-;; and so the vsetvl pass can identify it as a lambda-DEF candidate
-;; (see commit 2 of this series for the lattice integration).
+;; The unspec_volatile prevents the optimizer from reordering vtype
+;; writes against surrounding vector operations.
 (define_insn "@riscv_vsetlambda_install<mode>"
   [(set (reg:SI VTYPE_REGNUM)
 	(unspec_volatile:SI
-	  [(match_operand:P 0 "register_operand" "r")]
+	  [(match_operand:P 0 "register_operand"  "r")
+	   (match_operand   1 "const_int_operand" "i")]
 	  UNSPECV_VSETLAMBDA))]
-  "TARGET_VECTOR"
+  "TARGET_VECTOR && IN_RANGE (INTVAL (operands[1]), 0, 7)"
   "vsetvl\tx0,x0,%0"
   [(set_attr "type" "vsetvl")
    (set_attr "mode" "<MODE>")])

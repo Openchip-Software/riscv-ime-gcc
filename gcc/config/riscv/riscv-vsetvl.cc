@@ -944,6 +944,174 @@ compute_ime_lambda_log2 (int sew_bits, int mul_c)
   return lambda_log2;
 }
 
+/* Tracked lambda-DEF state attached to each `vsetvl_info'.
+
+   Plumbing layer for the lambda-aware optimisations that follow:
+   commit 3 of this series uses DEFINED to elide redundant mmacc
+   auto-vsetvl_ime emissions; commit 4 uses it for cross-block
+   vsetlambda DCE and preservation.  In this commit the lattice is
+   populated but no optimisation reads it -- behaviour is unchanged.
+
+   States:
+
+     NOT_TOUCHED  The insn does not read or write vtype.lambda.
+		  Identity element under merge.
+
+     USE_ONLY     The insn reads lambda but does not write it (e.g.
+		  the read-only `__riscv_vsetlambda(0)' path or an
+		  explicit csrr vtype).  Does not change the
+		  downstream tracked value.
+
+     DEFINED(N)   The insn writes lambda to a statically known value.
+		  KNOWN_LOG2 is in [0, 6] (so lambda = 1 << KNOWN_LOG2,
+		  i.e. one of {1, 2, 4, 8, 16, 32, 64}); KNOWN_LAMBDA
+		  is the same value pre-decoded for convenience.
+
+     KILLED       The insn touches lambda but the post-state is not
+		  statically computable.  Catches:
+		    - register-form `vsetvl' with opaque rs2;
+		    - vsetvli/vsetivli that change SEW or LMUL (WARL
+		      re-clamp), at first cut treated unconditionally
+		      as KILLED;
+		    - calls and asm with vtype clobber;
+		    - runtime-arg `__riscv_vsetlambda';
+		    - the auto-emitted `vsetvl_ime' helper (which DOES
+		      know its target value, but until commit 5 wires
+		      the lattice into the IME pipeline we treat it as
+		      KILLED to be safe).
+
+   Merge for CFG joins (commit 4):
+     same DEFINED(N)  -> DEFINED(N)
+     anything else    -> KILLED
+     identity         -> NOT_TOUCHED
+   USE_ONLY is preserved iff both inputs are USE_ONLY or NOT_TOUCHED.  */
+
+enum class lambda_state_kind : uint8_t
+{
+  NOT_TOUCHED,
+  USE_ONLY,
+  DEFINED,
+  KILLED
+};
+
+struct lambda_state
+{
+  lambda_state_kind kind;
+  int8_t known_log2;  /* Valid iff kind == DEFINED; range [0, 6].  */
+
+  lambda_state () : kind (lambda_state_kind::NOT_TOUCHED), known_log2 (-1) {}
+
+  static lambda_state make_use_only ()
+  {
+    lambda_state s;
+    s.kind = lambda_state_kind::USE_ONLY;
+    return s;
+  }
+
+  static lambda_state make_killed ()
+  {
+    lambda_state s;
+    s.kind = lambda_state_kind::KILLED;
+    return s;
+  }
+
+  static lambda_state make_defined (int log2)
+  {
+    gcc_assert (log2 >= 0 && log2 <= 6);
+    lambda_state s;
+    s.kind = lambda_state_kind::DEFINED;
+    s.known_log2 = (int8_t) log2;
+    return s;
+  }
+
+  bool operator== (const lambda_state &o) const
+  {
+    if (kind != o.kind)
+      return false;
+    if (kind == lambda_state_kind::DEFINED)
+      return known_log2 == o.known_log2;
+    return true;
+  }
+  bool operator!= (const lambda_state &o) const { return !(*this == o); }
+
+  /* CFG-join merge of two reach-states.  Identity is NOT_TOUCHED;
+     absorbing element is KILLED; two DEFINED with the same log2
+     survive; everything else degrades to KILLED.  */
+  static lambda_state merge (const lambda_state &a, const lambda_state &b)
+  {
+    if (a.kind == lambda_state_kind::NOT_TOUCHED)
+      return b;
+    if (b.kind == lambda_state_kind::NOT_TOUCHED)
+      return a;
+    if (a.kind == lambda_state_kind::KILLED
+	|| b.kind == lambda_state_kind::KILLED)
+      return make_killed ();
+    if (a.kind == lambda_state_kind::USE_ONLY
+	&& b.kind == lambda_state_kind::USE_ONLY)
+      return make_use_only ();
+    if (a.kind == lambda_state_kind::DEFINED
+	&& b.kind == lambda_state_kind::DEFINED
+	&& a.known_log2 == b.known_log2)
+      return a;
+    /* DEFINED ⊓ USE_ONLY or DEFINED(N) ⊓ DEFINED(M ≠ N) -> KILLED.  */
+    return make_killed ();
+  }
+};
+
+/* Classify RINSN's effect on vtype.lambda.  This is per-insn local
+   classification only -- it does not look at predecessor reach-state.
+   The merge logic in `lambda_state::merge' handles join points.
+
+   Returns NOT_TOUCHED for the vast majority of insns; the interesting
+   cases are vsetlambda installs (DEFINED) and any other vtype-writing
+   insn (KILLED).  */
+
+static lambda_state
+classify_lambda_effect (rtx_insn *rinsn)
+{
+  if (!NONDEBUG_INSN_P (rinsn))
+    return lambda_state ();
+
+  /* The vsetlambda install pattern carries its 3-bit encoding as the
+     second operand of the UNSPECV_VSETLAMBDA unspec_volatile.  Decode
+     it back to log2(lambda) = enc - 1; enc == 0 (not yet emitted in
+     this series) would mean "runtime arg, unknown" and falls into
+     KILLED below.  */
+  int code = INSN_CODE (rinsn);
+  if (code == CODE_FOR_riscv_vsetlambda_installdi
+      || code == CODE_FOR_riscv_vsetlambda_installsi)
+    {
+      extract_insn_cached (rinsn);
+      rtx hint = recog_data.operand[1];
+      if (CONST_INT_P (hint))
+	{
+	  HOST_WIDE_INT enc = INTVAL (hint);
+	  if (enc >= 1 && enc <= 7)
+	    return lambda_state::make_defined ((int) enc - 1);
+	}
+      return lambda_state::make_killed ();
+    }
+
+  /* Anything else that writes VTYPE_REGNUM is a may-DEF of lambda.
+     This includes plain vsetvli/vsetivli (WARL re-clamp on SEW/LMUL
+     change), register-form vsetvl, the IME helpers
+     `@vsetvl_ime<mode>' / `@vsetvl_ime_reg<mode>', and asm clobbers.
+     A more precise classification (e.g. recognise that a vsetvli with
+     unchanged SEW/LMUL is not a kill) requires predecessor knowledge
+     and is left for commit 4.  */
+  df_ref def;
+  for (def = DF_INSN_DEFS (rinsn); def; def = DF_REF_NEXT_LOC (def))
+    if (DF_REF_REGNO (def) == VTYPE_REGNUM)
+      return lambda_state::make_killed ();
+
+  /* Calls and asm conservatively kill vtype (the existing pass already
+     treats them as full vtype clobbers; mirror that here).  */
+  if (CALL_P (rinsn) || (GET_CODE (PATTERN (rinsn)) == ASM_OPERANDS))
+    return lambda_state::make_killed ();
+
+  return lambda_state ();
+}
+
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
    `requires_ime_vtype' attribute set to yes.  The returned record is
    fully determined by RINSN's operand modes; see §C-Language Intrinsics
@@ -1196,6 +1364,12 @@ private:
   ime_vtype_req m_ime_req;
   ime_demand_type m_ime_demand;
 
+  /* Per-insn classification of vtype.lambda effect.  See the
+     `lambda_state' header comment near `classify_lambda_effect'.
+     Populated by `parse_insn'; consumed by lambda-aware optimisations
+     introduced in later commits of this series.  */
+  lambda_state m_lambda;
+
 public:
   vsetvl_info ()
     : m_insn (nullptr), m_bb (nullptr), m_avl (NULL_RTX), m_vl (NULL_RTX),
@@ -1248,6 +1422,9 @@ public:
   void set_ime_req (const ime_vtype_req &r) { m_ime_req = r; }
   ime_demand_type get_ime_demand () const { return m_ime_demand; }
   void set_ime_demand (ime_demand_type demand) { m_ime_demand = demand; }
+
+  const lambda_state &get_lambda () const { return m_lambda; }
+  void set_lambda (const lambda_state &l) { m_lambda = l; }
 
   bool has_imm_avl () const { return m_avl && CONST_INT_P (m_avl); }
   bool has_vlmax_avl () const { return vlmax_avl_p (m_avl); }
@@ -1402,6 +1579,7 @@ public:
 	m_ime_req = riscv_extract_ime_requirements (rinsn);
 	m_ime_demand = ime_demand_type::ime_vtype;
       }
+    m_lambda = classify_lambda_effect (rinsn);
   }
 
   void parse_insn (insn_info *insn)
@@ -1419,6 +1597,8 @@ public:
     if (insn->is_call () || insn->is_asm ())
       {
 	set_unknown ();
+	/* Conservative: calls and asm may clobber vtype.lambda.  */
+	m_lambda = lambda_state::make_killed ();
 	return;
       }
 
@@ -1434,9 +1614,21 @@ public:
     if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
 	|| code == CODE_FOR_vsetvl_ime_regdi
 	|| code == CODE_FOR_vsetvl_ime_regsi
-	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi
+	|| code == CODE_FOR_riscv_vsetlambda_installdi
+	|| code == CODE_FOR_riscv_vsetlambda_installsi)
       {
 	set_unknown ();
+	/* Per-pattern lambda classification:
+	     read_vtype                -> USE_ONLY (pure read);
+	     riscv_vsetlambda_install  -> DEFINED(N) from the hint;
+	     IME-helper vsetvls        -> KILLED (writes full vtype).  */
+	if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+	  m_lambda = lambda_state::make_use_only ();
+	else
+	  m_lambda = classify_lambda_effect (insn->rtl ());
+	if (m_lambda.kind == lambda_state_kind::NOT_TOUCHED)
+	  m_lambda = lambda_state::make_killed ();
 	return;
       }
 
@@ -1447,6 +1639,9 @@ public:
 	    || find_access (insn->defs (), VTYPE_REGNUM)))
       {
 	set_unknown ();
+	/* Any opaque vtype writer kills the tracked lambda value.  */
+	if (find_access (insn->defs (), VTYPE_REGNUM))
+	  m_lambda = lambda_state::make_killed ();
 	return;
       }
 
@@ -1485,6 +1680,8 @@ public:
 	m_ime_required = true;
 	m_ime_req = riscv_extract_ime_requirements (insn->rtl ());
       }
+
+    m_lambda = classify_lambda_effect (insn->rtl ());
 
     /* If merge operand is undef value, we prefer agnostic.  */
     int merge_op_idx = get_attr_merge_op_idx (insn->rtl ());
