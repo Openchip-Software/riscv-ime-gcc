@@ -397,6 +397,32 @@ vsetvl_insn_p (rtx_insn *rinsn)
 	  || INSN_CODE (rinsn) == CODE_FOR_vsetvlsi);
 }
 
+/* Return true if RINSN is `@riscv_vsetvl_preserve_lambda<mode>'.
+
+   Semantically this is BOTH a vtype source (writes vtype with known
+   SEW/LMUL/ta/ma encoded in its const_int operand 2) AND a vtype sink
+   in the sense that its run-time value depends on the live vtype.lambda
+   field -- any plain vsetvli placed upstream of it would WARL-clobber
+   that lambda and corrupt the merge.
+
+   The pass's "modify-or-skip" path is gated by `vsetvl_insn_p' (which
+   hardcodes the two CODE_FOR_vsetvl<di,si> values).  preserve_lambda
+   is not such a plain vsetvl -- changing it via `change_vsetvl_insn'
+   would replace it with `gen_vsetvl(...)' which loses the lambda
+   merge, so we never want to take the modify branch.  Likewise we
+   must never take the "insert vsetvl before" branch for preserve_lambda
+   in `emit_vsetvl': that would lift a plain vsetvli above the csrr
+   that reads the live lambda.  This predicate gates those sites.  */
+static bool
+is_preserve_lambda_p (rtx_insn *rinsn)
+{
+  if (!rinsn)
+    return false;
+  int code = recog_memoized (rinsn);
+  return (code == CODE_FOR_riscv_vsetvl_preserve_lambdadi
+	  || code == CODE_FOR_riscv_vsetvl_preserve_lambdasi);
+}
+
 /* Return true if it is the bogus vsetvl_pre instruction:
 
    (define_insn "@vlmax_avl<mode>"
@@ -535,6 +561,31 @@ calculate_vlmul (unsigned int sew, unsigned int ratio)
     if (calculate_ratio (sew, vlmul) == ratio)
       return vlmul;
   return LMUL_RESERVED;
+}
+
+/* Decode a static vtype const_int (the form built by
+   `compute_static_vtype_without_lambda' and consumed by
+   `@vsetvl_ime<mode>' / `@riscv_vsetvl_preserve_lambda<mode>') into
+   the SEW/LMUL/ta/ma fields the rest of the pass works with.  The
+   lambda field is *not* decoded -- the caller decides whether that
+   came from the const (vsetvl_ime) or from the runtime csrr-and-merge
+   (preserve_lambda).  Returns false if VTYPE_CONST encodes a SEW
+   value out of range.  */
+
+static bool
+decode_static_vtype_const (HOST_WIDE_INT vtype_const,
+			   uint8_t *sew_out, vlmul_type *vlmul_out,
+			   bool *ta_out, bool *ma_out)
+{
+  unsigned vlmul_enc = vtype_const & 0x7;
+  unsigned sew_enc = (vtype_const >> 3) & 0x7;
+  if (sew_enc > 3)
+    return false;  /* only e8/e16/e32/e64 are legal.  */
+  *sew_out = (uint8_t) (8u << sew_enc);
+  *vlmul_out = (vlmul_type) vlmul_enc;
+  *ta_out = (vtype_const >> 6) & 1;
+  *ma_out = (vtype_const >> 7) & 1;
+  return true;
 }
 
 /* Get the currently supported maximum sew used in the int rvv instructions. */
@@ -1001,7 +1052,19 @@ enum class lambda_state_kind : uint8_t
 {
   NOT_TOUCHED,
   USE_ONLY,
-  DEFINED,
+  DEFINED,          /* Static value known: lambda = 1 << known_log2.  */
+  DEFINED_RUNTIME,  /* User established a runtime lambda (via a
+		       __riscv_vsetlambda call whose argument is not
+		       a compile-time constant): vtype.lambda
+		       currently holds the user's chosen value, but
+		       that value is unknown to the compiler.  The
+		       pass-side emitter for lambda-using consumers
+		       treats this distinctly from KILLED: rather
+		       than emitting a plain vsetvli (which would
+		       WARL-clobber lambda), it emits a sequence that
+		       reads vtype.lambda dynamically and merges it
+		       with the consumer's static (SEW, LMUL, ta, ma).
+		       See `@riscv_vsetvl_preserve_lambda<mode>'.  */
   KILLED
 };
 
@@ -1035,6 +1098,13 @@ struct lambda_state
     return s;
   }
 
+  static lambda_state make_defined_runtime ()
+  {
+    lambda_state s;
+    s.kind = lambda_state_kind::DEFINED_RUNTIME;
+    return s;
+  }
+
   bool operator== (const lambda_state &o) const
   {
     if (kind != o.kind)
@@ -1047,7 +1117,9 @@ struct lambda_state
 
   /* CFG-join merge of two reach-states.  Identity is NOT_TOUCHED;
      absorbing element is KILLED; two DEFINED with the same log2
-     survive; everything else degrades to KILLED.  */
+     survive; two DEFINED_RUNTIME survive; mixing static and runtime
+     DEFs degrades to KILLED (we cannot prove they refer to the same
+     runtime value); everything else degrades to KILLED.  */
   static lambda_state merge (const lambda_state &a, const lambda_state &b)
   {
     if (a.kind == lambda_state_kind::NOT_TOUCHED)
@@ -1064,7 +1136,11 @@ struct lambda_state
 	&& b.kind == lambda_state_kind::DEFINED
 	&& a.known_log2 == b.known_log2)
       return a;
-    /* DEFINED ⊓ USE_ONLY or DEFINED(N) ⊓ DEFINED(M ≠ N) -> KILLED.  */
+    if (a.kind == lambda_state_kind::DEFINED_RUNTIME
+	&& b.kind == lambda_state_kind::DEFINED_RUNTIME)
+      return make_defined_runtime ();
+    /* DEFINED ⊓ USE_ONLY, DEFINED(N) ⊓ DEFINED(M ≠ N), and any mix
+       of DEFINED and DEFINED_RUNTIME all degrade to KILLED.  */
     return make_killed ();
   }
 };
@@ -1084,10 +1160,20 @@ classify_lambda_effect (rtx_insn *rinsn)
     return lambda_state ();
 
   /* The vsetlambda install pattern carries its 3-bit encoding as the
-     second operand of the UNSPECV_VSETLAMBDA unspec_volatile.  Decode
-     it back to log2(lambda) = enc - 1; enc == 0 (not yet emitted in
-     this series) would mean "runtime arg, unknown" and falls into
-     KILLED below.  */
+     second operand of the UNSPECV_VSETLAMBDA unspec_volatile.  Three
+     cases:
+       - enc in 1..7: compile-time-constant arg, lambda statically
+		      known to be 1 << (enc - 1) -> DEFINED.
+       - enc == 0:    runtime arg.  The user has established *some*
+		      lambda (the value of their runtime expression),
+		      but the compiler does not know what.  This
+		      differs from KILLED: a subsequent lambda-using
+		      consumer can still observe the user's lambda if
+		      the pass uses a vtype-preserving sequence to set
+		      up SEW/LMUL -> DEFINED_RUNTIME.
+       - anything else: shouldn't happen given the IN_RANGE
+		      condition on the MD pattern; fall back to
+		      KILLED defensively.  */
   int code = INSN_CODE (rinsn);
   if (code == CODE_FOR_riscv_vsetlambda_installdi
       || code == CODE_FOR_riscv_vsetlambda_installsi)
@@ -1099,6 +1185,8 @@ classify_lambda_effect (rtx_insn *rinsn)
 	  HOST_WIDE_INT enc = INTVAL (hint);
 	  if (enc >= 1 && enc <= 7)
 	    return lambda_state::make_defined ((int) enc - 1);
+	  if (enc == 0)
+	    return lambda_state::make_defined_runtime ();
 	}
       return lambda_state::make_killed ();
     }
@@ -1128,6 +1216,16 @@ classify_lambda_effect (rtx_insn *rinsn)
 	}
       return lambda_state::make_killed ();
     }
+
+  /* `@riscv_vsetvl_preserve_lambda<mode>' reads vtype.lambda at run
+     time and writes the new vtype with the live lambda field merged
+     in.  This is a vtype DEF in dataflow terms, but a USE_ONLY of
+     lambda (the user's lambda value flows through unchanged): classify
+     as DEFINED_RUNTIME so subsequent lambda-USE consumers can elide
+     redundant lambda-preserving vsetvls.  */
+  if (code == CODE_FOR_riscv_vsetvl_preserve_lambdadi
+      || code == CODE_FOR_riscv_vsetvl_preserve_lambdasi)
+    return lambda_state::make_defined_runtime ();
 
   /* Anything else that writes VTYPE_REGNUM is a may-DEF of lambda.
      This includes plain vsetvli/vsetivli (WARL re-clamp on SEW/LMUL
@@ -1169,6 +1267,27 @@ classify_lambda_effect (rtx_insn *rinsn)
 static bool lambda_reach_at_block_entry_matches_p (basic_block,
 						   int demand_lambda_log2);
 
+/* Return the lambda_dataflow's entry state for block BB, or a
+   default-constructed NOT_TOUCHED if no dataflow has been computed.
+   Defined AFTER the lambda_dataflow class so the body can reach into
+   it.  */
+static lambda_state lambda_reach_at_block_entry (basic_block);
+
+/* Return the lambda_state that reaches CONSUMER -- the result of the
+   intra-block walk back from CONSUMER, falling through to the
+   cross-block dataflow's entry state on block-boundary crossing.
+   Used by the pass's lambda-USE-aware vsetvl emitter to decide
+   between the const-arg vtype-build path (DEFINED), the runtime
+   vtype-preserve path (DEFINED_RUNTIME), and a plain vsetvli
+   (NOT_TOUCHED / KILLED).  */
+static lambda_state lambda_reach_before (rtx_insn *consumer);
+
+/* Return true if RINSN is a USE of vtype.lambda -- i.e. an IME tile
+   load/store or multiply-accumulate.  Such an insn must not have its
+   lambda silently clobbered by a vtype-config insn inserted between
+   the most recent DEF and itself.  */
+static bool insn_uses_lambda_p (rtx_insn *rinsn);
+
 static bool
 lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
 {
@@ -1201,6 +1320,11 @@ lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
 	case lambda_state_kind::DEFINED:
 	  /* Found a static DEF.  Elide iff it matches the demand.  */
 	  return s.known_log2 == demand_lambda_log2;
+	case lambda_state_kind::DEFINED_RUNTIME:
+	  /* A runtime DEF establishes some unknown lambda; we cannot
+	     prove it matches a statically demanded value, so we cannot
+	     elide.  */
+	  return false;
 	case lambda_state_kind::KILLED:
 	  return false;
 	case lambda_state_kind::USE_ONLY:
@@ -1213,6 +1337,69 @@ lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
      matching DEFINED(N) on every predecessor path, the lambda is
      already established at block entry.  */
   return lambda_reach_at_block_entry_matches_p (bb, demand_lambda_log2);
+}
+
+/* Return the lambda_state reaching CONSUMER.  Intra-block walk first
+   (stopping at the first DEFINED, DEFINED_RUNTIME or KILLED), then
+   the cross-block dataflow's entry state if the walk crosses a
+   block boundary without resolution.  */
+
+static lambda_state
+lambda_reach_before (rtx_insn *consumer)
+{
+  const int max_walk = 64;
+  basic_block bb = BLOCK_FOR_INSN (consumer);
+  if (!bb)
+    return lambda_state ();
+
+  int steps = 0;
+  for (rtx_insn *p = PREV_INSN (consumer);
+       p && steps < max_walk;
+       p = PREV_INSN (p), ++steps)
+    {
+      if (BLOCK_FOR_INSN (p) != bb)
+	break;
+      if (!NONDEBUG_INSN_P (p))
+	continue;
+      lambda_state s = classify_lambda_effect (p);
+      switch (s.kind)
+	{
+	case lambda_state_kind::DEFINED:
+	case lambda_state_kind::DEFINED_RUNTIME:
+	case lambda_state_kind::KILLED:
+	  return s;
+	case lambda_state_kind::USE_ONLY:
+	case lambda_state_kind::NOT_TOUCHED:
+	  continue;
+	}
+    }
+  /* Cross-block fall-through.  */
+  return lambda_reach_at_block_entry (bb);
+}
+
+/* True for IME tile loads/stores and multiply-accumulates -- the
+   insns that consume vtype.lambda implicitly.  The conservative test
+   is `requires_ime_vtype == REQUIRES_IME_VTYPE_YES' (mmacc family);
+   tile ops have type `vlds'/'vsts' and read vtype.lambda dynamically.
+
+   `requires_ime_vtype' is the cleanest test where the attribute is
+   set; for tile ops that no longer carry it (per the architectural
+   change in commit e69d583b9aa0), fall back on the type attribute.  */
+
+static bool
+insn_uses_lambda_p (rtx_insn *rinsn)
+{
+  if (!NONDEBUG_INSN_P (rinsn))
+    return false;
+  if (recog_memoized (rinsn) < 0)
+    return false;
+  if (get_attr_requires_ime_vtype (rinsn) == REQUIRES_IME_VTYPE_YES)
+    return true;
+  enum attr_type t = get_attr_type (rinsn);
+  /* vlds/vsts are strided load/store -- the IME tile load/store ops
+     are encoded as these types.  Strict gating: only treat them as
+     lambda consumers when emitted by the IME tile builtins.  */
+  return t == TYPE_VLDS || t == TYPE_VSTS;
 }
 
 /* Forward CFG dataflow for the lambda lattice.
@@ -1296,6 +1483,11 @@ lambda_dataflow::transfer_block (basic_block bb, lambda_state in,
 	      && cur.kind == lambda_state_kind::DEFINED
 	      && cur.known_log2 == s.known_log2)
 	    m_dead_installs.safe_push (insn);
+	  cur = s;
+	  break;
+	case lambda_state_kind::DEFINED_RUNTIME:
+	  /* A runtime install establishes some lambda; we can never
+	     prove two runtime installs share a value, so no DCE.  */
 	  cur = s;
 	  break;
 	case lambda_state_kind::KILLED:
@@ -1386,6 +1578,7 @@ lambda_dataflow::run ()
    pass end.  */
 static lambda_dataflow *g_lambda_df;
 
+
 /* Cross-block extension of `lambda_already_established_p': if the
    intra-block walk reaches block start without resolving, consult the
    dataflow's entry state for the block.  Returns true iff the
@@ -1400,6 +1593,17 @@ lambda_reach_at_block_entry_matches_p (basic_block bb,
   lambda_state s = g_lambda_df->entry_state_of (bb);
   return s.kind == lambda_state_kind::DEFINED
 	 && s.known_log2 == demand_lambda_log2;
+}
+
+/* Return the dataflow's entry state for BB, or NOT_TOUCHED if no
+   dataflow has been computed.  Used by `lambda_reach_before' when
+   the intra-block walk crosses the block boundary.  */
+static lambda_state
+lambda_reach_at_block_entry (basic_block bb)
+{
+  if (!g_lambda_df)
+    return lambda_state ();
+  return g_lambda_df->entry_state_of (bb);
 }
 
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
@@ -1860,6 +2064,84 @@ public:
     if (optimize == 0 && !has_vtype_op (rinsn))
       return;
     gcc_assert (!vsetvl_discard_result_insn_p (rinsn));
+
+    /* `riscv_vsetlambda_install' is transparent for the SEW/LMUL/
+       policy/AVL demand analysis: it only modifies vtype.lambda.
+       Leave m_state UNINITIALIZED (no demand opinion) and just record
+       the lambda effect; see the corresponding branch in
+       `parse_insn(insn_info *)' for the full rationale.
+
+       Use `recog_memoized' (not raw INSN_CODE) so freshly emitted
+       insns -- e.g. the helper patterns inserted by
+       `fixup_lambda_clobbering_placeholders' -- get recognised here
+       rather than silently falling through.  */
+    int code = recog_memoized (rinsn);
+    if (code == CODE_FOR_riscv_vsetlambda_installdi
+	|| code == CODE_FOR_riscv_vsetlambda_installsi)
+      {
+	m_lambda = classify_lambda_effect (rinsn);
+	return;
+      }
+
+    /* `@riscv_vsetvl_preserve_lambda<mode>' is a transparent SEW/LMUL
+       writer: decode its const_int vtype operand (operand 2) and
+       populate the demand fields with the same `ratio_only' profile a
+       regular `@vsetvl<mode>' source would have.  This lets the LCM
+       see the insn as an available vtype source for downstream
+       lambda-USE consumers with matching geometry -- the redundant
+       second lambda-preserving emission then naturally disappears.
+
+       Note that `get_avl' returns NULL_RTX for preserve_lambda
+       (no vl_op_idx attr), so we extract operand 1 directly.  The
+       `is_preserve_lambda_p' guards in `emit_vsetvl' /
+       `pre_global_vsetvl_info' ensure the pass never tries to
+       *modify* or *insert before* a preserve_lambda based on this
+       VALID classification.  */
+    if (code == CODE_FOR_riscv_vsetvl_preserve_lambdadi
+	|| code == CODE_FOR_riscv_vsetvl_preserve_lambdasi)
+      {
+	extract_insn_cached (rinsn);
+	HOST_WIDE_INT vtype_const = INTVAL (recog_data.operand[2]);
+	uint8_t sew;
+	vlmul_type vlmul;
+	bool ta_bit, ma_bit;
+	if (decode_static_vtype_const (vtype_const, &sew, &vlmul, &ta_bit, &ma_bit))
+	  {
+	    set_valid ();
+	    m_avl = recog_data.operand[1];
+	    m_vl = recog_data.operand[0];
+	    m_sew = sew;
+	    m_vlmul = vlmul;
+	    m_ta = ta_bit;
+	    m_ma = ma_bit;
+	    m_ratio = calculate_ratio (m_sew, m_vlmul);
+	    m_max_sew = get_max_int_sew ();
+	    normalize_demand (demand_flags::DEMAND_AVL_P
+			      | demand_flags::DEMAND_RATIO_P);
+	  }
+	else
+	  set_unknown ();
+	m_lambda = lambda_state::make_defined_runtime ();
+	return;
+      }
+
+    /* IME vsetvl helpers (`@vsetvl_ime<mode>', `@vsetvl_ime_reg<mode>')
+       and `@read_vtype<mode>' write the full vtype as a single value
+       (const_int or register).  Treat them as opaque vtype writes
+       here.  */
+    if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
+	|| code == CODE_FOR_vsetvl_ime_regdi
+	|| code == CODE_FOR_vsetvl_ime_regsi
+	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+      {
+	set_unknown ();
+	if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+	  m_lambda = lambda_state::make_use_only ();
+	else
+	  m_lambda = lambda_state::make_killed ();
+	return;
+      }
+
     set_valid ();
     extract_insn_cached (rinsn);
     m_avl = ::get_avl (rinsn);
@@ -1918,25 +2200,84 @@ public:
        computation below would call `calculate_ratio (255, 255)' and
        ICE).  Mark the state as unknown so any consumer that follows
        gets a fresh vsetvl insertion as needed.  */
-    int code = INSN_CODE (insn->rtl ());
+    /* Force recog if the insn hasn't been recognised yet (freshly emitted
+       insns -- e.g. by `fixup_lambda_clobbering_placeholders' -- have
+       INSN_CODE == -1 until something runs recog on them).  Without this,
+       the early-return cases below would silently fall through and the
+       sew/vlmul extraction would ICE on the helper patterns.  */
+    int code = recog_memoized (insn->rtl ());
+
+    /* `@riscv_vsetvl_preserve_lambda<mode>': decode operand 2 into the
+       SEW/LMUL/ta/ma fields the rest of the pass uses, mark VALID
+       with a `ratio_only' demand profile, and let the LCM treat this
+       insn as a regular vsetvl source for downstream consumers.  The
+       `is_preserve_lambda_p' guards elsewhere ensure the pass does
+       not try to modify or insert before this insn.  See the matching
+       branch in `parse_insn(rtx_insn *)' for full rationale.  */
+    if (code == CODE_FOR_riscv_vsetvl_preserve_lambdadi
+	|| code == CODE_FOR_riscv_vsetvl_preserve_lambdasi)
+      {
+	extract_insn_cached (insn->rtl ());
+	HOST_WIDE_INT vtype_const = INTVAL (recog_data.operand[2]);
+	uint8_t sew;
+	vlmul_type vlmul;
+	bool ta_bit, ma_bit;
+	if (decode_static_vtype_const (vtype_const, &sew, &vlmul, &ta_bit, &ma_bit))
+	  {
+	    set_valid ();
+	    m_avl = recog_data.operand[1];
+	    m_vl = recog_data.operand[0];
+	    dest_vl = m_vl;
+	    m_sew = sew;
+	    m_vlmul = vlmul;
+	    m_ta = ta_bit;
+	    m_ma = ma_bit;
+	    m_ratio = calculate_ratio (m_sew, m_vlmul);
+	    m_max_sew = get_max_int_sew ();
+	    normalize_demand (demand_flags::DEMAND_AVL_P
+			      | demand_flags::DEMAND_RATIO_P);
+	  }
+	else
+	  set_unknown ();
+	m_lambda = lambda_state::make_defined_runtime ();
+	return;
+      }
+
     if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
 	|| code == CODE_FOR_vsetvl_ime_regdi
 	|| code == CODE_FOR_vsetvl_ime_regsi
-	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi
-	|| code == CODE_FOR_riscv_vsetlambda_installdi
-	|| code == CODE_FOR_riscv_vsetlambda_installsi)
+	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
       {
 	set_unknown ();
 	/* Per-pattern lambda classification:
-	     read_vtype                -> USE_ONLY (pure read);
-	     riscv_vsetlambda_install  -> DEFINED(N) from the hint;
-	     IME-helper vsetvls        -> KILLED (writes full vtype).  */
+	     read_vtype             -> USE_ONLY (pure read);
+	     other IME-helper vsetvls -> KILLED (writes full vtype).  */
 	if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
 	  m_lambda = lambda_state::make_use_only ();
 	else
-	  m_lambda = classify_lambda_effect (insn->rtl ());
-	if (m_lambda.kind == lambda_state_kind::NOT_TOUCHED)
 	  m_lambda = lambda_state::make_killed ();
+	return;
+      }
+
+    /* `riscv_vsetlambda_install' is special: it issues a register-form
+       `vsetvl x0, x0, t' where t is constructed from the current vtype
+       with ONLY the lambda field modified.  All other vtype bits
+       (SEW, LMUL, ratio, ta, ma) are preserved by construction; in
+       SEW/LMUL/policy/AVL demand analysis the install is transparent.
+
+       If we called `set_unknown()' here (as the bug originally did),
+       the demand chain from the upstream vsetvli would break and the
+       pass would re-insert a vsetvli before the next consumer -- and
+       that re-inserted vsetvli would WARL-clobber the lambda we just
+       established.
+
+       Leave m_state UNINITIALIZED so the demand analysis treats this
+       insn as a no-op for (SEW, LMUL, ratio, ta, ma); the lambda
+       lattice in `m_lambda' tracks the actual DEF of vtype.lambda.  */
+    if (code == CODE_FOR_riscv_vsetlambda_installdi
+	|| code == CODE_FOR_riscv_vsetlambda_installsi)
+      {
+	m_lambda = classify_lambda_effect (insn->rtl ());
 	return;
       }
 
@@ -2041,7 +2382,26 @@ public:
 	      dflags |= demand_flags::DEMAND_AVL_P;
 	  }
 
-	if (get_attr_ratio (insn->rtl ()) != INVALID_ATTRIBUTE)
+	/* IME tile load/store ops (vmtl.v, vmts.v, vmtts.v, vmttl.v) take
+	   SEW from vtype but their encoded operand width must match.  Two
+	   different (SEW, LMUL) pairs with the same ratio are *not*
+	   interchangeable for these ops: e8,mf4 has the same ratio=32 as
+	   e32,m1 but feeding e8,mf4 into a vmtl.v whose destination is a
+	   32-bit element vector register group breaks the tile geometry
+	   (hardware derives the in-register stride from vtype.SEW; with a
+	   mismatch the load reads at byte stride into a 32-bit element
+	   register and the data layout is wrong, and on QEMU the IME
+	   helper SIGFPEs from a degenerate MUL_C).
+
+	   Force exact (SEW, LMUL) demand for these ops instead of the
+	   default ratio-only demand that get_attr_ratio's mode-based
+	   default would otherwise produce.  */
+	bool ime_tile_op_p = (get_attr_type (insn->rtl ()) == TYPE_VLDS
+			      || get_attr_type (insn->rtl ()) == TYPE_VSTS)
+			     && insn_uses_lambda_p (insn->rtl ());
+
+	if (!ime_tile_op_p
+	    && get_attr_ratio (insn->rtl ()) != INVALID_ATTRIBUTE)
 	  dflags |= demand_flags::DEMAND_RATIO_P;
 	else
 	  {
@@ -3538,8 +3898,71 @@ private:
 	return;
       }
 
-    rtx pat = info.get_vsetvl_pat ();
     rtx_insn *rinsn = info.get_insn ()->rtl ();
+
+    /* Lambda-preserving insertion: a regular vsetvli writes vtype and
+       (per WARL) may clobber the lambda field.  If RINSN consumes
+       vtype.lambda (an IME tile load/store or mmacc reached via the
+       non-IME path) and a DEF reaches at this insertion point, emit
+       a vtype-preserving sequence instead of a plain vsetvli:
+
+	 lattice reach = DEFINED(N)
+	     `gen_vsetvl_ime' with a const_int vtype = (consumer's
+	     static SEW/LMUL/ta/ma) | (lambda field = enc(N)).  One
+	     atomic full-vtype write.
+
+	 lattice reach = DEFINED_RUNTIME
+	     `gen_riscv_vsetvl_preserve_lambda' which reads the live
+	     vtype.lambda at runtime, masks it, ORs in the consumer's
+	     static bits, and vsetvls.  Same end effect with the user's
+	     runtime-established lambda.  */
+    if (emit_type == EMIT_BEFORE
+	&& riscv_track_user_lambda
+	&& insn_uses_lambda_p (rinsn))
+      {
+	lambda_state reach = lambda_reach_before (rinsn);
+	int xlen = GET_MODE_BITSIZE (Pmode);
+	HOST_WIDE_INT static_vtype
+	  = compute_static_vtype_without_lambda (info, xlen);
+	rtx avl = info.get_avl ();
+	if (!avl)
+	  avl = const0_rtx;
+	rtx dest_vl = info.has_vl ()
+			? info.get_vl ()
+			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+
+	if (reach.kind == lambda_state_kind::DEFINED)
+	  {
+	    int enc = reach.known_log2 + 1;
+	    HOST_WIDE_INT vtype
+	      = static_vtype | ((HOST_WIDE_INT) enc << (xlen - 4));
+	    rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl,
+				      gen_int_mode (vtype, Pmode));
+	    emit_insn_before (pat, rinsn);
+	    if (dump_file)
+	      fprintf (dump_file,
+		       "  Insert lambda-preserving vsetvl "
+		       "(static lambda=%d) before insn %d\n",
+		       1 << reach.known_log2, INSN_UID (rinsn));
+	    return;
+	  }
+	if (reach.kind == lambda_state_kind::DEFINED_RUNTIME)
+	  {
+	    rtx scratch = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM);
+	    rtx pat = gen_riscv_vsetvl_preserve_lambda (
+	      Pmode, dest_vl, avl, gen_int_mode (static_vtype, Pmode),
+	      scratch);
+	    emit_insn_before (pat, rinsn);
+	    if (dump_file)
+	      fprintf (dump_file,
+		       "  Insert lambda-preserving vsetvl "
+		       "(runtime lambda from vtype) before insn %d\n",
+		       INSN_UID (rinsn));
+	    return;
+	  }
+      }
+
+    rtx pat = info.get_vsetvl_pat ();
 
     if (emit_type == EMIT_DIRECT)
       {
@@ -4669,6 +5092,7 @@ pre_vsetvl::pre_global_vsetvl_info ()
 	  curr_info = block_info.local_infos[0];
 	}
       if (curr_info.valid_p () && !curr_info.vl_used_by_non_rvv_insn_p ()
+	  && !is_preserve_lambda_p (curr_info.get_insn ()->rtl ())
 	  && preds_all_same_avl_and_ratio_p (curr_info))
 	curr_info.set_change_vtype_only ();
 
@@ -4677,6 +5101,7 @@ pre_vsetvl::pre_global_vsetvl_info ()
       for (auto &curr_info : block_info.local_infos)
 	{
 	  if (prev_info.valid_p () && curr_info.valid_p ()
+	      && !is_preserve_lambda_p (curr_info.get_insn ()->rtl ())
 	      && m_dem.avl_available_p (prev_info, curr_info)
 	      && prev_info.get_ratio () == curr_info.get_ratio ())
 	    curr_info.set_change_vtype_only ();
@@ -4721,6 +5146,13 @@ pre_vsetvl::emit_vsetvl ()
 			}
 		      change_vsetvl_insn (curr_info);
 		    }
+		}
+	      else if (is_preserve_lambda_p (insn->rtl ()))
+		{
+		  /* preserve_lambda's own local_info: skip.  It is its
+		     own vtype source, and lifting a plain vsetvli above
+		     it would clobber the live vtype.lambda before its
+		     csrr-and-merge reads it.  */
 		}
 	      else
 		{
@@ -5114,12 +5546,280 @@ pass_vsetvl::lazy_vsetvl ()
   pre.finish ();
 }
 
+/* Forward intra-block scan from PLACEHOLDER for the first lambda-USE
+   consumer reachable before any non-placeholder vtype DEF/KILL.
+   Returns the consumer rtx_insn (whose vtype demand drives the
+   placeholder's rewrite) or nullptr if no such consumer exists.
+   Other `vsetvl_no_side_effects' placeholders along the way are
+   skipped: each gets rewritten independently when this function
+   visits it, so they do not cut the search short.
+
+   Bounded by MAX_WALK steps to defend against pathological blocks.  */
+
+static rtx_insn *
+find_lambda_use_consumer (rtx_insn *placeholder)
+{
+  basic_block bb = BLOCK_FOR_INSN (placeholder);
+  if (!bb)
+    return nullptr;
+
+  const int max_walk = 64;
+  int steps = 0;
+  for (rtx_insn *p = NEXT_INSN (placeholder);
+       p && steps < max_walk;
+       p = NEXT_INSN (p), ++steps)
+    {
+      if (BLOCK_FOR_INSN (p) != bb)
+	return nullptr;
+      if (!NONDEBUG_INSN_P (p))
+	continue;
+
+      if (insn_uses_lambda_p (p))
+	return p;
+
+      int code = INSN_CODE (p);
+      if (code == CODE_FOR_vsetvldi_no_side_effects
+	  || code == CODE_FOR_vsetvlsi_no_side_effects)
+	continue;
+
+      lambda_state s = classify_lambda_effect (p);
+      if (s.kind == lambda_state_kind::DEFINED
+	  || s.kind == lambda_state_kind::DEFINED_RUNTIME
+	  || s.kind == lambda_state_kind::KILLED)
+	return nullptr;
+    }
+  return nullptr;
+}
+
+/* Replace the `vsetvl<mode>_no_side_effects' PLACEHOLDER with a
+   lambda-preserving form chosen by REACH:
+     - DEFINED(N):        `gen_vsetvl_ime' with a const_int vtype that
+			  bakes in the lambda field (enc = N+1).  After
+			  the rewrite, the placeholder writes the full
+			  vtype atomically including lambda=N.
+     - DEFINED_RUNTIME:   `gen_riscv_vsetvl_preserve_lambda' which
+			  reads vtype.lambda at run time, ORs it into the
+			  static (SEW/LMUL/ta/ma) bits, then vsetvls.
+
+   The placeholder's own (SEW, LMUL, ta, ma) is the intrinsic
+   expander's arbitrary `e8,mfN' choice (see the comment at
+   `expand_select_vl' in riscv-v.cc:4574 -- "since vsetvl only demand
+   ratio, we let VSETVL PASS to optimize it").  Using those bits here
+   would emit a preserve_lambda with the wrong SEW reaching the
+   downstream lambda-USE consumer -- which for IME tile load/store
+   ops causes the hardware to compute the in-register stride against
+   the wrong element width and silently corrupt the tile geometry.
+
+   So instead we derive (SEW, LMUL, ta, ma) from the downstream
+   CONSUMER's mode and attributes -- that is the vtype the consumer
+   actually demands.  Combined with `parse_insn's decoding of
+   preserve_lambda's vtype operand (Commit 2 of this series), the
+   LCM then sees this rewritten preserve_lambda as an available
+   vtype source for the consumer and elides any redundant second
+   lambda-preserving emission.
+
+   The dest_vl pseudo is preserved so downstream consumers still see
+   the correct VL register.  */
+
+static void
+rewrite_placeholder_lambda_preserving (rtx_insn *placeholder,
+				       rtx_insn *consumer,
+				       const lambda_state &reach)
+{
+  extract_insn_cached (placeholder);
+  rtx dest_vl = recog_data.operand[0];
+  rtx avl = recog_data.operand[1];
+
+  /* Extract (SEW, LMUL, ta, ma) from the downstream consumer's
+     attributes -- NOT from the placeholder's own operands.  */
+  int sew = (int) ::get_sew (consumer);
+  vlmul_type vlmul = ::get_vlmul (consumer);
+  bool ta = tail_agnostic_p (consumer);
+  bool ma = mask_agnostic_p (consumer);
+
+  int xlen = GET_MODE_BITSIZE (Pmode);
+  HOST_WIDE_INT static_vtype = 0;
+  static_vtype |= ((HOST_WIDE_INT) vlmul) & 0x7;
+  static_vtype |= (HOST_WIDE_INT) ime_vsew_encoding (sew) << 3;
+  if (ta)
+    static_vtype |= (HOST_WIDE_INT) 1 << 6;
+  if (ma)
+    static_vtype |= (HOST_WIDE_INT) 1 << 7;
+
+  /* The IME and preserve patterns accept only register-or-zero for AVL.
+     Materialise a const_csr immediate into the prologue temp first.  */
+  if (avl != const0_rtx && CONST_INT_P (avl))
+    {
+      rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+      emit_insn_before (gen_rtx_SET (temp, avl), placeholder);
+      avl = temp;
+    }
+
+  /* Both helper patterns declare `=&r' (early-clobber) for the dest_vl
+     output: the asm template writes the dest before reading the AVL
+     input, so dest_vl and AVL must not share a register.  Post-reload
+     RA cannot reassign for us, so when the placeholder's RA happened
+     to bind both operands to the same hard reg, copy the AVL into the
+     prologue temp first.  */
+  if (REG_P (avl) && REG_P (dest_vl) && REGNO (avl) == REGNO (dest_vl))
+    {
+      rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+      emit_insn_before (gen_rtx_SET (temp, avl), placeholder);
+      avl = temp;
+    }
+
+  rtx pat;
+  if (reach.kind == lambda_state_kind::DEFINED)
+    {
+      int enc = reach.known_log2 + 1;
+      HOST_WIDE_INT vtype
+	= static_vtype | ((HOST_WIDE_INT) enc << (xlen - 4));
+      pat = gen_vsetvl_ime (Pmode, dest_vl, avl,
+			    gen_int_mode (vtype, Pmode));
+    }
+  else
+    {
+      gcc_assert (reach.kind == lambda_state_kind::DEFINED_RUNTIME);
+      /* The preserve_lambda pattern needs a scratch GPR for the
+	 mask-build/static-bits chain.  Allocating fresh pseudos is not
+	 possible post-reload, so reuse `t1' -- distinct from dest_vl
+	 (whose RA could leave it on `t0' if we copied AVL there above)
+	 and from AVL.  */
+      rtx scratch = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM);
+      pat = gen_riscv_vsetvl_preserve_lambda (
+	Pmode, dest_vl, avl, gen_int_mode (static_vtype, Pmode), scratch);
+    }
+
+  emit_insn_before (pat, placeholder);
+  delete_insn (placeholder);
+}
+
+/* Post-pass scan that closes the placeholder-vs-install reorder hazard.
+
+   The vsetvl pass does not DEF VTYPE_REGNUM on `vsetvl_no_side_effects'
+   placeholders pre-split, so scheduling can move such a placeholder
+   past a `riscv_vsetlambda_install'.  When the placeholder later splits
+   into a real vsetvli at epilogue_completed, that vsetvli sits between
+   the install and a downstream lambda consumer and WARL-clobbers
+   vtype.lambda.
+
+   Walk every block, maintaining a running lambda reach state (seeded
+   by the lambda dataflow's entry state and updated per insn via
+   `classify_lambda_effect').  When we encounter a placeholder under
+   a DEFINED / DEFINED_RUNTIME reach and a lambda-USE follows in the
+   same block before any other vtype DEF/KILL, rewrite the placeholder
+   into a lambda-preserving form (vsetvl_ime carrying lambda=N for
+   DEFINED, or vsetvl_preserve_lambda for DEFINED_RUNTIME).  */
+
+static void
+fixup_lambda_clobbering_placeholders ()
+{
+  if (!g_lambda_df)
+    return;
+
+  basic_block bb;
+  unsigned rewrites = 0;
+  FOR_EACH_BB_FN (bb, cfun)
+    {
+      lambda_state cur = g_lambda_df->entry_state_of (bb);
+
+      rtx_insn *insn, *next;
+      for (insn = BB_HEAD (bb);
+	   insn && insn != NEXT_INSN (BB_END (bb));
+	   insn = next)
+	{
+	  next = NEXT_INSN (insn);
+	  if (!NONDEBUG_INSN_P (insn))
+	    continue;
+
+	  int code = INSN_CODE (insn);
+	  bool is_placeholder
+	    = (code == CODE_FOR_vsetvldi_no_side_effects
+	       || code == CODE_FOR_vsetvlsi_no_side_effects);
+
+	  /* Only the DEFINED_RUNTIME case needs the fixup: with a static
+	     lambda the pass emits a `vsetvl_ime' before each lambda-USE
+	     consumer that carries lambda=N as a const, atomically
+	     re-establishing lambda after any intervening clobber.  With a
+	     runtime lambda the consumer's `vsetvl_preserve_lambda' reads
+	     vtype.lambda *at run time* -- if a plain vsetvli has clobbered
+	     it between install and consumer, the read sees the clobbered
+	     value, not the user's.  We must therefore replace the
+	     placeholder itself with a lambda-preserving form for the
+	     runtime case only.  */
+	  rtx_insn *consumer = nullptr;
+	  if (is_placeholder
+	      && cur.kind == lambda_state_kind::DEFINED_RUNTIME
+	      && (consumer = find_lambda_use_consumer (insn)) != nullptr)
+	    {
+	      if (dump_file)
+		fprintf (dump_file,
+			 "Fixup placeholder vsetvli insn %d: rewriting "
+			 "as vsetvl_preserve_lambda (runtime lambda) "
+			 "with vtype from consumer insn %d\n",
+			 INSN_UID (insn), INSN_UID (consumer));
+	      rewrite_placeholder_lambda_preserving (insn, consumer, cur);
+	      ++rewrites;
+	      /* The rewritten insn preserves lambda, so CUR stays
+		 valid as DEFINED_RUNTIME for the remainder of the block.  */
+	      continue;
+	    }
+
+	  lambda_state s = classify_lambda_effect (insn);
+	  switch (s.kind)
+	    {
+	    case lambda_state_kind::NOT_TOUCHED:
+	    case lambda_state_kind::USE_ONLY:
+	      break;
+	    case lambda_state_kind::DEFINED:
+	    case lambda_state_kind::DEFINED_RUNTIME:
+	    case lambda_state_kind::KILLED:
+	      cur = s;
+	      break;
+	    }
+	}
+    }
+
+  if (dump_file && rewrites)
+    fprintf (dump_file,
+	     "Fixup: rewrote %u placeholder%s to preserve user lambda\n",
+	     rewrites, rewrites == 1 ? "" : "s");
+}
+
 /* Main entry point for this pass.  */
 unsigned int
 pass_vsetvl::execute (function *)
 {
   if (n_basic_blocks_for_fn (cfun) <= 0)
     return 0;
+
+  /* PRE-SPLIT lambda-clobber placeholder fixup.
+
+     `vsetvl<mode>_no_side_effects' placeholders do not DEF VTYPE_REGNUM
+     pre-split, so the lambda dataflow sees them as NOT_TOUCHED and the
+     reach at the placeholder still reflects the user's most recent
+     `__riscv_vsetlambda' install.  Once split (a few lines down), each
+     placeholder becomes a real vsetvli that WARL-clobbers lambda; a
+     downstream IME tile/mmacc consumer then loses the user's lambda.
+
+     We must therefore run the dataflow AND rewrite the placeholders
+     BEFORE `split_all_insns' makes them indistinguishable from any
+     other plain vsetvli.  After rewrite, the affected placeholders
+     are `vsetvl_ime' (carrying lambda=N as a const) or
+     `vsetvl_preserve_lambda' (RMW that transplants the live lambda),
+     both of which split or expand to lambda-safe code.  */
+  if (has_vector_insn (cfun) && riscv_track_user_lambda)
+    {
+      lambda_dataflow pre_df;
+      if (dump_file)
+	fprintf (dump_file,
+		 "\nLambda dataflow (pre-split): scanning for placeholders that "
+		 "would WARL-clobber a live user lambda\n");
+      pre_df.run ();
+      g_lambda_df = &pre_df;
+      fixup_lambda_clobbering_placeholders ();
+      g_lambda_df = nullptr;
+    }
 
   /* The RVV instruction may change after split which is not a stable
      instruction. We need to split it here to avoid potential issue
