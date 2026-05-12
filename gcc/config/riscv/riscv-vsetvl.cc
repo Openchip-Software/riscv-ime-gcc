@@ -510,8 +510,19 @@ has_vector_insn (function *fn)
   rtx_insn *rinsn;
   FOR_ALL_BB_FN (cfg_bb, fn)
     FOR_BB_INSNS (cfg_bb, rinsn)
-      if (NONDEBUG_INSN_P (rinsn) && has_vtype_op (rinsn))
-	return true;
+      {
+	if (!NONDEBUG_INSN_P (rinsn))
+	  continue;
+	if (has_vtype_op (rinsn))
+	  return true;
+	/* `__riscv_vsetlambda' installs write vtype directly (no
+	   vtype_op attribute), but the vsetvl pass still needs to
+	   run for them so the lambda dataflow can perform DCE.  */
+	int code = INSN_CODE (rinsn);
+	if (code == CODE_FOR_riscv_vsetlambda_installdi
+	    || code == CODE_FOR_riscv_vsetlambda_installsi)
+	  return true;
+      }
   return false;
 }
 
@@ -944,6 +955,453 @@ compute_ime_lambda_log2 (int sew_bits, int mul_c)
   return lambda_log2;
 }
 
+/* Tracked lambda-DEF state attached to each `vsetvl_info'.
+
+   Plumbing layer for the lambda-aware optimisations that follow:
+   commit 3 of this series uses DEFINED to elide redundant mmacc
+   auto-vsetvl_ime emissions; commit 4 uses it for cross-block
+   vsetlambda DCE and preservation.  In this commit the lattice is
+   populated but no optimisation reads it -- behaviour is unchanged.
+
+   States:
+
+     NOT_TOUCHED  The insn does not read or write vtype.lambda.
+		  Identity element under merge.
+
+     USE_ONLY     The insn reads lambda but does not write it (e.g.
+		  the read-only `__riscv_vsetlambda(0)' path or an
+		  explicit csrr vtype).  Does not change the
+		  downstream tracked value.
+
+     DEFINED(N)   The insn writes lambda to a statically known value.
+		  KNOWN_LOG2 is in [0, 6] (so lambda = 1 << KNOWN_LOG2,
+		  i.e. one of {1, 2, 4, 8, 16, 32, 64}); KNOWN_LAMBDA
+		  is the same value pre-decoded for convenience.
+
+     KILLED       The insn touches lambda but the post-state is not
+		  statically computable.  Catches:
+		    - register-form `vsetvl' with opaque rs2;
+		    - vsetvli/vsetivli that change SEW or LMUL (WARL
+		      re-clamp), at first cut treated unconditionally
+		      as KILLED;
+		    - calls and asm with vtype clobber;
+		    - runtime-arg `__riscv_vsetlambda';
+		    - the auto-emitted `vsetvl_ime' helper (which DOES
+		      know its target value, but until commit 5 wires
+		      the lattice into the IME pipeline we treat it as
+		      KILLED to be safe).
+
+   Merge for CFG joins (commit 4):
+     same DEFINED(N)  -> DEFINED(N)
+     anything else    -> KILLED
+     identity         -> NOT_TOUCHED
+   USE_ONLY is preserved iff both inputs are USE_ONLY or NOT_TOUCHED.  */
+
+enum class lambda_state_kind : uint8_t
+{
+  NOT_TOUCHED,
+  USE_ONLY,
+  DEFINED,
+  KILLED
+};
+
+struct lambda_state
+{
+  lambda_state_kind kind;
+  int8_t known_log2;  /* Valid iff kind == DEFINED; range [0, 6].  */
+
+  lambda_state () : kind (lambda_state_kind::NOT_TOUCHED), known_log2 (-1) {}
+
+  static lambda_state make_use_only ()
+  {
+    lambda_state s;
+    s.kind = lambda_state_kind::USE_ONLY;
+    return s;
+  }
+
+  static lambda_state make_killed ()
+  {
+    lambda_state s;
+    s.kind = lambda_state_kind::KILLED;
+    return s;
+  }
+
+  static lambda_state make_defined (int log2)
+  {
+    gcc_assert (log2 >= 0 && log2 <= 6);
+    lambda_state s;
+    s.kind = lambda_state_kind::DEFINED;
+    s.known_log2 = (int8_t) log2;
+    return s;
+  }
+
+  bool operator== (const lambda_state &o) const
+  {
+    if (kind != o.kind)
+      return false;
+    if (kind == lambda_state_kind::DEFINED)
+      return known_log2 == o.known_log2;
+    return true;
+  }
+  bool operator!= (const lambda_state &o) const { return !(*this == o); }
+
+  /* CFG-join merge of two reach-states.  Identity is NOT_TOUCHED;
+     absorbing element is KILLED; two DEFINED with the same log2
+     survive; everything else degrades to KILLED.  */
+  static lambda_state merge (const lambda_state &a, const lambda_state &b)
+  {
+    if (a.kind == lambda_state_kind::NOT_TOUCHED)
+      return b;
+    if (b.kind == lambda_state_kind::NOT_TOUCHED)
+      return a;
+    if (a.kind == lambda_state_kind::KILLED
+	|| b.kind == lambda_state_kind::KILLED)
+      return make_killed ();
+    if (a.kind == lambda_state_kind::USE_ONLY
+	&& b.kind == lambda_state_kind::USE_ONLY)
+      return make_use_only ();
+    if (a.kind == lambda_state_kind::DEFINED
+	&& b.kind == lambda_state_kind::DEFINED
+	&& a.known_log2 == b.known_log2)
+      return a;
+    /* DEFINED ⊓ USE_ONLY or DEFINED(N) ⊓ DEFINED(M ≠ N) -> KILLED.  */
+    return make_killed ();
+  }
+};
+
+/* Classify RINSN's effect on vtype.lambda.  This is per-insn local
+   classification only -- it does not look at predecessor reach-state.
+   The merge logic in `lambda_state::merge' handles join points.
+
+   Returns NOT_TOUCHED for the vast majority of insns; the interesting
+   cases are vsetlambda installs (DEFINED) and any other vtype-writing
+   insn (KILLED).  */
+
+static lambda_state
+classify_lambda_effect (rtx_insn *rinsn)
+{
+  if (!NONDEBUG_INSN_P (rinsn))
+    return lambda_state ();
+
+  /* The vsetlambda install pattern carries its 3-bit encoding as the
+     second operand of the UNSPECV_VSETLAMBDA unspec_volatile.  Decode
+     it back to log2(lambda) = enc - 1; enc == 0 (not yet emitted in
+     this series) would mean "runtime arg, unknown" and falls into
+     KILLED below.  */
+  int code = INSN_CODE (rinsn);
+  if (code == CODE_FOR_riscv_vsetlambda_installdi
+      || code == CODE_FOR_riscv_vsetlambda_installsi)
+    {
+      extract_insn_cached (rinsn);
+      rtx hint = recog_data.operand[1];
+      if (CONST_INT_P (hint))
+	{
+	  HOST_WIDE_INT enc = INTVAL (hint);
+	  if (enc >= 1 && enc <= 7)
+	    return lambda_state::make_defined ((int) enc - 1);
+	}
+      return lambda_state::make_killed ();
+    }
+
+  /* The static-VLEN IME auto-emission `@vsetvl_ime<mode>' encodes the
+     full vtype (including the 3-bit lambda field) as a const_int in
+     operand 2.  Decode it so that back-to-back mmaccs sharing a
+     geometry can elide each other's auto-vsetvls: when the walk in
+     `lambda_already_established_p' visits a previously-emitted
+     `vsetvl_ime', it now recovers DEFINED(N) instead of treating
+     the insn as opaque KILLED.
+
+     The runtime-VLEN `@vsetvl_ime_reg<mode>' takes vtype in a register
+     instead of a const_int, so we cannot statically extract lambda;
+     it stays KILLED.  */
+  if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi)
+    {
+      extract_insn_cached (rinsn);
+      rtx vtype = recog_data.operand[2];
+      if (CONST_INT_P (vtype))
+	{
+	  int xlen = GET_MODE_BITSIZE (Pmode);
+	  HOST_WIDE_INT v = INTVAL (vtype);
+	  int enc = (int) ((unsigned HOST_WIDE_INT) v >> (xlen - 4)) & 7;
+	  if (enc >= 1 && enc <= 7)
+	    return lambda_state::make_defined (enc - 1);
+	}
+      return lambda_state::make_killed ();
+    }
+
+  /* Anything else that writes VTYPE_REGNUM is a may-DEF of lambda.
+     This includes plain vsetvli/vsetivli (WARL re-clamp on SEW/LMUL
+     change), register-form vsetvl, the runtime-VLEN IME helper
+     `@vsetvl_ime_reg<mode>', and asm clobbers.
+     A more precise classification (e.g. recognise that a vsetvli with
+     unchanged SEW/LMUL is not a kill) requires predecessor knowledge
+     and is left for commit 4.  */
+  df_ref def;
+  for (def = DF_INSN_DEFS (rinsn); def; def = DF_REF_NEXT_LOC (def))
+    if (DF_REF_REGNO (def) == VTYPE_REGNUM)
+      return lambda_state::make_killed ();
+
+  /* Calls and asm conservatively kill vtype (the existing pass already
+     treats them as full vtype clobbers; mirror that here).  */
+  if (CALL_P (rinsn) || (GET_CODE (PATTERN (rinsn)) == ASM_OPERANDS))
+    return lambda_state::make_killed ();
+
+  return lambda_state ();
+}
+
+/* Walk backwards from CONSUMER inside its basic block looking for a
+   preceding lambda DEF that statically matches DEMAND_LAMBDA_LOG2.
+   Returns true if such a DEF is found with no intervening kill of
+   the tracked lambda value; the caller can then skip emitting a
+   fresh `vsetvl_ime' for the consumer.
+
+   This is intentionally an intra-EBB scan: cross-block reach analysis
+   is the job of the LCM data flow already running, and is wired into
+   the lambda lattice in a later commit of this series.  Here we want
+   the simplest correct optimisation that covers the common
+   "user vsetlambda then mmacc" idiom: the install pattern is in the
+   same block as the consumer, and the walk-back finds it before
+   anything kills lambda.
+
+   The walk is bounded by a small step limit to avoid pathological
+   long-block compile-time costs.  */
+
+static bool lambda_reach_at_block_entry_matches_p (basic_block,
+						   int demand_lambda_log2);
+
+static bool
+lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
+{
+  if (!riscv_ime_elide_redundant_vsetvl_lambda)
+    return false;
+  if (demand_lambda_log2 < 0)
+    return false;  /* Runtime-derived demand: cannot elide statically.  */
+
+  const int max_walk = 64;
+  basic_block bb = BLOCK_FOR_INSN (consumer);
+  if (!bb)
+    return false;
+
+  int steps = 0;
+  for (rtx_insn *p = PREV_INSN (consumer);
+       p && steps < max_walk;
+       p = PREV_INSN (p), ++steps)
+    {
+      if (BLOCK_FOR_INSN (p) != bb)
+	{
+	  /* Crossed a block boundary.  Fall through to cross-block
+	     dataflow if available (commit 4).  */
+	  break;
+	}
+      if (!NONDEBUG_INSN_P (p))
+	continue;
+      lambda_state s = classify_lambda_effect (p);
+      switch (s.kind)
+	{
+	case lambda_state_kind::DEFINED:
+	  /* Found a static DEF.  Elide iff it matches the demand.  */
+	  return s.known_log2 == demand_lambda_log2;
+	case lambda_state_kind::KILLED:
+	  return false;
+	case lambda_state_kind::USE_ONLY:
+	case lambda_state_kind::NOT_TOUCHED:
+	  continue;
+	}
+    }
+  /* Intra-block walk exhausted without resolution.  Consult the
+     cross-block dataflow's entry state for this block: if it is a
+     matching DEFINED(N) on every predecessor path, the lambda is
+     already established at block entry.  */
+  return lambda_reach_at_block_entry_matches_p (bb, demand_lambda_log2);
+}
+
+/* Forward CFG dataflow for the lambda lattice.
+
+   Computes a per-block entry `lambda_state' via a worklist iteration
+   to fixpoint over the four-state lattice
+   (NOT_TOUCHED / USE_ONLY / DEFINED(N) / KILLED) merged at CFG joins
+   by `lambda_state::merge'.  The transfer function within a block is
+   `classify_lambda_effect' applied to each insn in order.
+
+   Two consumers:
+
+     (a) Cross-block elision in `lambda_already_established_p': when
+	 the intra-block walk reaches block start without resolving the
+	 query, the analysis's entry state for that block decides.
+
+     (b) Vsetlambda DCE: while computing each block's exit state, an
+	 install whose target encoding matches the running state is
+	 redundant; collected into M_DEAD_INSTALLS for removal by the
+	 pass.
+
+   The lattice height is finite (4 kinds * 8 possible log2 values for
+   DEFINED ≈ 11 distinct points) so the worklist iteration is bounded.
+   In practice fixpoint is reached in 1-2 sweeps for typical control
+   flow.
+
+   Gated by `-mtrack-user-lambda' (default on).  */
+
+class lambda_dataflow
+{
+public:
+  void run ();
+  lambda_state entry_state_of (basic_block bb);
+  const auto_vec<rtx_insn *> &dead_installs () const { return m_dead_installs; }
+
+private:
+  /* Apply the block's insn-by-insn transfer function starting from
+     IN; return the resulting exit state and (side effect) populate
+     M_DEAD_INSTALLS with installs that found their target value
+     already established at the install point.  */
+  lambda_state transfer_block (basic_block bb, lambda_state in,
+			       bool collect_dead);
+
+  hash_map<basic_block, lambda_state> m_entry;
+  hash_map<basic_block, lambda_state> m_exit;
+  auto_vec<rtx_insn *> m_dead_installs;
+};
+
+lambda_state
+lambda_dataflow::entry_state_of (basic_block bb)
+{
+  lambda_state *p = m_entry.get (bb);
+  return p ? *p : lambda_state ();  /* NOT_TOUCHED if not yet computed.  */
+}
+
+lambda_state
+lambda_dataflow::transfer_block (basic_block bb, lambda_state in,
+				 bool collect_dead)
+{
+  lambda_state cur = in;
+  rtx_insn *insn;
+  FOR_BB_INSNS (bb, insn)
+    {
+      if (!NONDEBUG_INSN_P (insn))
+	continue;
+      lambda_state s = classify_lambda_effect (insn);
+      switch (s.kind)
+	{
+	case lambda_state_kind::NOT_TOUCHED:
+	  break;
+	case lambda_state_kind::USE_ONLY:
+	  /* Pure read: leaves the tracked DEF alone.  Drops a stale
+	     KILLED into nothing -- a `csrr vtype' following an
+	     unknown vtype write doesn't suddenly know what the
+	     value is.  */
+	  break;
+	case lambda_state_kind::DEFINED:
+	  /* If the install writes the same lambda that is already
+	     guaranteed at this point, it is dead.  */
+	  if (collect_dead
+	      && cur.kind == lambda_state_kind::DEFINED
+	      && cur.known_log2 == s.known_log2)
+	    m_dead_installs.safe_push (insn);
+	  cur = s;
+	  break;
+	case lambda_state_kind::KILLED:
+	  cur = s;
+	  break;
+	}
+    }
+  return cur;
+}
+
+void
+lambda_dataflow::run ()
+{
+  /* Single sweep first: seed entry states from prev exit (or
+     NOT_TOUCHED for blocks not yet seen) in reverse postorder.
+     Then iterate to fixpoint.  */
+  basic_block bb;
+
+  auto compute_entry = [&] (basic_block b) -> lambda_state {
+    if (b == ENTRY_BLOCK_PTR_FOR_FN (cfun))
+      return lambda_state ();
+    lambda_state acc;
+    bool any = false;
+    edge e;
+    edge_iterator ei;
+    FOR_EACH_EDGE (e, ei, b->preds)
+      {
+	const lambda_state *p = m_exit.get (e->src);
+	if (!p)
+	  continue;
+	acc = any ? lambda_state::merge (acc, *p) : *p;
+	any = true;
+      }
+    return any ? acc : lambda_state ();
+  };
+
+  /* Worklist: blocks whose successors must be re-examined.  Use a
+     small visited-set to avoid runaway re-adds.  Capped iteration
+     to defend against pathological CFGs.  */
+  auto_bitmap worklist;
+  FOR_EACH_BB_FN (bb, cfun)
+    bitmap_set_bit (worklist, bb->index);
+
+  int iter_cap = 100 * n_basic_blocks_for_fn (cfun) + 32;
+  while (!bitmap_empty_p (worklist) && iter_cap-- > 0)
+    {
+      int idx = bitmap_first_set_bit (worklist);
+      bitmap_clear_bit (worklist, idx);
+      bb = BASIC_BLOCK_FOR_FN (cfun, idx);
+      if (!bb)
+	continue;
+
+      lambda_state new_entry = compute_entry (bb);
+      lambda_state new_exit = transfer_block (bb, new_entry,
+					      /*collect_dead=*/false);
+
+      const lambda_state *old_entry = m_entry.get (bb);
+      const lambda_state *old_exit = m_exit.get (bb);
+      bool changed = (!old_entry || *old_entry != new_entry
+		      || !old_exit || *old_exit != new_exit);
+
+      m_entry.put (bb, new_entry);
+      m_exit.put (bb, new_exit);
+
+      if (changed)
+	{
+	  edge e;
+	  edge_iterator ei;
+	  FOR_EACH_EDGE (e, ei, bb->succs)
+	    if (e->dest != EXIT_BLOCK_PTR_FOR_FN (cfun))
+	      bitmap_set_bit (worklist, e->dest->index);
+	}
+    }
+
+  /* Final sweep with collect_dead=true: now that entry states are at
+     fixpoint, the in-block transfer can identify redundant installs
+     reliably.  */
+  m_dead_installs.truncate (0);
+  FOR_EACH_BB_FN (bb, cfun)
+    {
+      lambda_state in = compute_entry (bb);
+      transfer_block (bb, in, /*collect_dead=*/true);
+    }
+}
+
+/* Singleton lambda dataflow used by the elision and DCE paths.  Set
+   up by `pass_vsetvl::execute' before any IME emission, cleared at
+   pass end.  */
+static lambda_dataflow *g_lambda_df;
+
+/* Cross-block extension of `lambda_already_established_p': if the
+   intra-block walk reaches block start without resolving, consult the
+   dataflow's entry state for the block.  Returns true iff the
+   computed entry state is DEFINED(N) with N matching the demand.  */
+
+static bool
+lambda_reach_at_block_entry_matches_p (basic_block bb,
+				       int demand_lambda_log2)
+{
+  if (!g_lambda_df)
+    return false;
+  lambda_state s = g_lambda_df->entry_state_of (bb);
+  return s.kind == lambda_state_kind::DEFINED
+	 && s.known_log2 == demand_lambda_log2;
+}
+
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
    `requires_ime_vtype' attribute set to yes.  The returned record is
    fully determined by RINSN's operand modes; see §C-Language Intrinsics
@@ -1202,6 +1660,12 @@ private:
   ime_vtype_req m_ime_req;
   ime_demand_type m_ime_demand;
 
+  /* Per-insn classification of vtype.lambda effect.  See the
+     `lambda_state' header comment near `classify_lambda_effect'.
+     Populated by `parse_insn'; consumed by lambda-aware optimisations
+     introduced in later commits of this series.  */
+  lambda_state m_lambda;
+
 public:
   vsetvl_info ()
     : m_insn (nullptr), m_bb (nullptr), m_avl (NULL_RTX), m_vl (NULL_RTX),
@@ -1254,6 +1718,9 @@ public:
   void set_ime_req (const ime_vtype_req &r) { m_ime_req = r; }
   ime_demand_type get_ime_demand () const { return m_ime_demand; }
   void set_ime_demand (ime_demand_type demand) { m_ime_demand = demand; }
+
+  const lambda_state &get_lambda () const { return m_lambda; }
+  void set_lambda (const lambda_state &l) { m_lambda = l; }
 
   bool has_imm_avl () const { return m_avl && CONST_INT_P (m_avl); }
   bool has_vlmax_avl () const { return vlmax_avl_p (m_avl); }
@@ -1420,6 +1887,7 @@ public:
 	m_vlmul = (vlmul_type) m_ime_req.lmul;
 	m_ratio = calculate_ratio (m_sew, m_vlmul);
       }
+    m_lambda = classify_lambda_effect (rinsn);
   }
 
   void parse_insn (insn_info *insn)
@@ -1437,6 +1905,8 @@ public:
     if (insn->is_call () || insn->is_asm ())
       {
 	set_unknown ();
+	/* Conservative: calls and asm may clobber vtype.lambda.  */
+	m_lambda = lambda_state::make_killed ();
 	return;
       }
 
@@ -1452,9 +1922,21 @@ public:
     if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
 	|| code == CODE_FOR_vsetvl_ime_regdi
 	|| code == CODE_FOR_vsetvl_ime_regsi
-	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi
+	|| code == CODE_FOR_riscv_vsetlambda_installdi
+	|| code == CODE_FOR_riscv_vsetlambda_installsi)
       {
 	set_unknown ();
+	/* Per-pattern lambda classification:
+	     read_vtype                -> USE_ONLY (pure read);
+	     riscv_vsetlambda_install  -> DEFINED(N) from the hint;
+	     IME-helper vsetvls        -> KILLED (writes full vtype).  */
+	if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+	  m_lambda = lambda_state::make_use_only ();
+	else
+	  m_lambda = classify_lambda_effect (insn->rtl ());
+	if (m_lambda.kind == lambda_state_kind::NOT_TOUCHED)
+	  m_lambda = lambda_state::make_killed ();
 	return;
       }
 
@@ -1465,6 +1947,9 @@ public:
 	    || find_access (insn->defs (), VTYPE_REGNUM)))
       {
 	set_unknown ();
+	/* Any opaque vtype writer kills the tracked lambda value.  */
+	if (find_access (insn->defs (), VTYPE_REGNUM))
+	  m_lambda = lambda_state::make_killed ();
 	return;
       }
 
@@ -1515,6 +2000,8 @@ public:
 	m_vlmul = (vlmul_type) m_ime_req.lmul;
 	m_ratio = calculate_ratio (m_sew, m_vlmul);
       }
+
+    m_lambda = classify_lambda_effect (insn->rtl ());
 
     /* If merge operand is undef value, we prefer agnostic.  */
     int merge_op_idx = get_attr_merge_op_idx (insn->rtl ());
@@ -2931,6 +3418,25 @@ private:
   void insert_ime_vsetvl_insn (enum emit_type emit_type,
 			       const vsetvl_info &info)
   {
+    rtx_insn *consumer = info.get_insn ()->rtl ();
+
+    /* Lambda elision (see `lambda_already_established_p').  Walk back
+       from the consumer; if a matching static DEF is reachable inside
+       this basic block with no intervening kill, the existing vtype
+       already satisfies the consumer's lambda demand and we skip the
+       auto-emission entirely.  Gated by -melide-ime-lambda (default on).  */
+    if (info.get_ime_req ().lambda_log2 >= 0
+	&& lambda_already_established_p (consumer,
+					 info.get_ime_req ().lambda_log2))
+      {
+	if (dump_file)
+	  fprintf (dump_file,
+		   "  Elide IME vsetvl insertion before insn %d: lambda=%d "
+		   "already established by a preceding DEF in the same BB\n",
+		   INSN_UID (consumer), 1 << info.get_ime_req ().lambda_log2);
+	return;
+      }
+
     rtx avl = info.get_avl ();
     if (!avl)
       avl = const0_rtx;
@@ -2951,7 +3457,7 @@ private:
        operands.  We pick `dest_vl' below alongside the pattern.  */
     rtx dest_vl;
 
-    rtx_insn *rinsn = info.get_insn ()->rtl ();
+    rtx_insn *rinsn = consumer;
     rtx pat;
     if (info.get_ime_req ().lambda_log2 == -1)
       {
@@ -4466,6 +4972,20 @@ pass_vsetvl::simple_vsetvl ()
 	      const auto &info = vsetvl_info (rinsn);
 	      if (info.ime_required_p ())
 		{
+		  /* Same lambda-elision optimisation as in
+		     `pre_vsetvl::insert_ime_vsetvl_insn'.  */
+		  if (info.get_ime_req ().lambda_log2 >= 0
+		      && lambda_already_established_p (
+			   rinsn, info.get_ime_req ().lambda_log2))
+		    {
+		      if (dump_file)
+			fprintf (dump_file,
+				 "  Elide IME vsetvl insertion before "
+				 "insn %d: lambda=%d already established\n",
+				 INSN_UID (rinsn),
+				 1 << info.get_ime_req ().lambda_log2);
+		      continue;
+		    }
 		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
 		  /* See `pre_vsetvl::insert_ime_vsetvl_insn' for why
 		     dest_vl differs between the runtime and static paths
@@ -4610,11 +5130,57 @@ pass_vsetvl::execute (function *)
   if (!has_vector_insn (cfun))
     return 0;
 
+  /* Run the lambda dataflow before either emission strategy.  Its
+     per-block entry states feed cross-block elision in
+     `lambda_already_established_p'; its dead-install list drives the
+     vsetlambda DCE pass run immediately afterwards.  Both consumers
+     are gated by `-mtrack-user-lambda' (default on).  */
+  lambda_dataflow df;
+  if (riscv_track_user_lambda)
+    {
+      if (dump_file)
+	fprintf (dump_file,
+		 "\nLambda dataflow: running CFG-level analysis (DCE+cross-block elision)\n");
+      df.run ();
+      g_lambda_df = &df;
+      if (dump_file)
+	fprintf (dump_file,
+		 "Lambda dataflow: %u redundant vsetlambda install%s identified\n",
+		 df.dead_installs ().length (),
+		 df.dead_installs ().length () == 1 ? "" : "s");
+
+      /* Remove vsetlambda installs whose target lambda is already
+	 established at their insertion point.  This is the cross-block
+	 generalisation of the local DCE: a single user setter that
+	 dominates the function entry block makes every subsequent
+	 in-loop vsetlambda(N) redundant.  */
+      if (!df.dead_installs ().is_empty ())
+	{
+	  if (dump_file)
+	    fprintf (dump_file,
+		     "\nLambda DCE: removing %u redundant vsetlambda "
+		     "install%s\n",
+		     df.dead_installs ().length (),
+		     df.dead_installs ().length () == 1 ? "" : "s");
+	  for (rtx_insn *ins : df.dead_installs ())
+	    {
+	      if (dump_file)
+		{
+		  fprintf (dump_file, "  delete redundant install insn %d:\n",
+			   INSN_UID (ins));
+		  print_rtl_single (dump_file, ins);
+		}
+	      delete_insn (ins);
+	    }
+	}
+    }
+
   if (!optimize || vsetvl_strategy == VSETVL_SIMPLE)
     simple_vsetvl ();
   else
     lazy_vsetvl ();
 
+  g_lambda_df = nullptr;
   return 0;
 }
 

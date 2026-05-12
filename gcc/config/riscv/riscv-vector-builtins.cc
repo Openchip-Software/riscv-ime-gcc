@@ -3315,6 +3315,17 @@ static CONSTEXPR const rvv_op_info ul_none_void_ops
      rvv_arg_type_info (RVV_BASE_unsigned_long), /* Return type */
      void_args /* Args */};
 
+/* A static operand information for unsigned long func (size_t) function
+   registration.  Used by `__riscv_vsetlambda', whose argument is the
+   requested lambda value (a positive power of two in {1,2,4,8,16,32,64},
+   or 0 for read-only query) and whose return value is the actually
+   established lambda after WARL clamping.  */
+static CONSTEXPR const rvv_op_info ul_none_size_ops
+  = {none_ops,				/* Types */
+     OP_TYPE_none,			/* Suffix */
+     rvv_arg_type_info (RVV_BASE_unsigned_long), /* Return type */
+     size_args /* Args */};
+
 /* A static operand information for vector_type func (vector_type)
  * function registration. */
 static CONSTEXPR const rvv_op_info all_v_vset_tuple_ops

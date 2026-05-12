@@ -305,12 +305,19 @@ DEF_RVV_FUNCTION (vmtts_L64, ime_tile, none_m_preds,
 
 /* IME geometry query builtins.  These are gated on the Zvmma macro
    extension (any IME subextension implies Zvmma).
-   __riscv_ime_vlen()   returns VLEN in bits (compile-time or runtime).
-   __riscv_ime_lambda() returns the maximum IME lambda value for the
-   hardware (sqrt(VLEN/8) for the default SEW=8, MUL_C=1 case).  */
+   __riscv_ime_vlen()         returns VLEN in bits (compile-time or
+                              runtime).
+   __riscv_ime_lambda()       returns the maximum IME lambda value for
+                              the hardware (sqrt(VLEN/8) for the
+                              default SEW=8, MUL_C=1 case).
+   __riscv_vsetlambda(N)      writes N into vtype.lambda (preserving
+                              other vtype fields and vl) and returns
+                              the WARL-clamped result; N=0 is a
+                              read-only query.  */
 #define REQUIRED_EXTENSIONS ZVVMM_EXT
-DEF_RVV_FUNCTION (ime_vlen,   vlenb, none_preds, ul_none_void_ops)
-DEF_RVV_FUNCTION (ime_lambda, vlenb, none_preds, ul_none_void_ops)
+DEF_RVV_FUNCTION (ime_vlen,    vlenb,      none_preds, ul_none_void_ops)
+DEF_RVV_FUNCTION (ime_lambda,  vlenb,      none_preds, ul_none_void_ops)
+DEF_RVV_FUNCTION (vsetlambda,  vsetlambda, none_preds, ul_none_size_ops)
 #undef REQUIRED_EXTENSIONS
 
 #undef DEF_RVV_FUNCTION
