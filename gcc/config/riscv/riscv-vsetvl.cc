@@ -510,8 +510,19 @@ has_vector_insn (function *fn)
   rtx_insn *rinsn;
   FOR_ALL_BB_FN (cfg_bb, fn)
     FOR_BB_INSNS (cfg_bb, rinsn)
-      if (NONDEBUG_INSN_P (rinsn) && has_vtype_op (rinsn))
-	return true;
+      {
+	if (!NONDEBUG_INSN_P (rinsn))
+	  continue;
+	if (has_vtype_op (rinsn))
+	  return true;
+	/* `__riscv_vsetlambda' installs write vtype directly (no
+	   vtype_op attribute), but the vsetvl pass still needs to
+	   run for them so the lambda dataflow can perform DCE.  */
+	int code = INSN_CODE (rinsn);
+	if (code == CODE_FOR_riscv_vsetlambda_installdi
+	    || code == CODE_FOR_riscv_vsetlambda_installsi)
+	  return true;
+      }
   return false;
 }
 
@@ -1129,6 +1140,9 @@ classify_lambda_effect (rtx_insn *rinsn)
    The walk is bounded by a small step limit to avoid pathological
    long-block compile-time costs.  */
 
+static bool lambda_reach_at_block_entry_matches_p (basic_block,
+						   int demand_lambda_log2);
+
 static bool
 lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
 {
@@ -1148,7 +1162,11 @@ lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
        p = PREV_INSN (p), ++steps)
     {
       if (BLOCK_FOR_INSN (p) != bb)
-	return false;  /* Crossed a block boundary.  */
+	{
+	  /* Crossed a block boundary.  Fall through to cross-block
+	     dataflow if available (commit 4).  */
+	  break;
+	}
       if (!NONDEBUG_INSN_P (p))
 	continue;
       lambda_state s = classify_lambda_effect (p);
@@ -1164,7 +1182,198 @@ lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
 	  continue;
 	}
     }
-  return false;
+  /* Intra-block walk exhausted without resolution.  Consult the
+     cross-block dataflow's entry state for this block: if it is a
+     matching DEFINED(N) on every predecessor path, the lambda is
+     already established at block entry.  */
+  return lambda_reach_at_block_entry_matches_p (bb, demand_lambda_log2);
+}
+
+/* Forward CFG dataflow for the lambda lattice.
+
+   Computes a per-block entry `lambda_state' via a worklist iteration
+   to fixpoint over the four-state lattice
+   (NOT_TOUCHED / USE_ONLY / DEFINED(N) / KILLED) merged at CFG joins
+   by `lambda_state::merge'.  The transfer function within a block is
+   `classify_lambda_effect' applied to each insn in order.
+
+   Two consumers:
+
+     (a) Cross-block elision in `lambda_already_established_p': when
+	 the intra-block walk reaches block start without resolving the
+	 query, the analysis's entry state for that block decides.
+
+     (b) Vsetlambda DCE: while computing each block's exit state, an
+	 install whose target encoding matches the running state is
+	 redundant; collected into M_DEAD_INSTALLS for removal by the
+	 pass.
+
+   The lattice height is finite (4 kinds * 8 possible log2 values for
+   DEFINED ≈ 11 distinct points) so the worklist iteration is bounded.
+   In practice fixpoint is reached in 1-2 sweeps for typical control
+   flow.
+
+   Gated by `-mtrack-user-lambda' (default on).  */
+
+class lambda_dataflow
+{
+public:
+  void run ();
+  lambda_state entry_state_of (basic_block bb);
+  const auto_vec<rtx_insn *> &dead_installs () const { return m_dead_installs; }
+
+private:
+  /* Apply the block's insn-by-insn transfer function starting from
+     IN; return the resulting exit state and (side effect) populate
+     M_DEAD_INSTALLS with installs that found their target value
+     already established at the install point.  */
+  lambda_state transfer_block (basic_block bb, lambda_state in,
+			       bool collect_dead);
+
+  hash_map<basic_block, lambda_state> m_entry;
+  hash_map<basic_block, lambda_state> m_exit;
+  auto_vec<rtx_insn *> m_dead_installs;
+};
+
+lambda_state
+lambda_dataflow::entry_state_of (basic_block bb)
+{
+  lambda_state *p = m_entry.get (bb);
+  return p ? *p : lambda_state ();  /* NOT_TOUCHED if not yet computed.  */
+}
+
+lambda_state
+lambda_dataflow::transfer_block (basic_block bb, lambda_state in,
+				 bool collect_dead)
+{
+  lambda_state cur = in;
+  rtx_insn *insn;
+  FOR_BB_INSNS (bb, insn)
+    {
+      if (!NONDEBUG_INSN_P (insn))
+	continue;
+      lambda_state s = classify_lambda_effect (insn);
+      switch (s.kind)
+	{
+	case lambda_state_kind::NOT_TOUCHED:
+	  break;
+	case lambda_state_kind::USE_ONLY:
+	  /* Pure read: leaves the tracked DEF alone.  Drops a stale
+	     KILLED into nothing -- a `csrr vtype' following an
+	     unknown vtype write doesn't suddenly know what the
+	     value is.  */
+	  break;
+	case lambda_state_kind::DEFINED:
+	  /* If the install writes the same lambda that is already
+	     guaranteed at this point, it is dead.  */
+	  if (collect_dead
+	      && cur.kind == lambda_state_kind::DEFINED
+	      && cur.known_log2 == s.known_log2)
+	    m_dead_installs.safe_push (insn);
+	  cur = s;
+	  break;
+	case lambda_state_kind::KILLED:
+	  cur = s;
+	  break;
+	}
+    }
+  return cur;
+}
+
+void
+lambda_dataflow::run ()
+{
+  /* Single sweep first: seed entry states from prev exit (or
+     NOT_TOUCHED for blocks not yet seen) in reverse postorder.
+     Then iterate to fixpoint.  */
+  basic_block bb;
+
+  auto compute_entry = [&] (basic_block b) -> lambda_state {
+    if (b == ENTRY_BLOCK_PTR_FOR_FN (cfun))
+      return lambda_state ();
+    lambda_state acc;
+    bool any = false;
+    edge e;
+    edge_iterator ei;
+    FOR_EACH_EDGE (e, ei, b->preds)
+      {
+	const lambda_state *p = m_exit.get (e->src);
+	if (!p)
+	  continue;
+	acc = any ? lambda_state::merge (acc, *p) : *p;
+	any = true;
+      }
+    return any ? acc : lambda_state ();
+  };
+
+  /* Worklist: blocks whose successors must be re-examined.  Use a
+     small visited-set to avoid runaway re-adds.  Capped iteration
+     to defend against pathological CFGs.  */
+  auto_bitmap worklist;
+  FOR_EACH_BB_FN (bb, cfun)
+    bitmap_set_bit (worklist, bb->index);
+
+  int iter_cap = 100 * n_basic_blocks_for_fn (cfun) + 32;
+  while (!bitmap_empty_p (worklist) && iter_cap-- > 0)
+    {
+      int idx = bitmap_first_set_bit (worklist);
+      bitmap_clear_bit (worklist, idx);
+      bb = BASIC_BLOCK_FOR_FN (cfun, idx);
+      if (!bb)
+	continue;
+
+      lambda_state new_entry = compute_entry (bb);
+      lambda_state new_exit = transfer_block (bb, new_entry,
+					      /*collect_dead=*/false);
+
+      const lambda_state *old_entry = m_entry.get (bb);
+      const lambda_state *old_exit = m_exit.get (bb);
+      bool changed = (!old_entry || *old_entry != new_entry
+		      || !old_exit || *old_exit != new_exit);
+
+      m_entry.put (bb, new_entry);
+      m_exit.put (bb, new_exit);
+
+      if (changed)
+	{
+	  edge e;
+	  edge_iterator ei;
+	  FOR_EACH_EDGE (e, ei, bb->succs)
+	    if (e->dest != EXIT_BLOCK_PTR_FOR_FN (cfun))
+	      bitmap_set_bit (worklist, e->dest->index);
+	}
+    }
+
+  /* Final sweep with collect_dead=true: now that entry states are at
+     fixpoint, the in-block transfer can identify redundant installs
+     reliably.  */
+  m_dead_installs.truncate (0);
+  FOR_EACH_BB_FN (bb, cfun)
+    {
+      lambda_state in = compute_entry (bb);
+      transfer_block (bb, in, /*collect_dead=*/true);
+    }
+}
+
+/* Singleton lambda dataflow used by the elision and DCE paths.  Set
+   up by `pass_vsetvl::execute' before any IME emission, cleared at
+   pass end.  */
+static lambda_dataflow *g_lambda_df;
+
+/* Cross-block extension of `lambda_already_established_p': if the
+   intra-block walk reaches block start without resolving, consult the
+   dataflow's entry state for the block.  Returns true iff the
+   computed entry state is DEFINED(N) with N matching the demand.  */
+
+static bool
+lambda_reach_at_block_entry_matches_p (basic_block bb,
+				       int demand_lambda_log2)
+{
+  if (!g_lambda_df)
+    return false;
+  lambda_state s = g_lambda_df->entry_state_of (bb);
+  return s.kind == lambda_state_kind::DEFINED
+	 && s.known_log2 == demand_lambda_log2;
 }
 
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
@@ -4865,11 +5074,57 @@ pass_vsetvl::execute (function *)
   if (!has_vector_insn (cfun))
     return 0;
 
+  /* Run the lambda dataflow before either emission strategy.  Its
+     per-block entry states feed cross-block elision in
+     `lambda_already_established_p'; its dead-install list drives the
+     vsetlambda DCE pass run immediately afterwards.  Both consumers
+     are gated by `-mtrack-user-lambda' (default on).  */
+  lambda_dataflow df;
+  if (riscv_track_user_lambda)
+    {
+      if (dump_file)
+	fprintf (dump_file,
+		 "\nLambda dataflow: running CFG-level analysis (DCE+cross-block elision)\n");
+      df.run ();
+      g_lambda_df = &df;
+      if (dump_file)
+	fprintf (dump_file,
+		 "Lambda dataflow: %u redundant vsetlambda install%s identified\n",
+		 df.dead_installs ().length (),
+		 df.dead_installs ().length () == 1 ? "" : "s");
+
+      /* Remove vsetlambda installs whose target lambda is already
+	 established at their insertion point.  This is the cross-block
+	 generalisation of the local DCE: a single user setter that
+	 dominates the function entry block makes every subsequent
+	 in-loop vsetlambda(N) redundant.  */
+      if (!df.dead_installs ().is_empty ())
+	{
+	  if (dump_file)
+	    fprintf (dump_file,
+		     "\nLambda DCE: removing %u redundant vsetlambda "
+		     "install%s\n",
+		     df.dead_installs ().length (),
+		     df.dead_installs ().length () == 1 ? "" : "s");
+	  for (rtx_insn *ins : df.dead_installs ())
+	    {
+	      if (dump_file)
+		{
+		  fprintf (dump_file, "  delete redundant install insn %d:\n",
+			   INSN_UID (ins));
+		  print_rtl_single (dump_file, ins);
+		}
+	      delete_insn (ins);
+	    }
+	}
+    }
+
   if (!optimize || vsetvl_strategy == VSETVL_SIMPLE)
     simple_vsetvl ();
   else
     lazy_vsetvl ();
 
+  g_lambda_df = nullptr;
   return 0;
 }
 
