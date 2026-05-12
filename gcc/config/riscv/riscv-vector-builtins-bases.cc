@@ -26,6 +26,7 @@
 #include "rtl.h"
 #include "tm_p.h"
 #include "memmodel.h"
+#include "diagnostic-core.h"
 #include "insn-codes.h"
 #include "optabs.h"
 #include "recog.h"
@@ -3797,6 +3798,150 @@ public:
 
 static CONSTEXPR const ime_lambda ime_lambda_obj;
 
+/* Implements __riscv_vsetlambda(size_t requested_lambda).
+
+   Two argument forms, distinguished at expand time:
+
+     requested_lambda == 0
+	Read-only query.  No write to vtype.  Sequence:
+	  csrr  Rd, vtype
+	  srli  Rd, Rd, XLEN-4
+	  andi  Rd, Rd, 7
+	  sll   t,  1, Rd
+	  srli  Rd, t, 1
+	The trailing two ops decode the 3-bit encoding back to its
+	power-of-two value: enc=0 yields 0, enc=N>0 yields 1<<(N-1).
+
+     requested_lambda is a compile-time positive power of two in
+     {1, 2, 4, 8, 16, 32, 64}
+	Write-half: RMW the lambda field of vtype with the 3-bit
+	encoding, install via `vsetvl x0, x0, t' (preserves VL), then
+	emit the read-only readback+decode sequence above and return
+	the (possibly WARL-clamped) result.
+
+     anything else as a compile-time constant
+	error_at; the user wrote an out-of-range request and the
+	spec contract is to error rather than vill-clamp.
+
+     runtime value
+	Not implemented in this commit -- emit a sorry().  A later
+	commit will add the branch-on-zero path (requires Zbb for the
+	encoding via ctz).
+
+   Per the IME spec section "Establishing lambda from C", vtype.lambda
+   is WARL; the read-only return value is the value the hardware
+   actually established.  A non-zero requested_lambda may still read
+   back as 0 if the current (VLEN, SEW, LMUL) supports no lambda --
+   the caller inspects the return value.  */
+class vsetlambda : public function_base
+{
+public:
+  bool apply_vl_p () const override { return false; }
+
+  /* Map a positive power-of-two lambda value to its 3-bit encoding.
+     The not-configured / read-only encoding (0) maps to 0.  */
+  static int encode_lambda (HOST_WIDE_INT v)
+  {
+    switch (v)
+      {
+      case 0:  return 0;
+      case 1:  return 1;
+      case 2:  return 2;
+      case 4:  return 3;
+      case 8:  return 4;
+      case 16: return 5;
+      case 32: return 6;
+      case 64: return 7;
+      default: return -1;
+      }
+  }
+
+  /* Emit the readback+decode sequence into TARGET (Pmode).  */
+  static void emit_readback_decode (rtx target)
+  {
+    machine_mode m = Pmode;
+    int xlen = GET_MODE_BITSIZE (m).to_constant ();
+
+    rtx vt = gen_reg_rtx (m);
+    emit_insn (gen_read_vtype (m, vt));
+
+    /* field = (vtype >> (xlen-4)) & 7  */
+    rtx field = expand_simple_binop (m, LSHIFTRT, vt, GEN_INT (xlen - 4),
+				     NULL_RTX, 1, OPTAB_DIRECT);
+    field = expand_simple_binop (m, AND, field, GEN_INT (7),
+				 NULL_RTX, 1, OPTAB_DIRECT);
+
+    /* decoded = (1 << field) >> 1
+       enc==0 -> 0; enc==N>0 -> 1 << (N-1).  */
+    rtx one = const1_rtx;
+    rtx shifted = expand_simple_binop (m, ASHIFT, one, field,
+				       NULL_RTX, 1, OPTAB_DIRECT);
+    rtx decoded = expand_simple_binop (m, LSHIFTRT, shifted, const1_rtx,
+				       target, 1, OPTAB_DIRECT);
+    if (decoded != target)
+      emit_move_insn (target, decoded);
+  }
+
+  rtx expand (function_expander &e) const override
+  {
+    tree arg = CALL_EXPR_ARG (e.exp, 0);
+    machine_mode m = Pmode;
+    int xlen = GET_MODE_BITSIZE (m).to_constant ();
+
+    if (!CONSTANT_CLASS_P (arg))
+      {
+	sorry ("%<__riscv_vsetlambda%> with a non-constant argument "
+	       "is not yet supported");
+	emit_move_insn (e.target, const0_rtx);
+	return e.target;
+      }
+
+    HOST_WIDE_INT req = tree_to_shwi (arg);
+    int enc = encode_lambda (req);
+    if (enc < 0)
+      {
+	error ("argument to %<__riscv_vsetlambda%> must be 0 or a positive "
+	       "power of two in %<{1, 2, 4, 8, 16, 32, 64}%>");
+	emit_move_insn (e.target, const0_rtx);
+	return e.target;
+      }
+
+    /* Write half: emit only when requested_lambda is non-zero.  The
+       compile-time-0 form is a pure read.  */
+    if (req != 0)
+      {
+	rtx vt_in = gen_reg_rtx (m);
+	emit_insn (gen_read_vtype (m, vt_in));
+
+	/* clear_mask = ~(7 << (xlen-4)).  */
+	unsigned HOST_WIDE_INT clear_mask
+	  = ~((unsigned HOST_WIDE_INT) 7 << (xlen - 4));
+	rtx masked = expand_simple_binop (m, AND, vt_in,
+					  gen_int_mode (clear_mask, m),
+					  NULL_RTX, 1, OPTAB_DIRECT);
+
+	/* set_bits = enc << (xlen-4).  */
+	unsigned HOST_WIDE_INT set_bits
+	  = (unsigned HOST_WIDE_INT) enc << (xlen - 4);
+	rtx new_vt = expand_simple_binop (m, IOR, masked,
+					  gen_int_mode (set_bits, m),
+					  NULL_RTX, 1, OPTAB_DIRECT);
+
+	/* Force into a single register; the install pattern wants a
+	   plain register operand.  */
+	new_vt = force_reg (m, new_vt);
+	emit_insn (gen_riscv_vsetlambda_install (m, new_vt));
+      }
+
+    /* Read-only half: decode the (possibly WARL-clamped) readback and
+       return it.  This is the return value of both forms.  */
+    emit_readback_decode (e.target);
+    return e.target;
+  }
+};
+
+static CONSTEXPR const vsetlambda vsetlambda_obj;
+
 /* Zvvmtls order-preserving tile load (vmtl.v), MVP: LMUL=1, unmasked,
    dynamic lambda (no immediate Lλ override).  The intrinsic signature
    is (const T *base, ptrdiff_t ld, size_t vl) -> vector, where ld is
@@ -4513,6 +4658,7 @@ BASE (vf8wimmacc_i8_bs32)
 BASE (vf8wimmacc_i8_bs16)
 BASE (ime_vlen)
 BASE (ime_lambda)
+BASE (vsetlambda)
 BASE (vmtl)
 BASE (vmts)
 BASE (vmttl)

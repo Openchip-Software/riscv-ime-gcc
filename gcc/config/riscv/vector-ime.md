@@ -139,6 +139,19 @@
   UNSPEC_READ_VTYPE
 ])
 
+(define_c_enum "unspecv" [
+  ;; User-controlled write of vtype.lambda only.  Implements the
+  ;; `__riscv_vsetlambda(N)' C intrinsic write-half: reads vtype, RMWs
+  ;; the lambda field with the encoded value N, executes
+  ;; `vsetvl x0, x0, t1' to install the new vtype while preserving vl,
+  ;; and leaves all other vtype fields unchanged (subject to WARL
+  ;; clamping by hardware).  See the spec section "Establishing lambda
+  ;; from C: __riscv_vsetlambda" for the WARL contract.  The vsetvl
+  ;; pass treats this as a hard DEF of vtype.lambda when operand 0 is
+  ;; a const_int in the supported set, and as a may-DEF otherwise.
+  UNSPECV_VSETLAMBDA
+])
+
 ;; Signedness encoding for the two integer-input operands of IME
 ;; multiply-accumulate instructions, as it maps to the vtype altfmt_A /
 ;; altfmt_B bits that the vsetvl pass establishes.  Both same-sign
@@ -628,6 +641,28 @@
   "TARGET_VECTOR"
   "csrr\t%0,vtype"
   [(set_attr "type" "rdvl")
+   (set_attr "mode" "<MODE>")])
+
+;; Install a new vtype value while preserving VL.  Used by the
+;; `__riscv_vsetlambda' expander: the expander reads vtype, masks off
+;; the lambda field, ORs in the new 3-bit encoding, and emits this
+;; pattern to commit the result.  The `vsetvl x0, x0, %0' form
+;; preserves VL (rd == rs1 == x0) -- only vtype is rewritten.
+;;
+;; Operand 0: full vtype value to install (in a register).
+;;
+;; This is an unspec_volatile so that the optimizer never reorders
+;; user-visible vtype writes against intervening vector operations,
+;; and so the vsetvl pass can identify it as a lambda-DEF candidate
+;; (see commit 2 of this series for the lattice integration).
+(define_insn "@riscv_vsetlambda_install<mode>"
+  [(set (reg:SI VTYPE_REGNUM)
+	(unspec_volatile:SI
+	  [(match_operand:P 0 "register_operand" "r")]
+	  UNSPECV_VSETLAMBDA))]
+  "TARGET_VECTOR"
+  "vsetvl\tx0,x0,%0"
+  [(set_attr "type" "vsetvl")
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
