@@ -1112,6 +1112,61 @@ classify_lambda_effect (rtx_insn *rinsn)
   return lambda_state ();
 }
 
+/* Walk backwards from CONSUMER inside its basic block looking for a
+   preceding lambda DEF that statically matches DEMAND_LAMBDA_LOG2.
+   Returns true if such a DEF is found with no intervening kill of
+   the tracked lambda value; the caller can then skip emitting a
+   fresh `vsetvl_ime' for the consumer.
+
+   This is intentionally an intra-EBB scan: cross-block reach analysis
+   is the job of the LCM data flow already running, and is wired into
+   the lambda lattice in a later commit of this series.  Here we want
+   the simplest correct optimisation that covers the common
+   "user vsetlambda then mmacc" idiom: the install pattern is in the
+   same block as the consumer, and the walk-back finds it before
+   anything kills lambda.
+
+   The walk is bounded by a small step limit to avoid pathological
+   long-block compile-time costs.  */
+
+static bool
+lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
+{
+  if (!riscv_ime_elide_redundant_vsetvl_lambda)
+    return false;
+  if (demand_lambda_log2 < 0)
+    return false;  /* Runtime-derived demand: cannot elide statically.  */
+
+  const int max_walk = 64;
+  basic_block bb = BLOCK_FOR_INSN (consumer);
+  if (!bb)
+    return false;
+
+  int steps = 0;
+  for (rtx_insn *p = PREV_INSN (consumer);
+       p && steps < max_walk;
+       p = PREV_INSN (p), ++steps)
+    {
+      if (BLOCK_FOR_INSN (p) != bb)
+	return false;  /* Crossed a block boundary.  */
+      if (!NONDEBUG_INSN_P (p))
+	continue;
+      lambda_state s = classify_lambda_effect (p);
+      switch (s.kind)
+	{
+	case lambda_state_kind::DEFINED:
+	  /* Found a static DEF.  Elide iff it matches the demand.  */
+	  return s.known_log2 == demand_lambda_log2;
+	case lambda_state_kind::KILLED:
+	  return false;
+	case lambda_state_kind::USE_ONLY:
+	case lambda_state_kind::NOT_TOUCHED:
+	  continue;
+	}
+    }
+  return false;
+}
+
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
    `requires_ime_vtype' attribute set to yes.  The returned record is
    fully determined by RINSN's operand modes; see §C-Language Intrinsics
@@ -3098,6 +3153,25 @@ private:
   void insert_ime_vsetvl_insn (enum emit_type emit_type,
 			       const vsetvl_info &info)
   {
+    rtx_insn *consumer = info.get_insn ()->rtl ();
+
+    /* Lambda elision (see `lambda_already_established_p').  Walk back
+       from the consumer; if a matching static DEF is reachable inside
+       this basic block with no intervening kill, the existing vtype
+       already satisfies the consumer's lambda demand and we skip the
+       auto-emission entirely.  Gated by -melide-ime-lambda (default on).  */
+    if (info.get_ime_req ().lambda_log2 >= 0
+	&& lambda_already_established_p (consumer,
+					 info.get_ime_req ().lambda_log2))
+      {
+	if (dump_file)
+	  fprintf (dump_file,
+		   "  Elide IME vsetvl insertion before insn %d: lambda=%d "
+		   "already established by a preceding DEF in the same BB\n",
+		   INSN_UID (consumer), 1 << info.get_ime_req ().lambda_log2);
+	return;
+      }
+
     rtx avl = info.get_avl ();
     if (!avl)
       avl = const0_rtx;
@@ -3118,7 +3192,7 @@ private:
        operands.  We pick `dest_vl' below alongside the pattern.  */
     rtx dest_vl;
 
-    rtx_insn *rinsn = info.get_insn ()->rtl ();
+    rtx_insn *rinsn = consumer;
     rtx pat;
     if (info.get_ime_req ().lambda_log2 == -1)
       {
@@ -4633,6 +4707,20 @@ pass_vsetvl::simple_vsetvl ()
 	      const auto &info = vsetvl_info (rinsn);
 	      if (info.ime_required_p ())
 		{
+		  /* Same lambda-elision optimisation as in
+		     `pre_vsetvl::insert_ime_vsetvl_insn'.  */
+		  if (info.get_ime_req ().lambda_log2 >= 0
+		      && lambda_already_established_p (
+			   rinsn, info.get_ime_req ().lambda_log2))
+		    {
+		      if (dump_file)
+			fprintf (dump_file,
+				 "  Elide IME vsetvl insertion before "
+				 "insn %d: lambda=%d already established\n",
+				 INSN_UID (rinsn),
+				 1 << info.get_ime_req ().lambda_log2);
+		      continue;
+		    }
 		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
 		  /* See `pre_vsetvl::insert_ime_vsetvl_insn' for why
 		     dest_vl differs between the runtime and static paths
