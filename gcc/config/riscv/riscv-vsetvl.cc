@@ -2235,7 +2235,26 @@ public:
 	      dflags |= demand_flags::DEMAND_AVL_P;
 	  }
 
-	if (get_attr_ratio (insn->rtl ()) != INVALID_ATTRIBUTE)
+	/* IME tile load/store ops (vmtl.v, vmts.v, vmtts.v, vmttl.v) take
+	   SEW from vtype but their encoded operand width must match.  Two
+	   different (SEW, LMUL) pairs with the same ratio are *not*
+	   interchangeable for these ops: e8,mf4 has the same ratio=32 as
+	   e32,m1 but feeding e8,mf4 into a vmtl.v whose destination is a
+	   32-bit element vector register group breaks the tile geometry
+	   (hardware derives the in-register stride from vtype.SEW; with a
+	   mismatch the load reads at byte stride into a 32-bit element
+	   register and the data layout is wrong, and on QEMU the IME
+	   helper SIGFPEs from a degenerate MUL_C).
+
+	   Force exact (SEW, LMUL) demand for these ops instead of the
+	   default ratio-only demand that get_attr_ratio's mode-based
+	   default would otherwise produce.  */
+	bool ime_tile_op_p = (get_attr_type (insn->rtl ()) == TYPE_VLDS
+			      || get_attr_type (insn->rtl ()) == TYPE_VSTS)
+			     && insn_uses_lambda_p (insn->rtl ());
+
+	if (!ime_tile_op_p
+	    && get_attr_ratio (insn->rtl ()) != INVALID_ATTRIBUTE)
 	  dflags |= demand_flags::DEMAND_RATIO_P;
 	else
 	  {
