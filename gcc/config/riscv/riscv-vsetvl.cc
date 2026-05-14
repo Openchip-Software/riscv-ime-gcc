@@ -2150,6 +2150,18 @@ public:
 	m_ime_required = true;
 	m_ime_req = riscv_extract_ime_requirements (rinsn);
 	m_ime_demand = ime_demand_type::ime_vtype;
+	/* For an IME mmacc, the physically encoded vtype.LMUL is the
+	   *input* LMUL (m_ime_req.lmul), not the data-mode LMUL that
+	   ::get_vlmul returned above (which is the accumulator's MUL_C
+	   for widening variants).  Sync m_vlmul/m_ratio with what the
+	   vsetvl_ime emission actually writes, so sew_lmul compatibility
+	   checks against a subsequent non-IME consumer (e.g. vmts.v
+	   demanding VLMUL=m4 after a widening vfwmmacc that left
+	   vtype.LMUL=m1) correctly observe the mismatch and emit a
+	   vtype change.  Non-widening mmacc has input LMUL == acc LMUL
+	   so the override is a no-op there.  */
+	m_vlmul = (vlmul_type) m_ime_req.lmul;
+	m_ratio = calculate_ratio (m_sew, m_vlmul);
       }
     m_lambda = classify_lambda_effect (rinsn);
   }
@@ -2310,6 +2322,18 @@ public:
       {
 	m_ime_required = true;
 	m_ime_req = riscv_extract_ime_requirements (insn->rtl ());
+	/* For an IME mmacc, the physically encoded vtype.LMUL is the
+	   *input* LMUL (m_ime_req.lmul), not the data-mode LMUL that
+	   ::get_vlmul returned above (which is the accumulator's MUL_C
+	   for widening variants).  Sync m_vlmul/m_ratio with what the
+	   vsetvl_ime emission actually writes, so sew_lmul compatibility
+	   checks against a subsequent non-IME consumer (e.g. vmts.v
+	   demanding VLMUL=m4 after a widening vfwmmacc that left
+	   vtype.LMUL=m1) correctly observe the mismatch and emit a
+	   vtype change.  Non-widening mmacc has input LMUL == acc LMUL
+	   so the override is a no-op there.  */
+	m_vlmul = (vlmul_type) m_ime_req.lmul;
+	m_ratio = calculate_ratio (m_sew, m_vlmul);
       }
 
     m_lambda = classify_lambda_effect (insn->rtl ());
