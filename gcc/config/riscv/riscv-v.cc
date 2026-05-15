@@ -6531,11 +6531,11 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   if (altfmt)
     static_val |= (HOST_WIDE_INT) 1 << 8;
   if (bs)
-    static_val |= (HOST_WIDE_INT) 1 << (xlen - 7);
-  if (altfmt_b)
-    static_val |= (HOST_WIDE_INT) 1 << (xlen - 6);
-  if (altfmt_a)
     static_val |= (HOST_WIDE_INT) 1 << (xlen - 5);
+  if (altfmt_a)
+    static_val |= (HOST_WIDE_INT) 1 << (xlen - 6);
+  if (altfmt_b)
+    static_val |= (HOST_WIDE_INT) 1 << (xlen - 7);
 
   /* Build full_vtype.  Two paths:
 
