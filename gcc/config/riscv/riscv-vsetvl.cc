@@ -2667,11 +2667,11 @@ compute_static_vtype_without_lambda (const vsetvl_info &info, int xlen)
   if (r.altfmt)
     val |= (HOST_WIDE_INT) 1 << 8;
   if (r.bs)
-    val |= (HOST_WIDE_INT) 1 << (xlen - 7);
-  if (r.altfmt_b)
-    val |= (HOST_WIDE_INT) 1 << (xlen - 6);
-  if (r.altfmt_a)
     val |= (HOST_WIDE_INT) 1 << (xlen - 5);
+  if (r.altfmt_a)
+    val |= (HOST_WIDE_INT) 1 << (xlen - 6);
+  if (r.altfmt_b)
+    val |= (HOST_WIDE_INT) 1 << (xlen - 7);
   return val;
 }
 
