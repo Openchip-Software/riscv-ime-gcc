@@ -3862,6 +3862,20 @@ private:
 	dest_vl = info.has_vl ()
 		    ? info.get_vl ()
 		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+	/* `@vsetvl_ime<mode>' takes AVL via `pmode_reg_or_0_operand'
+	   (register or const_int 0); a fused emit can arrive here
+	   with the user's compile-time AVL (e.g. from
+	   `__riscv_vsetvl_eXmY(N)' for non-zero N) as a const_int.
+	   Materialise it into the prologue temp first so the insn
+	   matches the pattern's predicate.  We are post-reload, so
+	   we cannot allocate a fresh pseudo; the prologue temp is
+	   the conventional choice.  */
+	if (avl != const0_rtx && CONST_INT_P (avl))
+	  {
+	    rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+	    emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
+	    avl = temp;
+	  }
 	pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
       }
     rtx_insn *inserted = NULL;
@@ -3930,6 +3944,22 @@ private:
 	rtx dest_vl = info.has_vl ()
 			? info.get_vl ()
 			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+
+	/* `@vsetvl_ime<mode>' and `@riscv_vsetvl_preserve_lambda<mode>'
+	   take AVL via `pmode_reg_or_0_operand' (register or const_int
+	   0).  A non-zero compile-time AVL -- typical when the lambda
+	   reach is being threaded into the spot of a user
+	   `__riscv_vsetvl_eXmY(N)' for non-zero N -- is rejected by the
+	   predicate and produces an unrecognizable insn (PR ICE).
+	   Materialise it into the prologue temp first.  We are
+	   post-reload, so we cannot allocate a fresh pseudo; the
+	   prologue temp is the conventional choice.  */
+	if (avl != const0_rtx && CONST_INT_P (avl))
+	  {
+	    rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+	    emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
+	    avl = temp;
+	  }
 
 	if (reach.kind == lambda_state_kind::DEFINED)
 	  {
@@ -5458,6 +5488,16 @@ pass_vsetvl::simple_vsetvl ()
 			    ? info.get_vl ()
 			    : gen_rtx_REG (Pmode,
 					   RISCV_PROLOGUE_TEMP_REGNUM);
+		      /* See the matching branch in `insert_ime_vsetvl_insn'
+			 for why we materialise a const_int AVL into the
+			 prologue temp here.  */
+		      if (avl != const0_rtx && CONST_INT_P (avl))
+			{
+			  rtx temp
+			    = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+			  emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
+			  avl = temp;
+			}
 		      pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
 		    }
 		  emit_insn_before (pat, rinsn);
