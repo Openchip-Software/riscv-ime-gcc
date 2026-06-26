@@ -6889,6 +6889,93 @@ riscv_get_arg_info (struct riscv_arg_info *info, const CUMULATIVE_ARGS *cum,
   unsigned gpr_base = return_p ? GP_RETURN : GP_ARG_FIRST;
   unsigned alignment = riscv_function_arg_boundary (mode, type);
 
+  /* IME `m16' accumulator types (RVVM16*) are not allowed as argument
+     or return types of user-declared functions: the IME spec restricts
+     them to mmacc accumulator, pair, and unpair operations.  Users
+     should `unpair' before a call and `pair' the halves after
+     returning.
+
+     Distinguish "user function with m16 in its own signature" from
+     "user function calling an intrinsic that legitimately takes m16
+     (e.g. __riscv_vmmacc_vv_i32m16)": `riscv_get_arg_info' is invoked
+     for both, but only the former is a spec violation.  Inspect
+     `current_function_decl' once per cfun and cache whether its
+     declared signature carries an m16 type; the sorry only fires when
+     that flag is set.  Without this gate, every call site of an m16
+     mmacc / pair / unpair intrinsic would surface a false-positive
+     sorry against the surrounding function.
+
+     Deduplicate at the (function, direction) level: the hook is
+     invoked multiple times per parameter across compiler passes
+     (prototype, expand, ...).  Key on `current_function_decl' xor
+     `return_p' encoded into the low bit -- tree pointers are word-
+     aligned so the low bit is safe to claim.  */
+  if (riscv_vector_mode_p (mode)
+      && riscv_vector::get_vlmul (mode) == riscv_vector::LMUL_16
+      && current_function_decl)
+    {
+      auto decl_has_m16 = [] (tree fndecl) -> bool
+	{
+	  if (!fndecl)
+	    return false;
+	  tree fntype = TREE_TYPE (fndecl);
+	  if (!fntype)
+	    return false;
+	  /* Walk the result type.  */
+	  tree rt = TREE_TYPE (fntype);
+	  if (rt && TREE_CODE (rt) != VOID_TYPE)
+	    {
+	      machine_mode rm = TYPE_MODE (rt);
+	      if (riscv_vector_mode_p (rm)
+		  && riscv_vector::get_vlmul (rm)
+		     == riscv_vector::LMUL_16)
+		return true;
+	    }
+	  /* Walk the argument types.  */
+	  for (tree at = TYPE_ARG_TYPES (fntype); at; at = TREE_CHAIN (at))
+	    {
+	      tree t = TREE_VALUE (at);
+	      if (!t || t == void_type_node)
+		continue;
+	      machine_mode am = TYPE_MODE (t);
+	      if (riscv_vector_mode_p (am)
+		  && riscv_vector::get_vlmul (am)
+		     == riscv_vector::LMUL_16)
+		return true;
+	    }
+	  return false;
+	};
+
+      /* Per-function cache: the answer is stable across the hook's
+	 multiple invocations within the same function.  */
+      static hash_map<tree, bool> per_fn_cache;
+      bool *cached = per_fn_cache.get (current_function_decl);
+      bool is_violation;
+      if (cached)
+	is_violation = *cached;
+      else
+	{
+	  is_violation = decl_has_m16 (current_function_decl);
+	  per_fn_cache.put (current_function_decl, is_violation);
+	}
+
+      if (is_violation)
+	{
+	  static hash_set<const void *> reported;
+	  const void *key
+	    = (const void *) ((uintptr_t) current_function_decl
+			      | (return_p ? 1u : 0u));
+	  if (!reported.contains (key))
+	    {
+	      reported.add (key);
+	      sorry ("IME %<m16%> accumulator type is not allowed as %s type; "
+		     "use %<__riscv_ime_vunpairlo/hi%> before passing and "
+		     "%<__riscv_ime_vpair%> on the receiving side",
+		     return_p ? "a return" : "an argument");
+	    }
+	}
+    }
+
   memset (info, 0, sizeof (*info));
   info->gpr_offset = cum->num_gprs;
   info->fpr_offset = cum->num_fprs;
