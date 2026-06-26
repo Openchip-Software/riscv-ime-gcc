@@ -2946,10 +2946,11 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
   else
     switch (acc_vlmul)
       {
-      case LMUL_1: mul_c = 1; break;
-      case LMUL_2: mul_c = 2; break;
-      case LMUL_4: mul_c = 4; break;
-      case LMUL_8: mul_c = 8; break;
+      case LMUL_1:  mul_c = 1; break;
+      case LMUL_2:  mul_c = 2; break;
+      case LMUL_4:  mul_c = 4; break;
+      case LMUL_8:  mul_c = 8; break;
+      case LMUL_16: mul_c = 16; break;
       default:
 	/* Fractional LMUL: invalid for IME accumulators.  */
 	gcc_unreachable ();

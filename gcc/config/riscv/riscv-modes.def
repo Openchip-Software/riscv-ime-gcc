@@ -148,6 +148,11 @@ RVV_WHOLE_MODES (2)
 RVV_WHOLE_MODES (4)
 RVV_WHOLE_MODES (8)
 
+/* IME `m16' accumulator modes.  Sixteen-register groups used only by
+   IME mmacc, pair, and unpair intrinsics; not exposed in any standard
+   RVV intrinsic table.  See `LMUL_16' in `riscv-protos.h'.  */
+RVV_WHOLE_MODES (16)
+
 #define RVV_FRACT_MODE(TYPE, MODE, LMUL, ALIGN)                                \
   VECTOR_MODE_WITH_PREFIX (RVVMF, TYPE, MODE, LMUL, 0);                        \
   ADJUST_NUNITS (RVVMF##LMUL##MODE,                                            \

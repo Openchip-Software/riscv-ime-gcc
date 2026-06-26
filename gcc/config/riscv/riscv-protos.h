@@ -578,7 +578,15 @@ enum vlmul_type
   LMUL_F8 = 5,
   LMUL_F4 = 6,
   LMUL_F2 = 7,
-  NUM_LMUL = 8
+  /* Compiler-internal value for the IME `m16' accumulator register-group
+     multiplier.  Has NO encoding in the architectural vtype.LMUL field
+     (which is 3 bits and tops out at LMUL_8 / LMUL_F8); reaches the
+     compiler only as the data-mode VLMUL of an RVVM16* mode for an IME
+     mmacc accumulator, and as `r.mul_c' in the IME demand record.
+     Must never be written into vtype: helper sites that encode vlmul
+     into the vtype field MUST gcc_assert this case is not reached.  */
+  LMUL_16 = 8,
+  NUM_LMUL = 9
 };
 
 /* The RISC-V vsetvli pass uses "known vlmax" operations for optimization.
