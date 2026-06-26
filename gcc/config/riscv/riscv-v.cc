@@ -914,6 +914,8 @@ calculate_ratio (unsigned int sew, enum vlmul_type vlmul)
     case LMUL_F2:
       ratio = sew * 2;
       break;
+    /* LMUL_16 is IME-only and never reaches the standard RVV
+       SEW/LMUL ratio reasoning.  */
     default:
       gcc_unreachable ();
     }
@@ -2210,6 +2212,14 @@ get_ratio (machine_mode mode)
 	  gcc_unreachable ();
 	}
     }
+  /* The ratio table stores 0 (sentinel) for RVVM16* modes because m16
+     never participates in standard SEW/LMUL ratio reasoning -- the
+     IME mmacc patterns route the *input* LMUL (m1..m8) through vtype,
+     never the accumulator's m16.  Any caller that reaches this query
+     for an m16 mode is a bug; trap so the caller is found, instead of
+     silently returning 0 (which yields divide-by-zero or wrong
+     vlmax in arithmetic just downstream).  */
+  gcc_assert (mode_vtype_infos.ratio[mode] != 0);
   return mode_vtype_infos.ratio[mode];
 }
 
@@ -6520,7 +6530,11 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   /* Build the static vtype bits (everything except the lambda field at
      bits [xlen-2 : xlen-4]).  */
   HOST_WIDE_INT static_val = 0;
-  /* VLMUL: bits [2:0].  */
+  /* VLMUL: bits [2:0].  LMUL_16 is a compiler-internal value with no
+     architectural encoding -- IME mmacc with an m16 accumulator routes
+     the input LMUL (m1..m8) into this field; never the accumulator's
+     m16 directly.  */
+  gcc_assert (vlmul_enc != LMUL_16);
   static_val |= (unsigned) vlmul_enc;
   /* VSEW: bits [5:3] = log2(sew_bits) - 3.  */
   static_val |= (HOST_WIDE_INT) (exact_log2 (sew_bits) - 3) << 3;
