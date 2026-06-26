@@ -2440,6 +2440,22 @@
 
   (RVVM8DF "RVVMF8BI") (RVVM4DF "RVVMF16BI") (RVVM2DF "RVVMF32BI") (RVVM1DF "RVVMF64BI")
 
+  ;; IME `m16' accumulator modes.  IME mmacc is unmasked (the IME spec
+  ;; does not define masked multiply-accumulate), but the .md pattern's
+  ;; UNSPEC carries the predicate's mask mode structurally.  Each
+  ;; RVVM16* maps to the mask mode its m1 sibling at the same SEW uses;
+  ;; that mask mode is intentionally TOO SMALL to cover all the m16
+  ;; elements (m16 has 16 register-groups worth of elements -- one mask
+  ;; register holds at most one register-group worth of mask bits).
+  ;; The mismatch is benign here because the IME mmacc asm template
+  ;; never reads the mask operand; this row only satisfies the gen-tool
+  ;; lookup at `<VM>' expansion.  Do NOT extend RVV's masking machinery
+  ;; to consume this mapping for any operation other than the IME mmacc
+  ;; family without first defining a proper m16-sized mask mode.
+  (RVVM16QI "RVVMF8BI") (RVVM16HI "RVVMF16BI") (RVVM16BF "RVVMF16BI")
+  (RVVM16HF "RVVMF16BI") (RVVM16SI "RVVMF32BI") (RVVM16SF "RVVMF32BI")
+  (RVVM16DI "RVVMF64BI") (RVVM16DF "RVVMF64BI")
+
   (RVVM1x8QI "RVVMF8BI") (RVVMF2x8QI "RVVMF16BI") (RVVMF4x8QI "RVVMF32BI") (RVVMF8x8QI "RVVMF64BI")
   (RVVM1x7QI "RVVMF8BI") (RVVMF2x7QI "RVVMF16BI") (RVVMF4x7QI "RVVMF32BI") (RVVMF8x7QI "RVVMF64BI")
   (RVVM1x6QI "RVVMF8BI") (RVVMF2x6QI "RVVMF16BI") (RVVMF4x6QI "RVVMF32BI") (RVVMF8x6QI "RVVMF64BI")

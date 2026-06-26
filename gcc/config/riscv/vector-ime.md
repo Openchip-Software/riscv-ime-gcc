@@ -292,7 +292,9 @@
 ;; targets.
 (define_mode_iterator VWMMACC_ACC [RVVM8HI RVVM4HI RVVM2HI RVVM1HI
 				   RVVM8SI RVVM4SI RVVM2SI RVVM1SI
-				   RVVM8DI RVVM4DI RVVM2DI RVVM1DI])
+				   RVVM8DI RVVM4DI RVVM2DI RVVM1DI
+				   ;; IME m16 acc variants.
+				   RVVM16HI RVVM16SI RVVM16DI])
 
 ;; Map each VWMMACC_ACC accumulator mode to the LMUL=1 form at half its
 ;; SEW: the mode used for vs1 / vs2 operands.
@@ -301,25 +303,38 @@
 				  (RVVM8SI "RVVM1HI") (RVVM4SI "RVVM1HI")
 				  (RVVM2SI "RVVM1HI") (RVVM1SI "RVVM1HI")
 				  (RVVM8DI "RVVM1SI") (RVVM4DI "RVVM1SI")
-				  (RVVM2DI "RVVM1SI") (RVVM1DI "RVVM1SI")])
+				  (RVVM2DI "RVVM1SI") (RVVM1DI "RVVM1SI")
+				  ;; m16 acc -> LMUL=1 input.
+				  (RVVM16HI "RVVM1QI")
+				  (RVVM16SI "RVVM1HI")
+				  (RVVM16DI "RVVM1SI")])
 
 ;; Accumulator modes for W=4 (vqwmmacc.vv).  Inputs are SEW/4 at LMUL=1.
 ;; Only SI and DI accumulators have a valid quad-truncated integer type
 ;; (QI and HI respectively).
 (define_mode_iterator VQWMMACC_ACC [RVVM8SI RVVM4SI RVVM2SI RVVM1SI
-				    RVVM8DI RVVM4DI RVVM2DI RVVM1DI])
+				    RVVM8DI RVVM4DI RVVM2DI RVVM1DI
+				    ;; IME m16 acc variants.
+				    RVVM16SI RVVM16DI])
 
 (define_mode_attr VI_QUAD_TRUNC_LMUL1 [(RVVM8SI "RVVM1QI") (RVVM4SI "RVVM1QI")
 				       (RVVM2SI "RVVM1QI") (RVVM1SI "RVVM1QI")
 				       (RVVM8DI "RVVM1HI") (RVVM4DI "RVVM1HI")
-				       (RVVM2DI "RVVM1HI") (RVVM1DI "RVVM1HI")])
+				       (RVVM2DI "RVVM1HI") (RVVM1DI "RVVM1HI")
+				       ;; m16 acc -> LMUL=1 input (SEW/4).
+				       (RVVM16SI "RVVM1QI")
+				       (RVVM16DI "RVVM1HI")])
 
 ;; Accumulator modes for W=8 (v8wmmacc.vv).  Inputs are SEW/8 at LMUL=1.
 ;; Only DI accumulators have a valid oct-truncated integer type (QI).
-(define_mode_iterator V8WMMACC_ACC [RVVM8DI RVVM4DI RVVM2DI RVVM1DI])
+(define_mode_iterator V8WMMACC_ACC [RVVM8DI RVVM4DI RVVM2DI RVVM1DI
+				    ;; IME m16 acc variant.
+				    RVVM16DI])
 
 (define_mode_attr VI_OCT_TRUNC_LMUL1 [(RVVM8DI "RVVM1QI") (RVVM4DI "RVVM1QI")
-				      (RVVM2DI "RVVM1QI") (RVVM1DI "RVVM1QI")])
+				      (RVVM2DI "RVVM1QI") (RVVM1DI "RVVM1QI")
+				      ;; m16 acc -> LMUL=1 input (SEW/8).
+				      (RVVM16DI "RVVM1QI")])
 
 ;; Source-LMUL mode_attrs for the W=2 widening mmacc _lm{N} variants.
 ;; Each maps an accumulator mode to its narrower-SEW (SEW/2) sibling at
@@ -330,50 +345,77 @@
 				  (RVVM8SI "RVVM2HI") (RVVM4SI "RVVM2HI")
 				  (RVVM2SI "RVVM2HI") (RVVM1SI "RVVM2HI")
 				  (RVVM8DI "RVVM2SI") (RVVM4DI "RVVM2SI")
-				  (RVVM2DI "RVVM2SI") (RVVM1DI "RVVM2SI")])
+				  (RVVM2DI "RVVM2SI") (RVVM1DI "RVVM2SI")
+				  ;; m16 acc -> LMUL=2 input (SEW/2).
+				  (RVVM16HI "RVVM2QI")
+				  (RVVM16SI "RVVM2HI")
+				  (RVVM16DI "RVVM2SI")])
 
 (define_mode_attr VI_TRUNC_LMUL4 [(RVVM8HI "RVVM4QI") (RVVM4HI "RVVM4QI")
 				  (RVVM2HI "RVVM4QI") (RVVM1HI "RVVM4QI")
 				  (RVVM8SI "RVVM4HI") (RVVM4SI "RVVM4HI")
 				  (RVVM2SI "RVVM4HI") (RVVM1SI "RVVM4HI")
 				  (RVVM8DI "RVVM4SI") (RVVM4DI "RVVM4SI")
-				  (RVVM2DI "RVVM4SI") (RVVM1DI "RVVM4SI")])
+				  (RVVM2DI "RVVM4SI") (RVVM1DI "RVVM4SI")
+				  ;; m16 acc -> LMUL=4 input (SEW/2).
+				  (RVVM16HI "RVVM4QI")
+				  (RVVM16SI "RVVM4HI")
+				  (RVVM16DI "RVVM4SI")])
 
 (define_mode_attr VI_TRUNC_LMUL8 [(RVVM8HI "RVVM8QI") (RVVM4HI "RVVM8QI")
 				  (RVVM2HI "RVVM8QI") (RVVM1HI "RVVM8QI")
 				  (RVVM8SI "RVVM8HI") (RVVM4SI "RVVM8HI")
 				  (RVVM2SI "RVVM8HI") (RVVM1SI "RVVM8HI")
 				  (RVVM8DI "RVVM8SI") (RVVM4DI "RVVM8SI")
-				  (RVVM2DI "RVVM8SI") (RVVM1DI "RVVM8SI")])
+				  (RVVM2DI "RVVM8SI") (RVVM1DI "RVVM8SI")
+				  ;; m16 acc -> LMUL=8 input (SEW/2).
+				  (RVVM16HI "RVVM8QI")
+				  (RVVM16SI "RVVM8HI")
+				  (RVVM16DI "RVVM8SI")])
 
 ;; W=4 (vqwmmacc.vv) source-LMUL mode_attrs.  Mirrors
 ;; VI_QUAD_TRUNC_LMUL1 but the destination's LMUL is N.
 (define_mode_attr VI_QUAD_TRUNC_LMUL2 [(RVVM8SI "RVVM2QI") (RVVM4SI "RVVM2QI")
 				       (RVVM2SI "RVVM2QI") (RVVM1SI "RVVM2QI")
 				       (RVVM8DI "RVVM2HI") (RVVM4DI "RVVM2HI")
-				       (RVVM2DI "RVVM2HI") (RVVM1DI "RVVM2HI")])
+				       (RVVM2DI "RVVM2HI") (RVVM1DI "RVVM2HI")
+				       ;; m16 acc -> LMUL=2 input (SEW/4).
+				       (RVVM16SI "RVVM2QI")
+				       (RVVM16DI "RVVM2HI")])
 
 (define_mode_attr VI_QUAD_TRUNC_LMUL4 [(RVVM8SI "RVVM4QI") (RVVM4SI "RVVM4QI")
 				       (RVVM2SI "RVVM4QI") (RVVM1SI "RVVM4QI")
 				       (RVVM8DI "RVVM4HI") (RVVM4DI "RVVM4HI")
-				       (RVVM2DI "RVVM4HI") (RVVM1DI "RVVM4HI")])
+				       (RVVM2DI "RVVM4HI") (RVVM1DI "RVVM4HI")
+				       ;; m16 acc -> LMUL=4 input (SEW/4).
+				       (RVVM16SI "RVVM4QI")
+				       (RVVM16DI "RVVM4HI")])
 
 (define_mode_attr VI_QUAD_TRUNC_LMUL8 [(RVVM8SI "RVVM8QI") (RVVM4SI "RVVM8QI")
 				       (RVVM2SI "RVVM8QI") (RVVM1SI "RVVM8QI")
 				       (RVVM8DI "RVVM8HI") (RVVM4DI "RVVM8HI")
-				       (RVVM2DI "RVVM8HI") (RVVM1DI "RVVM8HI")])
+				       (RVVM2DI "RVVM8HI") (RVVM1DI "RVVM8HI")
+				       ;; m16 acc -> LMUL=8 input (SEW/4).
+				       (RVVM16SI "RVVM8QI")
+				       (RVVM16DI "RVVM8HI")])
 
 ;; W=8 (v8wmmacc.vv) source-LMUL mode_attrs.  Mirrors
 ;; VI_OCT_TRUNC_LMUL1 but the destination's LMUL is N.  Only DI
 ;; accumulators are valid (QI input only).
 (define_mode_attr VI_OCT_TRUNC_LMUL2 [(RVVM8DI "RVVM2QI") (RVVM4DI "RVVM2QI")
-				      (RVVM2DI "RVVM2QI") (RVVM1DI "RVVM2QI")])
+				      (RVVM2DI "RVVM2QI") (RVVM1DI "RVVM2QI")
+				      ;; m16 acc -> LMUL=2 input (SEW/8).
+				      (RVVM16DI "RVVM2QI")])
 
 (define_mode_attr VI_OCT_TRUNC_LMUL4 [(RVVM8DI "RVVM4QI") (RVVM4DI "RVVM4QI")
-				      (RVVM2DI "RVVM4QI") (RVVM1DI "RVVM4QI")])
+				      (RVVM2DI "RVVM4QI") (RVVM1DI "RVVM4QI")
+				      ;; m16 acc -> LMUL=4 input (SEW/8).
+				      (RVVM16DI "RVVM4QI")])
 
 (define_mode_attr VI_OCT_TRUNC_LMUL8 [(RVVM8DI "RVVM8QI") (RVVM4DI "RVVM8QI")
-				      (RVVM2DI "RVVM8QI") (RVVM1DI "RVVM8QI")])
+				      (RVVM2DI "RVVM8QI") (RVVM1DI "RVVM8QI")
+				      ;; m16 acc -> LMUL=8 input (SEW/8).
+				      (RVVM16DI "RVVM8QI")])
 
 ;; ---------------------------------------------------------------------------
 ;; FP mode iterators and int iterators for Zvvfmm
@@ -388,7 +430,12 @@
    (RVVM4BF "TARGET_VECTOR_ELEN_BF_16") (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")
    RVVM1SF RVVM2SF RVVM4SF RVVM8SF
    (RVVM1DF "TARGET_VECTOR_ELEN_64") (RVVM2DF "TARGET_VECTOR_ELEN_64")
-   (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")])
+   (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")
+   ;; IME m16 acc variants.
+   (RVVM16HF "TARGET_ZVFH")
+   (RVVM16BF "TARGET_VECTOR_ELEN_BF_16")
+   RVVM16SF
+   (RVVM16DF "TARGET_VECTOR_ELEN_64")])
 
 ;; Map VFMMACC_ACC modes to their LMUL=1 counterpart (same SEW).
 ;; V_LMUL1 does not cover BF modes, so we define a local attr.
@@ -400,20 +447,29 @@
    (RVVM1SF "RVVM1SF") (RVVM2SF "RVVM1SF")
    (RVVM4SF "RVVM1SF") (RVVM8SF "RVVM1SF")
    (RVVM1DF "RVVM1DF") (RVVM2DF "RVVM1DF")
-   (RVVM4DF "RVVM1DF") (RVVM8DF "RVVM1DF")])
+   (RVVM4DF "RVVM1DF") (RVVM8DF "RVVM1DF")
+   ;; m16 acc -> LMUL=1 input (same SEW).
+   (RVVM16HF "RVVM1HF") (RVVM16BF "RVVM1BF")
+   (RVVM16SF "RVVM1SF") (RVVM16DF "RVVM1DF")])
 
 ;; FP32 accumulator modes at LMUL >= 1 (for W=2 FP16/BF16, W=4 OFP8).
-(define_mode_iterator VF32_ACC [RVVM1SF RVVM2SF RVVM4SF RVVM8SF])
+(define_mode_iterator VF32_ACC [RVVM1SF RVVM2SF RVVM4SF RVVM8SF
+				;; IME m16 acc variant.
+				RVVM16SF])
 
 ;; OFP8 accumulator modes for W=1 vfmmacc OFP8 -> OFP8.  Both E4M3 and
 ;; E5M2 share QImode; the acc format is selected by the
 ;; ime_fp_altfmt attribute on each pattern.
-(define_mode_iterator VFMMACC_OFP8_ACC [RVVM1QI RVVM2QI RVVM4QI RVVM8QI])
+(define_mode_iterator VFMMACC_OFP8_ACC [RVVM1QI RVVM2QI RVVM4QI RVVM8QI
+					;; IME m16 acc variant.
+					RVVM16QI])
 
 ;; FP64 accumulator modes at LMUL >= 1 (for W=2 FP32, W=4 FP16/BF16, W=8 OFP8).
 (define_mode_iterator VF64_ACC
   [(RVVM1DF "TARGET_VECTOR_ELEN_64") (RVVM2DF "TARGET_VECTOR_ELEN_64")
-   (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")])
+   (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")
+   ;; IME m16 acc variant.
+   (RVVM16DF "TARGET_VECTOR_ELEN_64")])
 
 ;; Int iterator for vfqwmmacc OFP8 variants (E4M3/E5M2 vs1 x E4M3/E5M2
 ;; vs2 -> FP32).  Acc is FP32 which has no altfmt freedom; the third
@@ -551,11 +607,15 @@
 ;; BF are kept separate so each pattern's acc altfmt bit is unambiguous.
 (define_mode_iterator VFW_OFP8_FP16_ACC
   [(RVVM1HF "TARGET_ZVFH") (RVVM2HF "TARGET_ZVFH")
-   (RVVM4HF "TARGET_ZVFH") (RVVM8HF "TARGET_ZVFH")])
+   (RVVM4HF "TARGET_ZVFH") (RVVM8HF "TARGET_ZVFH")
+   ;; IME m16 acc variant.
+   (RVVM16HF "TARGET_ZVFH")])
 
 (define_mode_iterator VFW_OFP8_BF16_ACC
   [(RVVM1BF "TARGET_VECTOR_ELEN_BF_16") (RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
-   (RVVM4BF "TARGET_VECTOR_ELEN_BF_16") (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")])
+   (RVVM4BF "TARGET_VECTOR_ELEN_BF_16") (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")
+   ;; IME m16 acc variant.
+   (RVVM16BF "TARGET_VECTOR_ELEN_BF_16")])
 
 ;; Element modes at LMUL >= 1 for the tile load/store patterns.  The
 ;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not
@@ -832,6 +892,10 @@
   (RVVM8BF "RVVM2BF") (RVVM4BF "RVVM2BF") (RVVM2BF "RVVM2BF") (RVVM1BF "RVVM2BF")
   (RVVM8SF "RVVM2SF") (RVVM4SF "RVVM2SF") (RVVM2SF "RVVM2SF") (RVVM1SF "RVVM2SF")
   (RVVM8DF "RVVM2DF") (RVVM4DF "RVVM2DF") (RVVM2DF "RVVM2DF") (RVVM1DF "RVVM2DF")
+  ;; IME m16 acc -> LMUL=2 source at same SEW.
+  (RVVM16QI "RVVM2QI") (RVVM16HI "RVVM2HI") (RVVM16BF "RVVM2BF")
+  (RVVM16HF "RVVM2HF") (RVVM16SI "RVVM2SI") (RVVM16SF "RVVM2SF")
+  (RVVM16DI "RVVM2DI") (RVVM16DF "RVVM2DF")
 ])
 
 (define_mode_attr V_LMUL4 [
@@ -846,6 +910,10 @@
   (RVVM8BF "RVVM4BF") (RVVM4BF "RVVM4BF") (RVVM2BF "RVVM4BF") (RVVM1BF "RVVM4BF")
   (RVVM8SF "RVVM4SF") (RVVM4SF "RVVM4SF") (RVVM2SF "RVVM4SF") (RVVM1SF "RVVM4SF")
   (RVVM8DF "RVVM4DF") (RVVM4DF "RVVM4DF") (RVVM2DF "RVVM4DF") (RVVM1DF "RVVM4DF")
+  ;; IME m16 acc -> LMUL=4 source at same SEW.
+  (RVVM16QI "RVVM4QI") (RVVM16HI "RVVM4HI") (RVVM16BF "RVVM4BF")
+  (RVVM16HF "RVVM4HF") (RVVM16SI "RVVM4SI") (RVVM16SF "RVVM4SF")
+  (RVVM16DI "RVVM4DI") (RVVM16DF "RVVM4DF")
 ])
 
 (define_mode_attr V_LMUL8 [
@@ -860,6 +928,10 @@
   (RVVM8BF "RVVM8BF") (RVVM4BF "RVVM8BF") (RVVM2BF "RVVM8BF") (RVVM1BF "RVVM8BF")
   (RVVM8SF "RVVM8SF") (RVVM4SF "RVVM8SF") (RVVM2SF "RVVM8SF") (RVVM1SF "RVVM8SF")
   (RVVM8DF "RVVM8DF") (RVVM4DF "RVVM8DF") (RVVM2DF "RVVM8DF") (RVVM1DF "RVVM8DF")
+  ;; IME m16 acc -> LMUL=8 source at same SEW.
+  (RVVM16QI "RVVM8QI") (RVVM16HI "RVVM8HI") (RVVM16BF "RVVM8BF")
+  (RVVM16HF "RVVM8HF") (RVVM16SI "RVVM8SI") (RVVM16SF "RVVM8SF")
+  (RVVM16DI "RVVM8DI") (RVVM16DF "RVVM8DF")
 ])
 
 ;; W=1 mmacc with vs1/vs2 at LMUL=2.  Same accumulator iterator (VI) and
@@ -2061,7 +2133,9 @@
 ;; FP16 accumulator modes at LMUL >= 1 (for vfwimmacc Int8->FP16).
 (define_mode_iterator VF16_ACC
   [(RVVM1HF "TARGET_ZVFH") (RVVM2HF "TARGET_ZVFH")
-   (RVVM4HF "TARGET_ZVFH") (RVVM8HF "TARGET_ZVFH")])
+   (RVVM4HF "TARGET_ZVFH") (RVVM8HF "TARGET_ZVFH")
+   ;; IME m16 acc variant.
+   (RVVM16HF "TARGET_ZVFH")])
 
 ;; vfwmmacc_scaled FP16 -> FP32, BS=32/BS=16
 (define_insn "@pred_vfwmmacc_scaled_f16<vfwmmacc_f16_bs_name><mode>"
