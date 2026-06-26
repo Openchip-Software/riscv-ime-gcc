@@ -199,25 +199,43 @@
 ;; so the split is a straightforward (regno, regno+8) decomposition.
 (define_expand "mov<mode>"
   [(set (match_operand:VM16 0 "register_operand")
-	(match_operand:VM16 1 "register_operand"))]
+	(match_operand:VM16 1 "nonmemory_operand"))]
   "TARGET_ZVVMM"
-  "")
+{
+  /* Accept the all-zero CONST_VECTOR (the init-regs pass emits one
+     of these when an m16 pseudo is read before being defined);
+     reject every other immediate.  The post-RA splitter below
+     materialises the zero by splitting into two m8 zero-init
+     moves, which the standard m8 mov<mode> path then expands.  */
+  if (CONST_VECTOR_P (operands[1])
+      && operands[1] != CONST0_RTX (<MODE>mode))
+    FAIL;
+})
 
 (define_insn_and_split "*mov<mode>_m16"
-  [(set (match_operand:VM16 0 "register_operand" "=vr")
-	(match_operand:VM16 1 "register_operand" " vr"))]
+  [(set (match_operand:VM16 0 "register_operand"   "=vM, vM")
+	(match_operand:VM16 1 "vm16_src_operand"   " vM,Wc0"))]
   "TARGET_ZVVMM"
   "#"
   "&& reload_completed"
   [(const_int 0)]
 {
-  unsigned dregno = REGNO (operands[0]);
-  unsigned sregno = REGNO (operands[1]);
   machine_mode hmode = riscv_vector::m16_half_mode_md (<MODE>mode);
+  unsigned dregno = REGNO (operands[0]);
   rtx d_lo = gen_rtx_REG (hmode, dregno);
   rtx d_hi = gen_rtx_REG (hmode, dregno + 8);
-  rtx s_lo = gen_rtx_REG (hmode, sregno);
-  rtx s_hi = gen_rtx_REG (hmode, sregno + 8);
+  rtx s_lo, s_hi;
+  if (operands[1] == CONST0_RTX (<MODE>mode))
+    {
+      s_lo = CONST0_RTX (hmode);
+      s_hi = CONST0_RTX (hmode);
+    }
+  else
+    {
+      unsigned sregno = REGNO (operands[1]);
+      s_lo = gen_rtx_REG (hmode, sregno);
+      s_hi = gen_rtx_REG (hmode, sregno + 8);
+    }
   emit_move_insn (d_lo, s_lo);
   emit_move_insn (d_hi, s_hi);
   DONE;
@@ -1070,7 +1088,7 @@
 (define_mode_iterator VMMACC_M16_ACC [RVVM16QI RVVM16HI RVVM16SI RVVM16DI])
 
 (define_insn "@pred_vmmacc<vmmacc_su_name>_m16<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vM")
 	(if_then_else:VMMACC_M16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1093,7 +1111,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm2<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vM")
 	(if_then_else:VMMACC_M16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1116,7 +1134,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm4<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vM")
 	(if_then_else:VMMACC_M16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1139,7 +1157,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm8<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vM")
 	(if_then_else:VMMACC_M16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
