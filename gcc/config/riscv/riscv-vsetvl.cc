@@ -2319,15 +2319,28 @@ public:
     m_sew = ::get_sew (insn->rtl ());
     m_vlmul = ::get_vlmul (insn->rtl ());
     m_ratio = get_attr_ratio (insn->rtl ());
-    /* when get_attr_ratio is invalid, this kind of instructions
-       doesn't care about ratio. However, we still need this value
-       in demand info backward analysis.  */
-    if (m_ratio == INVALID_ATTRIBUTE)
+    /* For IME insns the physically encoded vtype.LMUL is the *input*
+       LMUL, not the accumulator's mode LMUL that `::get_vlmul' just
+       returned.  Specifically for the W=1 mmacc patterns the
+       accumulator is m16, and `calculate_ratio (sew, LMUL_16)' is not
+       defined -- the IME vsetvl path encodes LMUL_16 only as the
+       lambda-width selector, never as a SEW/LMUL ratio.  The IME
+       branch below rewrites both `m_vlmul' and `m_ratio' to the input
+       LMUL, so simply skip the standard ratio fallback when the insn
+       carries `requires_ime_vtype'; without this gate the m16 mmacc
+       patterns would ICE here before the IME branch ever runs.  */
+    bool ime_required_p
+      = (get_attr_requires_ime_vtype (insn->rtl ())
+	 == REQUIRES_IME_VTYPE_YES);
+    if (m_ratio == INVALID_ATTRIBUTE && !ime_required_p)
+      /* when get_attr_ratio is invalid, this kind of instructions
+	 doesn't care about ratio. However, we still need this value
+	 in demand info backward analysis.  */
       m_ratio = calculate_ratio (m_sew, m_vlmul);
     m_ta = tail_agnostic_p (insn->rtl ());
     m_ma = mask_agnostic_p (insn->rtl ());
 
-    if (get_attr_requires_ime_vtype (insn->rtl ()) == REQUIRES_IME_VTYPE_YES)
+    if (ime_required_p)
       {
 	m_ime_required = true;
 	m_ime_req = riscv_extract_ime_requirements (insn->rtl ());
