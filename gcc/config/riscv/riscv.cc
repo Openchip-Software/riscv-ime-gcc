@@ -6889,6 +6889,116 @@ riscv_get_arg_info (struct riscv_arg_info *info, const CUMULATIVE_ARGS *cum,
   unsigned gpr_base = return_p ? GP_RETURN : GP_ARG_FIRST;
   unsigned alignment = riscv_function_arg_boundary (mode, type);
 
+  /* IME `m16' accumulator types (RVVM16*) are not allowed as argument
+     or return types of user-declared functions: the IME spec restricts
+     them to mmacc accumulator, pair, and unpair operations.  Users
+     should `unpair' before a call and `pair' the halves after
+     returning.
+
+     Distinguish "user function with m16 in its own signature" from
+     "user function calling an intrinsic that legitimately takes m16
+     (e.g. __riscv_vmmacc_vv_i32m16)": `riscv_get_arg_info' is invoked
+     for both, but only the former is a spec violation.  Inspect the
+     enclosing function once and cache whether its declared signature
+     carries an m16 type; the sorry only fires when that flag is set.
+
+     Source of the enclosing function: prefer `current_function_decl'
+     (set while compiling a function body), then fall back to
+     `cfun->decl'.  Both are reliably set by the time the arg-direction
+     hook is invoked for the function body's parameters, which is also
+     where we fire the return-direction sorry up front (see below).
+
+     Deduplicate at the (function, direction) level: the hook is
+     invoked multiple times per parameter across compiler passes
+     (prototype, expand, ...).  Key on the resolved function context
+     xor `return_p' encoded into the low bit -- tree pointers are
+     word-aligned so the low bit is safe to claim.  */
+  if (riscv_vector_mode_p (mode)
+      && riscv_vector::get_vlmul (mode) == riscv_vector::LMUL_16)
+    {
+      tree fn_ctx = current_function_decl;
+      if (!fn_ctx && cfun)
+	fn_ctx = cfun->decl;
+
+      /* For the given function context, classify which directions
+	 (return, args) declare an m16 type.  We need to fire all
+	 applicable sorries the first time we encounter the function,
+	 even if only the arg-direction hook is invoked: front-end
+	 sorrying on an arg violation halts further expansion, and the
+	 corresponding `riscv_function_value' call that would have
+	 produced the return-direction sorry is never made.  */
+      auto classify = [&] (tree node, bool &has_return_m16,
+			   bool &has_arg_m16) -> bool
+	{
+	  has_return_m16 = has_arg_m16 = false;
+	  if (!node)
+	    return false;
+	  tree fntype = (TREE_CODE (node) == FUNCTION_DECL)
+			  ? TREE_TYPE (node) : node;
+	  if (!fntype || (TREE_CODE (fntype) != FUNCTION_TYPE
+			  && TREE_CODE (fntype) != METHOD_TYPE))
+	    return false;
+	  tree rt = TREE_TYPE (fntype);
+	  if (rt && TREE_CODE (rt) != VOID_TYPE)
+	    {
+	      machine_mode rm = TYPE_MODE (rt);
+	      if (riscv_vector_mode_p (rm)
+		  && riscv_vector::get_vlmul (rm)
+		     == riscv_vector::LMUL_16)
+		has_return_m16 = true;
+	    }
+	  for (tree at = TYPE_ARG_TYPES (fntype); at; at = TREE_CHAIN (at))
+	    {
+	      tree t = TREE_VALUE (at);
+	      if (!t || t == void_type_node)
+		continue;
+	      machine_mode am = TYPE_MODE (t);
+	      if (riscv_vector_mode_p (am)
+		  && riscv_vector::get_vlmul (am)
+		     == riscv_vector::LMUL_16)
+		has_arg_m16 = true;
+	    }
+	  return has_return_m16 || has_arg_m16;
+	};
+
+      bool has_return_m16, has_arg_m16;
+      if (fn_ctx && classify (fn_ctx, has_return_m16, has_arg_m16))
+	{
+	  /* Per-function-context dedup: each function fires at most one
+	     arg-direction sorry and at most one return-direction sorry,
+	     regardless of how many times the hook is invoked for the
+	     same function across compiler passes.  Bits 0 and 1 of the
+	     hash-set key carry the two directions.  Bit 2 is the
+	     "already classified" marker, ensuring we emit the
+	     return-direction sorry up front (during the first arg call)
+	     instead of waiting for a return call that may never come
+	     after we have sorrid out.  */
+	  static hash_set<const void *> reported;
+	  const void *fired_marker
+	    = (const void *) ((uintptr_t) fn_ctx | 2u);
+	  if (!reported.contains (fired_marker))
+	    {
+	      reported.add (fired_marker);
+	      if (has_arg_m16)
+		{
+		  reported.add ((const void *) ((uintptr_t) fn_ctx));
+		  sorry ("IME %<m16%> accumulator type is not allowed as "
+			 "an argument type; use "
+			 "%<__riscv_ime_vunpairlo/hi%> before passing and "
+			 "%<__riscv_ime_vpair%> on the receiving side");
+		}
+	      if (has_return_m16)
+		{
+		  reported.add ((const void *) ((uintptr_t) fn_ctx | 1u));
+		  sorry ("IME %<m16%> accumulator type is not allowed as a "
+			 "return type; use %<__riscv_ime_vunpairlo/hi%> "
+			 "before passing and %<__riscv_ime_vpair%> on the "
+			 "receiving side");
+		}
+	    }
+	}
+    }
+
   memset (info, 0, sizeof (*info));
   info->gpr_offset = cum->num_gprs;
   info->fpr_offset = cum->num_fprs;
