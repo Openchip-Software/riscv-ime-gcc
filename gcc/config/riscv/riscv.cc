@@ -11024,6 +11024,36 @@ riscv_modes_tieable_p (machine_mode mode1, machine_mode mode2)
 	       && GET_MODE_CLASS (mode2) == MODE_FLOAT));
 }
 
+/* Implement TARGET_IRA_CHANGE_PSEUDO_ALLOCNO_CLASS.
+
+   Force IME `m16' pseudos into VM16_REGS regardless of the looser
+   classes IRA might compute from the union of their use-site
+   constraints.  An m16 value occupies sixteen consecutive vector
+   registers at a 16-register-aligned base, so v0..v15 (base v0) and
+   v16..v31 (base v16) are the only architecturally legal
+   placements; `riscv_hard_regno_mode_ok' enforces that for placement
+   but IRA's allocno class is computed earlier, as the union of every
+   per-use class.  If even one use lands in V_REGS (a plain `vr' asm
+   operand, say), the union becomes V_REGS and IRA's per-mode pruning
+   no longer presents a 2-reg picture: the dump reports
+   ` ... has 32 avail. regs 96-127' and the allocator happily picks
+   a misaligned base.  Rewriting the class here keeps the picture
+   correct.  VM16_REGS is a subset of V_REGS, so no legitimate use
+   site loses a satisfiable placement -- we are tightening the union,
+   not contradicting it.  */
+
+static reg_class_t
+riscv_ira_change_pseudo_allocno_class (int regno,
+				       reg_class_t allocno_class,
+				       reg_class_t /*best_class*/)
+{
+  machine_mode mode = PSEUDO_REGNO_MODE (regno);
+  if (riscv_vector_mode_p (mode)
+      && riscv_vector::get_vlmul (mode) == riscv_vector::LMUL_16)
+    return VM16_REGS;
+  return allocno_class;
+}
+
 /* Implement TARGET_CLASS_MAX_NREGS.  */
 
 static unsigned char
@@ -16943,6 +16973,10 @@ riscv_prefetch_offset_address_p (rtx x, machine_mode mode)
 
 #undef TARGET_MODES_TIEABLE_P
 #define TARGET_MODES_TIEABLE_P riscv_modes_tieable_p
+
+#undef TARGET_IRA_CHANGE_PSEUDO_ALLOCNO_CLASS
+#define TARGET_IRA_CHANGE_PSEUDO_ALLOCNO_CLASS \
+  riscv_ira_change_pseudo_allocno_class
 
 #undef TARGET_SLOW_UNALIGNED_ACCESS
 #define TARGET_SLOW_UNALIGNED_ACCESS riscv_slow_unaligned_access
