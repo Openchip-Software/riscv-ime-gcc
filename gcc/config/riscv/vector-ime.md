@@ -177,6 +177,54 @@
   UNSPECV_VSETVL_PRESERVE_LAMBDA
 ])
 
+;; -----------------------------------------------------------------------
+;; ---- IME `m16' move expander
+;; -----------------------------------------------------------------------
+;;
+;; The IME spec confines RVVM16* (W=1 accumulator) values to mmacc,
+;; pair, and unpair operations.  However the register allocator and
+;; init-regs pass need a `mov<mode>' for any mode that can live across
+;; a pseudo boundary: an inline asm that produces an m16, a spill of an
+;; mmacc result, a CONST0 init.  The standard mov<mode> expanders in
+;; vector.md are gated on V / V_WHOLE / V_FRACT, none of which include
+;; the m16 modes -- so without this pattern emit_move_insn falls back
+;; to emit_move_multi_word, which ICEs on VLA modes.
+;;
+;; The strategy keeps m16 isolated from the generic RVV pattern surface
+;; (as the spec requires): we accept (set m16 m16) at pseudo level and
+;; split it post-RA into two m8 hard-register transfers, using the
+;; m16-alignment guarantee that riscv_hard_regno_mode_ok enforces
+;; (v0..v15 or v16..v31).  At that point the lower half occupies the
+;; first 8 vector registers of the group and the upper half the next 8,
+;; so the split is a straightforward (regno, regno+8) decomposition.
+(define_expand "mov<mode>"
+  [(set (match_operand:VM16 0 "register_operand")
+	(match_operand:VM16 1 "register_operand"))]
+  "TARGET_ZVVMM"
+  "")
+
+(define_insn_and_split "*mov<mode>_m16"
+  [(set (match_operand:VM16 0 "register_operand" "=vr")
+	(match_operand:VM16 1 "register_operand" " vr"))]
+  "TARGET_ZVVMM"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+{
+  unsigned dregno = REGNO (operands[0]);
+  unsigned sregno = REGNO (operands[1]);
+  machine_mode hmode = riscv_vector::m16_half_mode_md (<MODE>mode);
+  rtx d_lo = gen_rtx_REG (hmode, dregno);
+  rtx d_hi = gen_rtx_REG (hmode, dregno + 8);
+  rtx s_lo = gen_rtx_REG (hmode, sregno);
+  rtx s_hi = gen_rtx_REG (hmode, sregno + 8);
+  emit_move_insn (d_lo, s_lo);
+  emit_move_insn (d_hi, s_hi);
+  DONE;
+}
+  [(set_attr "type" "vmov")
+   (set_attr "mode" "<MODE>")])
+
 ;; Signedness encoding for the two integer-input operands of IME
 ;; multiply-accumulate instructions, as it maps to the vtype altfmt_A /
 ;; altfmt_B bits that the vsetvl pass establishes.  Both same-sign

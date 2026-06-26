@@ -2011,6 +2011,30 @@
 ;; to be used for loads/stores.
 (define_mode_iterator V [VI VF_ZVFHMIN VF_ZVFBF16])
 
+;; IME `m16' (W=1 accumulator) modes -- used *only* by the dedicated
+;; mov<mode> expander that splits an m16 transfer into two m8 halves.
+;; No standard RVV pattern operates on these modes: the IME spec
+;; restricts m16 to mmacc accumulator and pair/unpair operations, and
+;; this iterator is deliberately isolated from V / V_WHOLE / V_FRACT
+;; so generic vector patterns do not pick the modes up by accident.
+(define_mode_iterator VM16 [
+  RVVM16QI RVVM16HI RVVM16SI
+  (RVVM16DI "TARGET_VECTOR_ELEN_64")
+  (RVVM16BF "TARGET_VECTOR_ELEN_BF_16")
+  (RVVM16HF "TARGET_VECTOR_ELEN_FP_16")
+  (RVVM16SF "TARGET_VECTOR_ELEN_FP_32")
+  (RVVM16DF "TARGET_VECTOR_ELEN_FP_64")
+])
+
+;; Half-mode mapping: each m16 mode -> its m8 sibling at the same SEW.
+;; Consumed by the mov<mode> m16 expander helper to address the two
+;; halves of an m16 transfer.
+(define_mode_attr VM16_HALF [
+  (RVVM16QI "RVVM8QI") (RVVM16HI "RVVM8HI") (RVVM16SI "RVVM8SI")
+  (RVVM16DI "RVVM8DI") (RVVM16BF "RVVM8BF") (RVVM16HF "RVVM8HF")
+  (RVVM16SF "RVVM8SF") (RVVM16DF "RVVM8DF")
+])
+
 ;; VI + VF but including half-float modes iff TARGET_ZVFH.
 (define_mode_iterator V_ZVFH [VI VF])
 

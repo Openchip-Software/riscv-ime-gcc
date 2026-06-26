@@ -631,6 +631,7 @@ bool check_builtin_call (location_t, vec<location_t>, unsigned int,
 tree resolve_overloaded_builtin (location_t, unsigned int, tree, vec<tree, va_gc> *);
 bool const_vec_all_same_in_range_p (rtx, HOST_WIDE_INT, HOST_WIDE_INT);
 bool legitimize_move (rtx, rtx *);
+machine_mode m16_half_mode_md (machine_mode);
 void emit_vlmax_vsetvl (machine_mode, rtx);
 void emit_hard_vlmax_vsetvl (machine_mode, rtx);
 void emit_vlmax_insn (unsigned, unsigned, rtx *);

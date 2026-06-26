@@ -1958,6 +1958,26 @@ expand_vector_subreg_extract (rtx dest, rtx src)
   return true;
 }
 
+/* Map an IME `m16' mode to its m8 half-mode at the same SEW.  Called
+   from the post-RA splitter for the `m16' mov pattern to decompose an
+   m16 transfer into the two m8 hard-register halves.  */
+machine_mode
+m16_half_mode_md (machine_mode mode)
+{
+  switch (mode)
+    {
+    case E_RVVM16QImode: return E_RVVM8QImode;
+    case E_RVVM16HImode: return E_RVVM8HImode;
+    case E_RVVM16SImode: return E_RVVM8SImode;
+    case E_RVVM16DImode: return E_RVVM8DImode;
+    case E_RVVM16BFmode: return E_RVVM8BFmode;
+    case E_RVVM16HFmode: return E_RVVM8HFmode;
+    case E_RVVM16SFmode: return E_RVVM8SFmode;
+    case E_RVVM16DFmode: return E_RVVM8DFmode;
+    default: gcc_unreachable ();
+    }
+}
+
 /* Expand a pre-RA RVV data move from SRC to DEST.
    It expands move for RVV fractional vector modes.
    Return true if the move as already been emitted.  */
