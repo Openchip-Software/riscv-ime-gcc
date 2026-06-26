@@ -198,44 +198,75 @@
 ;; first 8 vector registers of the group and the upper half the next 8,
 ;; so the split is a straightforward (regno, regno+8) decomposition.
 (define_expand "mov<mode>"
-  [(set (match_operand:VM16 0 "register_operand")
-	(match_operand:VM16 1 "nonmemory_operand"))]
+  [(set (match_operand:VM16 0 "nonimmediate_operand")
+	(match_operand:VM16 1 "general_operand"))]
   "TARGET_ZVVMM"
 {
-  /* Accept the all-zero CONST_VECTOR (the init-regs pass emits one
-     of these when an m16 pseudo is read before being defined);
-     reject every other immediate.  The post-RA splitter below
-     materialises the zero by splitting into two m8 zero-init
-     moves, which the standard m8 mov<mode> path then expands.  */
+  /* Accept the all-zero CONST_VECTOR (init-regs uses it to zero an
+     m16 pseudo that is read before being defined); reject every
+     other immediate.  */
   if (CONST_VECTOR_P (operands[1])
       && operands[1] != CONST0_RTX (<MODE>mode))
     FAIL;
+  /* mem-to-mem: route through a fresh m16 pseudo so each half is a
+     simple mem<->reg in the post-RA splitter.  */
+  if (MEM_P (operands[0]) && MEM_P (operands[1]))
+    operands[1] = force_reg (<MODE>mode, operands[1]);
 })
 
 (define_insn_and_split "*mov<mode>_m16"
-  [(set (match_operand:VM16 0 "register_operand"   "=vM, vM")
-	(match_operand:VM16 1 "vm16_src_operand"   " vM,Wc0"))]
-  "TARGET_ZVVMM"
+  [(set (match_operand:VM16 0 "nonimmediate_operand" "=vM,vM, vM,  m")
+	(match_operand:VM16 1 "vm16_src_operand"     " vM, m,Wc0, vM"))]
+  "TARGET_ZVVMM
+   && (register_operand (operands[0], <MODE>mode)
+       || register_operand (operands[1], <MODE>mode)
+       || operands[1] == CONST0_RTX (<MODE>mode))"
   "#"
   "&& reload_completed"
   [(const_int 0)]
 {
   machine_mode hmode = riscv_vector::m16_half_mode_md (<MODE>mode);
-  unsigned dregno = REGNO (operands[0]);
-  rtx d_lo = gen_rtx_REG (hmode, dregno);
-  rtx d_hi = gen_rtx_REG (hmode, dregno + 8);
-  rtx s_lo, s_hi;
-  if (operands[1] == CONST0_RTX (<MODE>mode))
+  poly_int64 hbytes = GET_MODE_SIZE (hmode);
+
+  /* Materialise the lower and upper m8 halves of each operand: for
+     a register, the upper half lives at regno + 8 (m8 occupies 8
+     registers, m16 occupies 16, both halves are m8-aligned by
+     construction because m16 is 16-aligned by HARD_REGNO_MODE_OK).
+     For a memory operand, the upper half address is offset by
+     GET_MODE_SIZE (m8).  For the CONST0 source both halves are the
+     m8 all-zero CONST_VECTOR.  */
+  rtx dst = operands[0], src = operands[1];
+  rtx d_lo, d_hi, s_lo, s_hi;
+
+  if (REG_P (dst))
+    {
+      unsigned r = REGNO (dst);
+      d_lo = gen_rtx_REG (hmode, r);
+      d_hi = gen_rtx_REG (hmode, r + 8);
+    }
+  else
+    {
+      d_lo = adjust_address (dst, hmode, 0);
+      d_hi = adjust_address (dst, hmode, hbytes);
+    }
+
+  if (src == CONST0_RTX (<MODE>mode))
     {
       s_lo = CONST0_RTX (hmode);
       s_hi = CONST0_RTX (hmode);
     }
+  else if (REG_P (src))
+    {
+      unsigned r = REGNO (src);
+      s_lo = gen_rtx_REG (hmode, r);
+      s_hi = gen_rtx_REG (hmode, r + 8);
+    }
   else
     {
-      unsigned sregno = REGNO (operands[1]);
-      s_lo = gen_rtx_REG (hmode, sregno);
-      s_hi = gen_rtx_REG (hmode, sregno + 8);
+      s_lo = adjust_address (src, hmode, 0);
+      s_hi = adjust_address (src, hmode, hbytes);
     }
+
   emit_move_insn (d_lo, s_lo);
   emit_move_insn (d_hi, s_hi);
   DONE;
