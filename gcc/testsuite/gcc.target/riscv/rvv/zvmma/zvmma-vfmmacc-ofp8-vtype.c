@@ -61,10 +61,10 @@ vfloat8e5m2m1_t a111 (vfloat8e5m2m1_t a, vfloat8e5m2m1_t s1,
 
 /* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541120\n} 1 } } */
 /* { dg-final { scan-assembler-times {\tli\tt0,3746994889972252864\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4035225266123964608\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4323455642275676352\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3602879701896396992\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3891110078048108736\n} 1 } } */
 /* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541376\n} 1 } } */
 /* { dg-final { scan-assembler-times {\tli\tt0,3746994889972253120\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4035225266123964864\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4323455642275676608\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3602879701896397248\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3891110078048108992\n} 1 } } */
 /* { dg-final { scan-assembler-not {ebreak} } } */

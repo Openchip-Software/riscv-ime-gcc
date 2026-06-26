@@ -45,4 +45,4 @@ ts_m2 (signed char *p, ptrdiff_t ld, vint8m2_t v, size_t vl)
 /* { dg-final { scan-assembler-times {\tvmtts\.v\t} 1 } } */
 /* Each LMUL variant produces a distinct vtype constant, so exactly
    five vsetvl instructions are emitted.  */
-/* { dg-final { scan-assembler-times {\tvsetvl\t} 5 } } */
+/* { dg-final { scan-assembler-times {\tvsetvli\t} 5 } } */
