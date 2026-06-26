@@ -69,7 +69,13 @@ build_one (function_builder &b, const function_group_info &group,
   b.allocate_argument_types (function_instance, argument_types);
   b.apply_predication (function_instance, return_type, argument_types);
 
-  if (TARGET_XTHEADVECTOR && !check_type (return_type, argument_types))
+  /* Skip the function when any of its types are unresolved.  This happens
+     for IME `m16' accumulator types when the active `-march' does not
+     include Zvvmm: `register_vector_type' leaves their builtin entry
+     NULL_TREE, and `build_function_type_array' would segfault on the
+     null arg/return tree before `check_required_extensions' could
+     gate the function out.  Used to be `TARGET_XTHEADVECTOR'-only.  */
+  if (!check_type (return_type, argument_types))
     return;
 
   b.add_overloaded_function (function_instance, *group.shape,
@@ -257,7 +263,13 @@ build_th_loadstore (function_builder &b, const function_group_info &group,
   b.allocate_argument_types (function_instance, argument_types);
   b.apply_predication (function_instance, return_type, argument_types);
 
-  if (TARGET_XTHEADVECTOR && !check_type (return_type, argument_types))
+  /* Skip the function when any of its types are unresolved.  This happens
+     for IME `m16' accumulator types when the active `-march' does not
+     include Zvvmm: `register_vector_type' leaves their builtin entry
+     NULL_TREE, and `build_function_type_array' would segfault on the
+     null arg/return tree before `check_required_extensions' could
+     gate the function out.  Used to be `TARGET_XTHEADVECTOR'-only.  */
+  if (!check_type (return_type, argument_types))
     return;
 
   tree type = builtin_types[group.ops_infos.types[vec_type_idx].index].vector;
@@ -1509,8 +1521,9 @@ struct ime_mmacc_def : public build_base
      type-info lookups (double_trunc + lmul1 + signed/unsigned).  Not all
      accumulator types in the i_ops/u_ops type sets have a valid chain
      (e.g. narrowest SEW has no double_trunc, fractional LMULs have no
-     lmul1 sibling).  Filter those out here rather than rely on the
-     XTheadVector-only check_type path in build_one.  */
+     lmul1 sibling).  This `build' override iterates the type list
+     directly so the `continue' on `check_type' failure cleanly skips
+     individual unresolved instances.  */
   void build (function_builder &b,
 	      const function_group_info &group) const override
   {
