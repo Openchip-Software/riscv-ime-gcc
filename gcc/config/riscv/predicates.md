@@ -522,12 +522,13 @@
        (match_test "satisfies_constraint_Wc0 (op)")))
 
 ;; Source predicate for the IME `m16' mov<mode> splitter: accepts a
-;; vector register or the all-zero CONST_VECTOR.  Memory and other
-;; immediates are deliberately rejected -- the m16 mov surface is
-;; intentionally minimal (reg-reg plus CONST0 for init-regs); the
-;; full mem<->reg path will come with Phase 1F when pair/unpair land.
+;; vector register, a memory reference (the post-RA splitter
+;; decomposes mem<->reg transfers into two m8 mem<->reg moves), or
+;; the all-zero CONST_VECTOR (init-regs uses it to initialise an
+;; m16 pseudo that is read before being defined).
 (define_predicate "vm16_src_operand"
   (ior (match_operand 0 "register_operand")
+       (match_operand 0 "memory_operand")
        (match_operand 0 "vector_const_0_operand")))
 
 (define_predicate "vector_const_int_or_double_0_operand"
