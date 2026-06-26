@@ -137,6 +137,22 @@ ENTRY (RVVM4DF, TARGET_VECTOR_ELEN_FP_64, LMUL_4, 16)
 ENTRY (RVVM2DF, TARGET_VECTOR_ELEN_FP_64, LMUL_2, 32)
 ENTRY (RVVM1DF, TARGET_VECTOR_ELEN_FP_64, LMUL_1, 64)
 
+/* IME `m16' accumulator modes.  Available only with TARGET_ZVVMM (the
+   IME family); not part of the standard RVV mode set.  ratio is 0
+   (sentinel) because m16 modes never participate in standard
+   SEW/LMUL ratio reasoning -- they are only consumed by IME mmacc
+   patterns and pair/unpair intrinsics, all of which use the input
+   LMUL (m1..m8) for vtype.LMUL.  Any code that queries get_ratio()
+   for an RVVM16* mode is a bug.  */
+ENTRY (RVVM16QI, TARGET_ZVVMM, LMUL_16, 0)
+ENTRY (RVVM16HI, TARGET_ZVVMM, LMUL_16, 0)
+ENTRY (RVVM16BF, TARGET_ZVVMM && TARGET_VECTOR_ELEN_BF_16, LMUL_16, 0)
+ENTRY (RVVM16HF, TARGET_ZVVMM && TARGET_VECTOR_ELEN_FP_16, LMUL_16, 0)
+ENTRY (RVVM16SI, TARGET_ZVVMM, LMUL_16, 0)
+ENTRY (RVVM16SF, TARGET_ZVVMM && TARGET_VECTOR_ELEN_FP_32, LMUL_16, 0)
+ENTRY (RVVM16DI, TARGET_ZVVMM && TARGET_VECTOR_ELEN_64, LMUL_16, 0)
+ENTRY (RVVM16DF, TARGET_ZVVMM && TARGET_VECTOR_ELEN_FP_64, LMUL_16, 0)
+
 /* Tuple modes for segment loads/stores according to NF.
 
    Tuple modes format: RVV<LMUL>x<NF><BASEMODE>

@@ -237,6 +237,8 @@ vlmul_to_str (vlmul_type vlmul)
       return "m4";
     case LMUL_8:
       return "m8";
+    case LMUL_16:
+      return "m16";
     case LMUL_RESERVED:
       return "INVALID LMUL";
     case LMUL_F8:
@@ -1773,11 +1775,12 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
   int mul_c_val;
   switch (r.mul_c)
     {
-    case LMUL_1: mul_c_val = 1; break;
-    case LMUL_2: mul_c_val = 2; break;
-    case LMUL_4: mul_c_val = 4; break;
-    case LMUL_8: mul_c_val = 8; break;
-    default:     mul_c_val = 0; break;  /* Fractional or reserved: invalid.  */
+    case LMUL_1:  mul_c_val = 1; break;
+    case LMUL_2:  mul_c_val = 2; break;
+    case LMUL_4:  mul_c_val = 4; break;
+    case LMUL_8:  mul_c_val = 8; break;
+    case LMUL_16: mul_c_val = 16; break;
+    default:      mul_c_val = 0; break;  /* Fractional or reserved: invalid.  */
     }
   if (mul_c_val == 0)
     r.lambda_log2 = -2;
@@ -2654,10 +2657,20 @@ compute_static_vtype_without_lambda (const vsetvl_info &info, int xlen)
      must carry LMUL=m1 even though the accumulator type is m2.  For
      non-IME and for tile load/store, info.get_vlmul() already returns
      the correct LMUL (the data vector's LMUL).  */
+  /* LMUL_16 is a compiler-internal value with no architectural vtype
+     encoding -- it must never reach the encoding path.  IME mmacc with
+     an m16 accumulator always uses the input LMUL (m1..m8) for
+     vtype.LMUL.  */
   if (info.ime_required_p ())
-    val |= (unsigned) r.lmul;
+    {
+      gcc_assert (r.lmul != LMUL_16);
+      val |= (unsigned) r.lmul;
+    }
   else
-    val |= (unsigned) info.get_vlmul ();
+    {
+      gcc_assert (info.get_vlmul () != LMUL_16);
+      val |= (unsigned) info.get_vlmul ();
+    }
   val |= (HOST_WIDE_INT) ime_vsew_encoding (info.get_sew ()) << 3;
   if (info.get_ta ())
     val |= (HOST_WIDE_INT) 1 << 6;
