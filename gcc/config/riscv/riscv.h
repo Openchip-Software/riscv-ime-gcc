@@ -527,6 +527,7 @@ enum reg_class
   VM_REGS,			/* v0.t registers */
   VD_REGS,			/* vector registers except v0.t */
   V_REGS,			/* vector registers */
+  VM16_REGS,			/* m16-aligned vector groups (v0, v16) */
   ALL_REGS,			/* all registers */
   LIM_REG_CLASSES		/* max value + 1 */
 };
@@ -552,6 +553,7 @@ enum reg_class
   "VM_REGS",								\
   "VD_REGS",								\
   "V_REGS",								\
+  "VM16_REGS",								\
   "ALL_REGS"								\
 }
 
@@ -579,6 +581,7 @@ enum reg_class
   { 0x00000000, 0x00000000, 0x00000000, 0x00000001 },	/* V0_REGS */		\
   { 0x00000000, 0x00000000, 0x00000000, 0xfffffffe },	/* VNoV0_REGS */	\
   { 0x00000000, 0x00000000, 0x00000000, 0xffffffff },	/* V_REGS */		\
+  { 0x00000000, 0x00000000, 0x00000000, 0x00010001 },	/* VM16_REGS = v0,v16 */\
   { 0xffffffff, 0xffffffff, 0x00000003, 0xffffffff }	/* ALL_REGS */		\
 }
 
