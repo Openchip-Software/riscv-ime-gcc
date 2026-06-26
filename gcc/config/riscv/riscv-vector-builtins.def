@@ -642,6 +642,41 @@ DEF_RVV_TYPE (vfloat8e5m2m8_t, 20, __rvv_float8e5m2m8_t, uint8, RVVM8QI,
 DEF_RVV_TYPE (vfloat4e2m1m1_t, 20, __rvv_float4e2m1m1_t, uint8, RVVM1QI,
 	      _f4e2m1m1, _f4e2m1, _e8m1)
 
+/* IME-only `m16' accumulator types.  Valid only as the accumulator
+   operand/result of an IME mmacc intrinsic when EMUL_C = 16, and as
+   the operand/result of the IME pair/unpair pseudo-intrinsics.  The
+   IME C API does not define ordinary `vsetvl_e{SEW}m16',
+   `vle{SEW}_v_*m16', or `vse{SEW}_v_*m16' helpers for these types --
+   the trailing `_eN' name slot is empty to reflect that.  */
+DEF_RVV_TYPE (vint8m16_t, 15, __rvv_int8m16_t, int8, RVVM16QI,
+	      _i8m16, _i8, )
+DEF_RVV_TYPE (vuint8m16_t, 16, __rvv_uint8m16_t, uint8, RVVM16QI,
+	      _u8m16, _u8, )
+DEF_RVV_TYPE (vint16m16_t, 16, __rvv_int16m16_t, int16, RVVM16HI,
+	      _i16m16, _i16, )
+DEF_RVV_TYPE (vuint16m16_t, 17, __rvv_uint16m16_t, uint16, RVVM16HI,
+	      _u16m16, _u16, )
+DEF_RVV_TYPE (vint32m16_t, 16, __rvv_int32m16_t, int32, RVVM16SI,
+	      _i32m16, _i32, )
+DEF_RVV_TYPE (vuint32m16_t, 17, __rvv_uint32m16_t, uint32, RVVM16SI,
+	      _u32m16, _u32, )
+DEF_RVV_TYPE (vint64m16_t, 16, __rvv_int64m16_t, int64, RVVM16DI,
+	      _i64m16, _i64, )
+DEF_RVV_TYPE (vuint64m16_t, 17, __rvv_uint64m16_t, uint64, RVVM16DI,
+	      _u64m16, _u64, )
+DEF_RVV_TYPE (vfloat16m16_t, 18, __rvv_float16m16_t, float16, RVVM16HF,
+	      _f16m16, _f16, )
+DEF_RVV_TYPE (vbfloat16m16_t, 19, __rvv_bfloat16m16_t, bfloat16, RVVM16BF,
+	      _bf16m16, _bf16, )
+DEF_RVV_TYPE (vfloat32m16_t, 18, __rvv_float32m16_t, float, RVVM16SF,
+	      _f32m16, _f32, )
+DEF_RVV_TYPE (vfloat64m16_t, 18, __rvv_float64m16_t, double, RVVM16DF,
+	      _f64m16, _f64, )
+DEF_RVV_TYPE (vfloat8e4m3m16_t, 21, __rvv_float8e4m3m16_t, uint8, RVVM16QI,
+	      _f8e4m3m16, _f8e4m3, )
+DEF_RVV_TYPE (vfloat8e5m2m16_t, 21, __rvv_float8e5m2m16_t, uint8, RVVM16QI,
+	      _f8e5m2m16, _f8e5m2, )
+
 DEF_RVV_OP_TYPE (vv)
 DEF_RVV_OP_TYPE (vx)
 DEF_RVV_OP_TYPE (vi)

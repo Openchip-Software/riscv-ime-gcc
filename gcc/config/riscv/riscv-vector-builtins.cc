@@ -5061,6 +5061,19 @@ register_builtin_type (vector_type_index type, tree eltype, machine_mode mode)
     return;
 
   tree vectype = build_vector_type_for_mode (eltype, mode);
+  /* If MODE's underlying element type is disabled by the current target
+     options (e.g. an HF or BF mode under -march without Zvfh / Zvfbfmin),
+     `build_vector_type_for_mode' returns a vector type whose backing
+     mode bitsize is 0.  Such a type would fail the size-consistency
+     assert below.  This can be observed when target options change
+     between init and use (for example, multiple `register_builtin_type'
+     calls with different effective `TARGET_VECTOR_ELEN_FP_16' values),
+     leaving stale modes whose size machinery is not re-finalised.
+     Skip the registration in that case -- the type is unusable anyway,
+     and downstream callers test `abi_vector_types[type] == NULL_TREE'
+     to disable the type at the C level.  */
+  if (vectype == NULL_TREE || known_eq (GET_MODE_BITSIZE (mode), 0u))
+    return;
   gcc_assert (VECTOR_MODE_P (TYPE_MODE (vectype)) && TYPE_MODE (vectype) == mode
 	      && TYPE_MODE_RAW (vectype) == mode && TYPE_ALIGN (vectype) <= 128
 	      && known_eq (tree_to_poly_uint64 (TYPE_SIZE (vectype)),
