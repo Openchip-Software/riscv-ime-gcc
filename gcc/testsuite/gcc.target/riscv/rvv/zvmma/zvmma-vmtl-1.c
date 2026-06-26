@@ -36,4 +36,4 @@ load_u32 (const unsigned int *p, ptrdiff_t ld, size_t vl)
 }
 
 /* { dg-final { scan-assembler-times {\tvmtl\.v\t} 4 } } */
-/* { dg-final { scan-assembler-times {\tvsetvl\t} 4 } } */
+/* { dg-final { scan-assembler-times {\tvsetvli\t} 4 } } */

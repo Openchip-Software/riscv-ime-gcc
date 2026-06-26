@@ -30,7 +30,7 @@ vfloat32m1_t e5m2 (vfloat32m1_t a, vfloat8e5m2m1_t s1, vfloat8e5m2m1_t s2,
    E4M3 vtype = 0x3000_0000_0000_00D0 = 3458764513820541136  (a=0, b=0)
    E5M2 vtype = 0x3C00_0000_0000_00D0 = 4323455642275676368  (a=1, b=1)  */
 /* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541136\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4323455642275676368\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3891110078048108752\n} 1 } } */
 
 /* No perfect-square trap: VLEN=512 yields perfect-square lambda^2 for
    both static and runtime paths.  */

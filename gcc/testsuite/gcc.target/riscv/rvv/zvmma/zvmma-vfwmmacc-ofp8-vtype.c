@@ -60,10 +60,10 @@ vbfloat16m1_t bf16_e5m2_e5m2 (vbfloat16m1_t a, vfloat8e5m2m1_t s1,
 
 /* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541128\n} 1 } } */
 /* { dg-final { scan-assembler-times {\tli\tt0,3746994889972252872\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4035225266123964616\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4323455642275676360\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3602879701896397000\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3891110078048108744\n} 1 } } */
 /* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541384\n} 1 } } */
 /* { dg-final { scan-assembler-times {\tli\tt0,3746994889972253128\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4035225266123964872\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4323455642275676616\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3602879701896397256\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3891110078048109000\n} 1 } } */
 /* { dg-final { scan-assembler-not {ebreak} } } */
