@@ -55,6 +55,26 @@ DEF_RVV_FUNCTION (vmmacc_su_lm8, ime_mmacc, none_tu_preds, i_su_ime_vss_lm8_ops)
 DEF_RVV_FUNCTION (vmmacc_us_lm2, ime_mmacc, none_tu_preds, i_us_ime_vss_lm2_ops)
 DEF_RVV_FUNCTION (vmmacc_us_lm4, ime_mmacc, none_tu_preds, i_us_ime_vss_lm4_ops)
 DEF_RVV_FUNCTION (vmmacc_us_lm8, ime_mmacc, none_tu_preds, i_us_ime_vss_lm8_ops)
+/* W=1 vmmacc with m16 accumulator (EMUL_C=16).  Same sign axes (s, u,
+   su, us) and source-LMUL axes (default LMUL=1, _lm{2,4,8}) as the
+   m1..m8 family, dispatched to the dedicated `*_m16<mode>' RTL
+   patterns by the shape's name-mangling.  */
+DEF_RVV_FUNCTION (vmmacc_s_m16,     ime_mmacc, none_tu_preds, i_ime_m16_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_u_m16,     ime_mmacc, none_tu_preds, u_ime_m16_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_s_m16_lm2, ime_mmacc, none_tu_preds, i_ime_m16_vss_lm2_ops)
+DEF_RVV_FUNCTION (vmmacc_s_m16_lm4, ime_mmacc, none_tu_preds, i_ime_m16_vss_lm4_ops)
+DEF_RVV_FUNCTION (vmmacc_s_m16_lm8, ime_mmacc, none_tu_preds, i_ime_m16_vss_lm8_ops)
+DEF_RVV_FUNCTION (vmmacc_u_m16_lm2, ime_mmacc, none_tu_preds, u_ime_m16_vss_lm2_ops)
+DEF_RVV_FUNCTION (vmmacc_u_m16_lm4, ime_mmacc, none_tu_preds, u_ime_m16_vss_lm4_ops)
+DEF_RVV_FUNCTION (vmmacc_u_m16_lm8, ime_mmacc, none_tu_preds, u_ime_m16_vss_lm8_ops)
+DEF_RVV_FUNCTION (vmmacc_su_m16,     ime_mmacc, none_tu_preds, i_su_ime_m16_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_us_m16,     ime_mmacc, none_tu_preds, i_us_ime_m16_vss_ops)
+DEF_RVV_FUNCTION (vmmacc_su_m16_lm2, ime_mmacc, none_tu_preds, i_su_ime_m16_vss_lm2_ops)
+DEF_RVV_FUNCTION (vmmacc_su_m16_lm4, ime_mmacc, none_tu_preds, i_su_ime_m16_vss_lm4_ops)
+DEF_RVV_FUNCTION (vmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_vss_lm8_ops)
+DEF_RVV_FUNCTION (vmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm2_ops)
+DEF_RVV_FUNCTION (vmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm4_ops)
+DEF_RVV_FUNCTION (vmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm8_ops)
 /* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2.  Four sign
    combinations and four input-LMUL forms (default LMUL=1, plus _lm2,
    _lm4, _lm8 source-LMUL siblings, mirroring the W=1 mmacc family).
