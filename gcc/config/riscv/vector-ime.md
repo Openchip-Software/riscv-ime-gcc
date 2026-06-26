@@ -1009,6 +1009,111 @@
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
+;; Zvvmm - W=1 vmmacc with m16 accumulator
+;; ---------------------------------------------------------------------------
+;;
+;; Same instruction as `@pred_vmmacc<vmmacc_su_name><mode>' but with the
+;; accumulator at the IME `m16' register-group multiplier.  Modelled with
+;; a dedicated mode iterator so we can keep `VI' clean of m16 (and thus
+;; standard-RVV ops inexpressible on m16).
+;;
+;; Operand layout, attributes, and asm template are identical to the
+;; m1..m8 versions; only the destination iterator changes.
+(define_mode_iterator VMMACC_M16_ACC [RVVM16QI RVVM16HI RVVM16SI RVVM16DI])
+
+(define_insn "@pred_vmmacc<vmmacc_su_name>_m16<mode>"
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VMMACC_M16_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VMMACC_M16_ACC
+	    [(match_operand:VMMACC_M16_ACC 1 "register_operand" "  0")
+	     (match_operand:<V_LMUL1>      2 "register_operand" " vr")
+	     (match_operand:<V_LMUL1>      3 "register_operand" " vr")] VMMACC_SU)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVMM"
+  "vmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")])
+
+(define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm2<mode>"
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VMMACC_M16_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VMMACC_M16_ACC
+	    [(match_operand:VMMACC_M16_ACC 1 "register_operand" "  0")
+	     (match_operand:<V_LMUL2>      2 "register_operand" " vr")
+	     (match_operand:<V_LMUL2>      3 "register_operand" " vr")] VMMACC_SU)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVMM"
+  "vmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")])
+
+(define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm4<mode>"
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VMMACC_M16_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VMMACC_M16_ACC
+	    [(match_operand:VMMACC_M16_ACC 1 "register_operand" "  0")
+	     (match_operand:<V_LMUL4>      2 "register_operand" " vr")
+	     (match_operand:<V_LMUL4>      3 "register_operand" " vr")] VMMACC_SU)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVMM"
+  "vmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")])
+
+(define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm8<mode>"
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VMMACC_M16_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VMMACC_M16_ACC
+	    [(match_operand:VMMACC_M16_ACC 1 "register_operand" "  0")
+	     (match_operand:<V_LMUL8>      2 "register_operand" " vr")
+	     (match_operand:<V_LMUL8>      3 "register_operand" " vr")] VMMACC_SU)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVMM"
+  "vmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")])
+
+;; ---------------------------------------------------------------------------
 ;; Zvvmm - Vector integer matrix multiply-accumulate, W=2 (vwmmacc.vv)
 ;; ---------------------------------------------------------------------------
 ;;
