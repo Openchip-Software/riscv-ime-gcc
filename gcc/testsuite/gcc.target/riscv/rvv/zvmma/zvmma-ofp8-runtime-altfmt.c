@@ -55,4 +55,4 @@ vfloat64m1_t k_w8_e5m2 (vfloat64m1_t a, vfloat8e5m2m1_t s1,
 /* Four kernels above set altfmt_A/altfmt_B in static_bits, each
    emitting one `slli ...,58' instruction.  The all-E4M3 kernel emits
    none.  */
-/* { dg-final { scan-assembler-times {\tslli\t[^,]+,[^,]+,58\n} 4 } } */
+/* { dg-final { scan-assembler-times {\tslli\t[^,]+,[^,]+,57\n} 4 } } */

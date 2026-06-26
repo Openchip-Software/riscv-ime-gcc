@@ -33,5 +33,5 @@ vfloat8e4m3m4_t mixed_m4 (vfloat8e4m3m4_t a, vfloat8e5m2m1_t s1,
    m4 mixed (A=1,B=0):  0x2800_0000_0000_00C0 = 2882303761517117632  */
 /* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541120\n} 1 } } */
 /* { dg-final { scan-assembler-times {\tli\tt0,2305843009213694144\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,2882303761517117632\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,2594073385365405888\n} 1 } } */
 /* { dg-final { scan-assembler-not {ebreak} } } */

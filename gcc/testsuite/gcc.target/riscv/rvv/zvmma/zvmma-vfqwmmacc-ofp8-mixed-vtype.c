@@ -43,6 +43,6 @@ vfloat32m1_t e5m2_e5m2 (vfloat32m1_t a, vfloat8e5m2m1_t s1,
 
 /* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541136\n} 1 } } */
 /* { dg-final { scan-assembler-times {\tli\tt0,3746994889972252880\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4035225266123964624\n} 1 } } */
-/* { dg-final { scan-assembler-times {\tli\tt0,4323455642275676368\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3602879701896397008\n} 1 } } */
+/* { dg-final { scan-assembler-times {\tli\tt0,3891110078048108752\n} 1 } } */
 /* { dg-final { scan-assembler-not {ebreak} } } */

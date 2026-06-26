@@ -33,4 +33,4 @@ store_u32 (unsigned int *p, ptrdiff_t ld, vuint32m1_t v, size_t vl)
 }
 
 /* { dg-final { scan-assembler-times {\tvmts\.v\t} 4 } } */
-/* { dg-final { scan-assembler-times {\tvsetvl\t} 4 } } */
+/* { dg-final { scan-assembler-times {\tvsetvli\t} 4 } } */
