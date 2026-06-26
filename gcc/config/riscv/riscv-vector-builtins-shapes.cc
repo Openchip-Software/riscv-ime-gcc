@@ -1632,6 +1632,22 @@ struct ime_mmacc_def : public build_base
 	  }
       }
 
+    /* Strip any trailing "_m16" accumulator-MUL_C tag.  This is an
+       internal disambiguator that routes to the m16-acc RTL pattern;
+       the user-visible name carries the "m16" inside the accumulator
+       type suffix (e.g. "_i32m16") emitted later in get_name(), so the
+       tag itself is consumed silently here.  */
+    {
+      static constexpr const char m16_tag[] = "_m16";
+      static constexpr size_t m16_len = sizeof (m16_tag) - 1;
+      if (ilen > m16_len
+	  && memcmp (internal + ilen - m16_len, m16_tag, m16_len) == 0)
+	{
+	  ilen -= m16_len;
+	  base_len = ilen;
+	}
+    }
+
     /* Mixed-sign: "_su" or "_us".  Use string literals rather than a
        pointer into INTERNAL because the lm/bs strip steps above only
        decremented ILEN -- the original buffer still has the "_lm{N}"

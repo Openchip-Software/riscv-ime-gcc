@@ -3051,6 +3051,54 @@ static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm4>
 static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm8>
   vmmacc_us_lm8_obj;
 
+/* W=1 mmacc objects for the IME m16 accumulator family.  Each is the
+   same `vmmacc_ime_op' template with a CODE_FOR pointing at the
+   m16-acc RTL pattern variant.  */
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S, code_for_pred_vmmacc_m16>
+  vmmacc_s_m16_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_m16>
+  vmmacc_u_m16_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S,
+				     code_for_pred_vmmacc_m16_lm2>
+  vmmacc_s_m16_lm2_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S,
+				     code_for_pred_vmmacc_m16_lm4>
+  vmmacc_s_m16_lm4_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S,
+				     code_for_pred_vmmacc_m16_lm8>
+  vmmacc_s_m16_lm8_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U,
+				     code_for_pred_vmmacc_m16_lm2>
+  vmmacc_u_m16_lm2_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U,
+				     code_for_pred_vmmacc_m16_lm4>
+  vmmacc_u_m16_lm4_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U,
+				     code_for_pred_vmmacc_m16_lm8>
+  vmmacc_u_m16_lm8_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU, code_for_pred_vmmacc_m16>
+  vmmacc_su_m16_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_m16>
+  vmmacc_us_m16_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU,
+				     code_for_pred_vmmacc_m16_lm2>
+  vmmacc_su_m16_lm2_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU,
+				     code_for_pred_vmmacc_m16_lm4>
+  vmmacc_su_m16_lm4_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU,
+				     code_for_pred_vmmacc_m16_lm8>
+  vmmacc_su_m16_lm8_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US,
+				     code_for_pred_vmmacc_m16_lm2>
+  vmmacc_us_m16_lm2_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US,
+				     code_for_pred_vmmacc_m16_lm4>
+  vmmacc_us_m16_lm4_obj;
+static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US,
+				     code_for_pred_vmmacc_m16_lm8>
+  vmmacc_us_m16_lm8_obj;
+
 /* IME vector widening integer matrix multiply-accumulate (W=2).  Same
    structure as vmmacc_ime_op but dispatches to @pred_vwmmacc*<mode>.
    Four instances cover ss, uu, su, us.  The optional CODE_FOR template
@@ -4634,6 +4682,22 @@ BASE (vmmacc_us)
 BASE (vmmacc_su_lm2)
 BASE (vmmacc_su_lm4)
 BASE (vmmacc_su_lm8)
+BASE (vmmacc_s_m16)
+BASE (vmmacc_u_m16)
+BASE (vmmacc_s_m16_lm2)
+BASE (vmmacc_s_m16_lm4)
+BASE (vmmacc_s_m16_lm8)
+BASE (vmmacc_u_m16_lm2)
+BASE (vmmacc_u_m16_lm4)
+BASE (vmmacc_u_m16_lm8)
+BASE (vmmacc_su_m16)
+BASE (vmmacc_us_m16)
+BASE (vmmacc_su_m16_lm2)
+BASE (vmmacc_su_m16_lm4)
+BASE (vmmacc_su_m16_lm8)
+BASE (vmmacc_us_m16_lm2)
+BASE (vmmacc_us_m16_lm4)
+BASE (vmmacc_us_m16_lm8)
 BASE (vmmacc_us_lm2)
 BASE (vmmacc_us_lm4)
 BASE (vmmacc_us_lm8)
