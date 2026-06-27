@@ -12517,8 +12517,20 @@ riscv_override_options_internal (struct gcc_options *opts)
   /* FIXME: We don't allow TARGET_MIN_VLEN > 4096 since the datatypes of
      both GET_MODE_SIZE and GET_MODE_BITSIZE are poly_uint16.
 
-     We can only allow TARGET_MIN_VLEN * 8 (LMUL) < 65535.  */
-  if (TARGET_MIN_VLEN_OPTS (opts) > 4096)
+     We can only allow TARGET_MIN_VLEN * MAX_LMUL < 65535.  For the
+     base RVV extensions MAX_LMUL = 8, so the historical bound is
+     TARGET_MIN_VLEN <= 4096.  The IME `Zvvmm' extension introduces
+     LMUL = 16 modes for the `m16' accumulator, which tightens the
+     bound to TARGET_MIN_VLEN <= 2048 (any larger and the product
+     overflows the `poly_uint16' storage for `mode_precision' /
+     `mode_size', producing a stored size of 0 and triggering wrong
+     codegen in IRA + LRA).  Reject the over-the-line cases here.  */
+  if (TARGET_ZVVMM_OPTS_P (opts) && TARGET_MIN_VLEN_OPTS (opts) > 2048)
+    sorry ("IME %<Zvvmm%> with LMUL=16 requires "
+	   "%<TARGET_MIN_VLEN <= 2048%>; raise this bound only after the "
+	   "%<poly_uint16%> storage for mode tables is widened "
+	   "(see <https://gcc.gnu.org/PR/...>)");
+  else if (TARGET_MIN_VLEN_OPTS (opts) > 4096)
     sorry ("Current RISC-V GCC does not support VLEN greater than 4096bit for "
 	   "'V' Extension");
 
