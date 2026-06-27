@@ -1828,9 +1828,36 @@ emit_mode_adjustments (void)
 	      "  {\n"
 	      "    /* %s:%d */\n  ps = %s;\n",
 	      a->file, a->line, a->adjustment);
-      printf ("    int old_factor = vector_element_size"
-	      " (mode_precision[E_%smode], mode_nunits[E_%smode]);\n",
-	      m->name, m->name);
+      /* Derive `old_factor' (bits per inner element) from the inner
+	 mode's *static* precision rather than from
+	 `vector_element_size (mode_precision[m], mode_nunits[m])'.
+	 The latter divides the current (possibly mutated) outer
+	 precision by the current outer nunits, both of which we are
+	 about to overwrite -- and if a prior ADJUST_NUNITS invocation
+	 overflowed `mode_precision[m]' (which is `poly_uint16'), the
+	 stored value is 0, the computed `old_factor' is 0, and the
+	 subsequent write of `mode_precision[m] = ps * old_factor'
+	 propagates that 0 forward, persistently corrupting the
+	 mode's stored size for the rest of the compilation.
+	 The inner mode's precision is set once at genmodes time and
+	 never modified by ADJUST_NUNITS, so reading from it is
+	 stable across repeated `init_adjust_machine_modes' calls.  */
+      /* All ADJUST_NUNITS modes are vector / complex modes and have a
+	 component recorded -- assert it at genmodes time so any future
+	 port that adds an ADJUST_NUNITS for a mode without one fails
+	 the build instead of silently regressing to the unsafe
+	 outer-precision / outer-nunits division.  */
+      if (!m->component)
+	{
+	  fprintf (stderr,
+		   "genmodes: ADJUST_NUNITS mode %s has no component "
+		   "(needed for old_factor); update %s:%d or genmodes.cc\n",
+		   m->name, a->file, a->line);
+	  exit (FATAL_EXIT_CODE);
+	}
+      printf ("    int old_factor = mode_precision[E_%smode]"
+	      ".to_constant ();\n",
+	      m->component->name);
       printf ("    mode_precision[E_%smode] = ps * old_factor;\n", m->name);
       printf ("    if (!multiple_p (mode_precision[E_%smode],"
 	      " BITS_PER_UNIT, &mode_size[E_%smode]))\n", m->name, m->name);
