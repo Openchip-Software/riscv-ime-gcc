@@ -5010,6 +5010,20 @@ riscv_pragma_intrinsic_flags_pollute (struct pragma_intrinsic_flags *flags)
   riscv_base_subext = riscv_base_subext
     | MASK_MUL;
 
+  /* Cap the ZVL pollution at ZVL2048B.  Including ZVL4096B would set
+     `riscv_vector_chunks = 64' and trigger `init_adjust_machine_modes'
+     to compute `mode_precision[RVVM16SI] = (8/4 * 16) * 64 * 32 bits =
+     65536' for the IME `m16' modes, which overflows the
+     `poly_uint16' storage of `mode_precision' to 0 and propagates
+     a wrong size through the post-pragma recovery path -- see the
+     analysis of the m16 mode-size flip for the full chain.
+
+     Capping at ZVL2048B keeps the maximum product at
+     `2048 * 16 * 4 bytes = 131072 bits / 8 = 16384 bytes', which fits
+     `poly_uint16' (max 65535) with room to spare.  All RVV builtin
+     types are still reachable -- they iterate over an LMUL set whose
+     largest LMUL is 16 (IME) or 8 (base RVV), and the per-builtin
+     legality check happens at call-site expansion, not here.  */
   riscv_zvl_subext = riscv_zvl_subext
     | MASK_ZVL32B
     | MASK_ZVL64B
@@ -5017,8 +5031,7 @@ riscv_pragma_intrinsic_flags_pollute (struct pragma_intrinsic_flags *flags)
     | MASK_ZVL256B
     | MASK_ZVL512B
     | MASK_ZVL1024B
-    | MASK_ZVL2048B
-    | MASK_ZVL4096B;
+    | MASK_ZVL2048B;
 
   riscv_vector_elen_flags = riscv_vector_elen_flags
     | MASK_VECTOR_ELEN_32
