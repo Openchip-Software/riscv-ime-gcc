@@ -140,6 +140,17 @@
   ;; placeholder vsetvls that DEF VTYPE_REGNUM only after the vsetvl
   ;; pass runs).
   UNSPEC_READ_VTYPE
+
+  ;; IME `pair' / `unpair' primitives.  These map an m16 accumulator
+  ;; value (occupying 16 consecutive vector registers at a 16-aligned
+  ;; base, v0..v15 or v16..v31) to/from its two m8 halves (8 regs
+  ;; each).  No vector instruction is required when the m8 source(s)
+  ;; or destination are already at the right offset within the m16
+  ;; register group; otherwise the post-RA splitter emits the
+  ;; necessary `vmv8r.v' move(s).
+  UNSPEC_VPAIR        ;; (vpair m8_lo m8_hi)        -> m16
+  UNSPEC_VUNPAIRLO    ;; (vunpairlo m16)            -> m8  (lower half)
+  UNSPEC_VUNPAIRHI    ;; (vunpairhi m16)            -> m8  (upper half)
 ])
 
 (define_c_enum "unspecv" [
@@ -2510,3 +2521,172 @@
    (set_attr "ime_bs" "<vf8wimmacc_i8_bs_attr>")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
+
+;; -----------------------------------------------------------------------
+;; ---- IME pair / unpair primitives
+;; -----------------------------------------------------------------------
+;;
+;; pair (m8_lo, m8_hi)        -> m16   (compose accumulator)
+;; unpairlo (m16)             -> m8    (lower half of m16)
+;; unpairhi (m16)             -> m8    (upper half of m16)
+;;
+;; The IME spec restricts m16 to mmacc + pair/unpair operations.
+;; pair/unpair are purely a reinterpretation of the register state:
+;; an m16 already occupies sixteen vector registers at a 16-aligned
+;; base (v0..v15 or v16..v31 -- enforced by VM16_REGS), and its two
+;; m8 halves naturally live at base..base+7 and base+8..base+15.
+;; When register allocation happens to place the operands at the
+;; right offset, the primitive lowers to nothing; otherwise it
+;; lowers to one (unpair) or up to two (pair) `vmv8r.v' moves.
+;;
+;; UNSPEC scheme rather than SUBREG because RTL subreg validation
+;; rejects the m8-of-m16 case for VLA register pseudos before RA
+;; (validate_subreg's per-mode block check fails on the polynomial
+;; size relationship), and modelling each primitive as a recognised
+;; insn lets the post-RA splitter make the no-op-vs-vmv8r decision
+;; against the actual hard-register placements.
+
+(define_insn_and_split "@vunpairlo<mode>"
+  [(set (match_operand:<VM16_HALF> 0 "register_operand" "=vr")
+	(unspec:<VM16_HALF>
+	  [(match_operand:VM16 1 "register_operand" "vM")]
+	  UNSPEC_VUNPAIRLO))]
+  "TARGET_ZVVMM"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+{
+  unsigned dregno = REGNO (operands[0]);
+  unsigned sregno = REGNO (operands[1]);
+  /* The lower half of an m16 group at v<sregno> is the m8 group at
+     v<sregno>; if the destination is already there the primitive is
+     a no-op.  Emit a blockage so the original `"#"' insn is replaced
+     -- `try_split' treats a zero-insn split as a failure, leaving
+     the `"#"' template insn in the stream and ICEing at final.  */
+  if (dregno == sregno)
+    {
+      emit_insn (gen_blockage ());
+      DONE;
+    }
+  emit_move_insn (gen_rtx_REG (<VM16_HALF>mode, dregno),
+		  gen_rtx_REG (<VM16_HALF>mode, sregno));
+  DONE;
+}
+  [(set_attr "type" "vmov")
+   (set_attr "mode" "<VM16_HALF>")])
+
+(define_insn_and_split "@vunpairhi<mode>"
+  [(set (match_operand:<VM16_HALF> 0 "register_operand" "=vr")
+	(unspec:<VM16_HALF>
+	  [(match_operand:VM16 1 "register_operand" "vM")]
+	  UNSPEC_VUNPAIRHI))]
+  "TARGET_ZVVMM"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+{
+  unsigned dregno = REGNO (operands[0]);
+  unsigned sregno = REGNO (operands[1]);
+  /* The upper half of an m16 group at v<sregno> is the m8 group at
+     v<sregno+8>; no-op when the destination already lands there.
+     Same blockage trick as `vunpairlo' above.  */
+  if (dregno == sregno + 8)
+    {
+      emit_insn (gen_blockage ());
+      DONE;
+    }
+  emit_move_insn (gen_rtx_REG (<VM16_HALF>mode, dregno),
+		  gen_rtx_REG (<VM16_HALF>mode, sregno + 8));
+  DONE;
+}
+  [(set_attr "type" "vmov")
+   (set_attr "mode" "<VM16_HALF>")])
+
+(define_insn_and_split "@vpair<mode>"
+  [(set (match_operand:VM16 0 "register_operand"        "=vM")
+	(unspec:VM16
+	  [(match_operand:<VM16_HALF> 1 "register_operand" "vr")
+	   (match_operand:<VM16_HALF> 2 "register_operand" "vr")]
+	  UNSPEC_VPAIR))]
+  "TARGET_ZVVMM"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+{
+  unsigned dregno = REGNO (operands[0]);
+  unsigned loregno = REGNO (operands[1]);
+  unsigned hiregno = REGNO (operands[2]);
+  /* The composed m16 is the register group at v<dregno>; its lower
+     half lives at v<dregno> and its upper half at v<dregno + 8>.
+     Emit a vmv8r.v for each half whose source is not already in
+     place.
+
+     Ordering matters when one half's source overlaps the other
+     half's destination:
+
+       * loregno == dregno + 8   -- the lo source occupies the
+	 upper-half slot of dst.  Do the hi-half move FIRST so that
+	 the subsequent lo-half move can still read the lo source
+	 out of dregno + 8 before it is overwritten.
+
+       * hiregno == dregno       -- the hi source occupies the
+	 lower-half slot of dst.  Do the hi-half move FIRST so the
+	 hi source is captured to dregno + 8 before the lo-half
+	 move clobbers dregno.
+
+       * loregno == dregno + 8 AND hiregno == dregno -- a true swap
+	 of the two halves.  Break the dependency cycle through the
+	 m8 scratch: stash the hi source, write the lo half, then
+	 restore the hi source into the upper half.  */
+  bool need_lo = (loregno != dregno);
+  bool need_hi = (hiregno != dregno + 8);
+  bool full_swap = (loregno == dregno + 8 && hiregno == dregno);
+
+  /* No-op: both halves are already in place.  `try_split' treats a
+     splitter that emits zero insns as a failure and leaves the
+     original `"#"' template insn in the stream, ICEing at final.
+     Emit a blockage so the original is replaced by a real (but
+     codegen-free) insn -- post-RA cleanup removes it.  */
+  if (!need_lo && !need_hi && !full_swap)
+    {
+      emit_insn (gen_blockage ());
+      DONE;
+    }
+
+  if (full_swap)
+    {
+      rtx scratch = operands[3];
+      emit_move_insn (scratch,
+		      gen_rtx_REG (<VM16_HALF>mode, hiregno));
+      emit_move_insn (gen_rtx_REG (<VM16_HALF>mode, dregno),
+		      gen_rtx_REG (<VM16_HALF>mode, loregno));
+      emit_move_insn (gen_rtx_REG (<VM16_HALF>mode, dregno + 8),
+		      scratch);
+      DONE;
+    }
+
+  bool order_hi_first
+    = need_hi && (hiregno == dregno
+		  || (need_lo && loregno == dregno + 8));
+
+  if (order_hi_first)
+    {
+      emit_move_insn (gen_rtx_REG (<VM16_HALF>mode, dregno + 8),
+		      gen_rtx_REG (<VM16_HALF>mode, hiregno));
+      if (need_lo)
+	emit_move_insn (gen_rtx_REG (<VM16_HALF>mode, dregno),
+			gen_rtx_REG (<VM16_HALF>mode, loregno));
+    }
+  else
+    {
+      if (need_lo)
+	emit_move_insn (gen_rtx_REG (<VM16_HALF>mode, dregno),
+			gen_rtx_REG (<VM16_HALF>mode, loregno));
+      if (need_hi)
+	emit_move_insn (gen_rtx_REG (<VM16_HALF>mode, dregno + 8),
+			gen_rtx_REG (<VM16_HALF>mode, hiregno));
+    }
+  DONE;
+}
+  [(set_attr "type" "vmov")
+   (set_attr "mode" "<VM16_HALF>")])
