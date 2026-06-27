@@ -11065,6 +11065,22 @@ riscv_class_max_nregs (reg_class_t rclass, machine_mode mode)
   if (reg_class_subset_p (rclass, GR_REGS))
     return riscv_hard_regno_nregs (GP_REG_FIRST, mode);
 
+  /* VM16_REGS is a 2-element class whose members are *bases* of
+     16-register m16 groups, not individual hard registers.  Holding
+     an m16 value in VM16_REGS takes one of its two placements, not
+     sixteen of its members.  Reporting the per-mode hard-reg count
+     here would make IRA's `contains_reg_of_mode' check
+     (reginfo.cc:450, `class_max_nregs <= reg_class_size') decide
+     VM16_REGS is too small for m16 and drop it from per-pseudo cost
+     analysis, after which the IRA hook's force-VM16_REGS allocno
+     class no longer has a colorable node to allocate into and every
+     m16 pseudo spills.  Return 1 instead -- VM16_REGS provides two
+     placements; an m16 value uses exactly one of them.  */
+  if (rclass == VM16_REGS
+      && riscv_vector_mode_p (mode)
+      && riscv_vector::get_vlmul (mode) == riscv_vector::LMUL_16)
+    return 1;
+
   if (reg_class_subset_p (rclass, V_REGS))
     return riscv_hard_regno_nregs (V_REG_FIRST, mode);
 
