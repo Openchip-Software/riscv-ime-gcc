@@ -184,10 +184,6 @@
 (define_register_constraint "vm" "TARGET_VECTOR ? VM_REGS : NO_REGS"
   "A vector mask register (if available).")
 
-(define_register_constraint "vM" "TARGET_ZVVMM ? VM16_REGS : NO_REGS"
-  "An m16-aligned vector register group (v0 or v16) -- the only
-   valid base registers for an IME @code{m16} accumulator value.")
-
 ;; This constraint is used to match instruction "csrr %0, vlenb" which is generated in "mov<mode>".
 ;; VLENB is a run-time constant which represent the vector register length in bytes.
 ;; BYTES_PER_RISCV_VECTOR represent runtime invariant of vector register length in bytes.

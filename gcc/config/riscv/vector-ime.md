@@ -208,6 +208,13 @@
 ;; (v0..v15 or v16..v31).  At that point the lower half occupies the
 ;; first 8 vector registers of the group and the upper half the next 8,
 ;; so the split is a straightforward (regno, regno+8) decomposition.
+;; The standard `mov<mode>' expand carries no Pmode iterator -- if it
+;; did, gentarget-def would see the cross product (VM16 x P) and reject
+;; the resulting two `movrvvm16qi' definitions as duplicates (the
+;; Pmode==SImode / Pmode==DImode C-conditions disambiguate at runtime
+;; but not at codegen).  Instead the expand emits the scratch-bearing
+;; PARALLEL by hand, with the scratch typed in Pmode so the splitter's
+;; address arithmetic matches on both RV32 and RV64.
 (define_expand "mov<mode>"
   [(set (match_operand:VM16 0 "nonimmediate_operand")
 	(match_operand:VM16 1 "general_operand"))]
@@ -223,30 +230,109 @@
      simple mem<->reg in the post-RA splitter.  */
   if (MEM_P (operands[0]) && MEM_P (operands[1]))
     operands[1] = force_reg (<MODE>mode, operands[1]);
+
+  emit_insn (gen_rtx_PARALLEL (VOIDmode,
+    gen_rtvec (2,
+      gen_rtx_SET (operands[0], operands[1]),
+      gen_rtx_CLOBBER (VOIDmode, gen_rtx_SCRATCH (Pmode)))));
+  DONE;
 })
 
-(define_insn_and_split "*mov<mode>_m16"
-  [(set (match_operand:VM16 0 "nonimmediate_operand" "=vM,vM, vM,  m")
-	(match_operand:VM16 1 "vm16_src_operand"     " vM, m,Wc0, vM"))]
+;; The scratch tracks Pmode via the `P' iterator (defined in
+;; iterators.md as the build's active Pmode -- SI for ILP32, DI for
+;; LP64), so the upper-half address arithmetic in the splitter stays
+;; correct on both targets.  The pattern names and inner mode
+;; references use the explicit `<VM16:...>' prefix because both the
+;; VM16 and P iterators contribute a `mode' attribute -- an unqualified
+;; `<mode>' would be ambiguous and would fail at gentarget-def time.
+(define_insn_and_split "*mov<VM16:mode>_m16"
+  [(set (match_operand:VM16 0 "nonimmediate_operand" "=vr,vr, vr,  m")
+	(match_operand:VM16 1 "vm16_src_operand"     " vr, m,Wc0, vr"))
+   (clobber (match_scratch:P 2 "=&r,&r,&r,&r"))]
   "TARGET_ZVVMM
-   && (register_operand (operands[0], <MODE>mode)
-       || register_operand (operands[1], <MODE>mode)
-       || operands[1] == CONST0_RTX (<MODE>mode))"
+   && (register_operand (operands[0], <VM16:MODE>mode)
+       || register_operand (operands[1], <VM16:MODE>mode)
+       || operands[1] == CONST0_RTX (<VM16:MODE>mode))"
   "#"
   "&& reload_completed"
   [(const_int 0)]
 {
-  machine_mode hmode = riscv_vector::m16_half_mode_md (<MODE>mode);
+  machine_mode hmode = riscv_vector::m16_half_mode_md (<VM16:MODE>mode);
   poly_int64 hbytes = GET_MODE_SIZE (hmode);
+  rtx dst = operands[0], src = operands[1], scratch = operands[2];
 
-  /* Materialise the lower and upper m8 halves of each operand: for
-     a register, the upper half lives at regno + 8 (m8 occupies 8
-     registers, m16 occupies 16, both halves are m8-aligned by
-     construction because m16 is 16-aligned by HARD_REGNO_MODE_OK).
-     For a memory operand, the upper half address is offset by
-     GET_MODE_SIZE (m8).  For the CONST0 source both halves are the
-     m8 all-zero CONST_VECTOR.  */
-  rtx dst = operands[0], src = operands[1];
+  /* For a register operand the upper half lives at regno + 8 (m8
+     occupies 8 vector registers, m16 occupies 16, the m16 group is
+     16-aligned by HARD_REGNO_MODE_OK).  For a CONST0 source both
+     halves use the m8 all-zero CONST_VECTOR.
+
+     For a memory operand the upper half lives at base + hbytes.
+     RVV whole-vector loads/stores accept only a register-indirect
+     address (no displacement), so the upper-half base has to be
+     materialised in a scratch GR register first.  The expander
+     forces mem-to-mem through a fresh m16 pseudo, so at most ONE of
+     {dst, src} reaches the splitter as a MEM -- the scratch is
+     reused only for that side's upper-half address.
+
+     SCRATCH first holds `hbytes' (i.e. `8 * vlenb' for the m8 half
+     of an m16 group), computed once via `vlenb << 3'; that value
+     is added in place to the upper-half base.  All address
+     arithmetic happens in Pmode so the splitter is correct for
+     both ILP32 and LP64.  */
+
+  /* Stage 1: SCRATCH = hbytes (= 8 * BYTES_PER_RISCV_VECTOR).  Done
+     unconditionally even if only zero-offset half_mem calls follow
+     -- the clobber is benign and the value lets later reuse skip
+     the recomputation.  Stage 2 (the add to base) happens lazily
+     inside half_mem the first time a non-zero offset is requested,
+     and only once because the same memory operand's lower half is
+     handled separately with a zero offset.  */
+  bool scratch_holds_offset = false;
+  bool scratch_holds_addr = false;
+  (void) scratch_holds_addr;
+
+  auto ensure_offset_in_scratch = [&] ()
+    {
+      if (scratch_holds_offset)
+	return;
+      /* Load BYTES_PER_RISCV_VECTOR (a poly_int) into SCRATCH via the
+	 standard `csrr vlenb' move pattern, then shift-left by
+	 log2 (LMUL) so the value held is hbytes (= LMUL * vlenb).
+	 Derive the shift count from `hmode' rather than hard-coding
+	 it: any future widening of m8 or change in the half-mode
+	 mapping for VM16 stays consistent with the address
+	 arithmetic.  */
+      int lmul = exact_div (GET_MODE_SIZE (hmode), BYTES_PER_RISCV_VECTOR)
+		   .to_constant ();
+      gcc_assert (lmul >= 2 && pow2p_hwi (lmul));
+      int shift = exact_log2 (lmul);
+      emit_move_insn (scratch, gen_int_mode (BYTES_PER_RISCV_VECTOR, Pmode));
+      emit_insn (gen_rtx_SET (scratch,
+			      gen_rtx_ASHIFT (Pmode, scratch,
+					      gen_int_mode (shift, Pmode))));
+      scratch_holds_offset = true;
+    };
+
+  auto half_mem = [&] (rtx mem, poly_int64 offset) -> rtx
+    {
+      if (known_eq (offset, 0))
+	return adjust_address (mem, hmode, 0);
+      /* The only non-zero offset the splitter ever passes is hbytes
+	 (m8 half size).  Guard against a future code path that ever
+	 passes a different offset and against being called twice with
+	 non-zero offset -- the second call would overwrite the
+	 scratch the first call's MEM still references, silently
+	 generating a store/load to the wrong address.  */
+      gcc_assert (known_eq (offset, hbytes));
+      gcc_assert (!scratch_holds_addr);
+      ensure_offset_in_scratch ();
+      rtx base = XEXP (mem, 0);
+      emit_insn (gen_rtx_SET (scratch,
+			      gen_rtx_PLUS (Pmode, scratch, base)));
+      scratch_holds_addr = true;
+      return replace_equiv_address (adjust_address (mem, hmode, 0), scratch);
+    };
+
   rtx d_lo, d_hi, s_lo, s_hi;
 
   if (REG_P (dst))
@@ -257,11 +343,11 @@
     }
   else
     {
-      d_lo = adjust_address (dst, hmode, 0);
-      d_hi = adjust_address (dst, hmode, hbytes);
+      d_lo = half_mem (dst, 0);
+      d_hi = half_mem (dst, hbytes);
     }
 
-  if (src == CONST0_RTX (<MODE>mode))
+  if (src == CONST0_RTX (<VM16:MODE>mode))
     {
       s_lo = CONST0_RTX (hmode);
       s_hi = CONST0_RTX (hmode);
@@ -274,8 +360,8 @@
     }
   else
     {
-      s_lo = adjust_address (src, hmode, 0);
-      s_hi = adjust_address (src, hmode, hbytes);
+      s_lo = half_mem (src, 0);
+      s_hi = half_mem (src, hbytes);
     }
 
   emit_move_insn (d_lo, s_lo);
@@ -283,7 +369,7 @@
   DONE;
 }
   [(set_attr "type" "vmov")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<VM16:MODE>")])
 
 ;; Signedness encoding for the two integer-input operands of IME
 ;; multiply-accumulate instructions, as it maps to the vtype altfmt_A /
@@ -1130,7 +1216,7 @@
 (define_mode_iterator VMMACC_M16_ACC [RVVM16QI RVVM16HI RVVM16SI RVVM16DI])
 
 (define_insn "@pred_vmmacc<vmmacc_su_name>_m16<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vM")
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VMMACC_M16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1153,7 +1239,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm2<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vM")
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VMMACC_M16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1176,7 +1262,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm4<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vM")
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VMMACC_M16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1199,7 +1285,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm8<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vM")
+  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VMMACC_M16_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -2549,7 +2635,7 @@
 (define_insn_and_split "@vunpairlo<mode>"
   [(set (match_operand:<VM16_HALF> 0 "register_operand" "=vr")
 	(unspec:<VM16_HALF>
-	  [(match_operand:VM16 1 "register_operand" "vM")]
+	  [(match_operand:VM16 1 "register_operand" "vr")]
 	  UNSPEC_VUNPAIRLO))]
   "TARGET_ZVVMM"
   "#"
@@ -2578,7 +2664,7 @@
 (define_insn_and_split "@vunpairhi<mode>"
   [(set (match_operand:<VM16_HALF> 0 "register_operand" "=vr")
 	(unspec:<VM16_HALF>
-	  [(match_operand:VM16 1 "register_operand" "vM")]
+	  [(match_operand:VM16 1 "register_operand" "vr")]
 	  UNSPEC_VUNPAIRHI))]
   "TARGET_ZVVMM"
   "#"
@@ -2603,11 +2689,12 @@
    (set_attr "mode" "<VM16_HALF>")])
 
 (define_insn_and_split "@vpair<mode>"
-  [(set (match_operand:VM16 0 "register_operand"        "=vM")
+  [(set (match_operand:VM16 0 "register_operand"        "=vr")
 	(unspec:VM16
 	  [(match_operand:<VM16_HALF> 1 "register_operand" "vr")
 	   (match_operand:<VM16_HALF> 2 "register_operand" "vr")]
-	  UNSPEC_VPAIR))]
+	  UNSPEC_VPAIR))
+   (clobber (match_scratch:<VM16_HALF> 3                "=&vr"))]
   "TARGET_ZVVMM"
   "#"
   "&& reload_completed"
