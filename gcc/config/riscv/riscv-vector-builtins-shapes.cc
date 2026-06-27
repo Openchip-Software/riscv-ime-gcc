@@ -871,6 +871,30 @@ struct vundefined_def : public build_base
   }
 };
 
+/* ime_pair_unpair_def class.
+
+   Shape for the IME `pair' / `unpairlo' / `unpairhi' primitives that
+   compose an m16 accumulator from two m8 halves or extract a half
+   from one.  The user-visible name follows the
+   `__riscv_<base>_<m16-type-suffix>' pattern -- one builtin per m16
+   element type per direction.  These primitives are not overloaded:
+   the type suffix selects the m16 element type unambiguously and the
+   builtin's m8 argument types follow via the `lmul8_vector' arg
+   kind, so a no-suffix overloaded form would have no useful type to
+   resolve.  */
+struct ime_pair_unpair_def : public build_base
+{
+  char *get_name (function_builder &b, const function_instance &instance,
+		  bool overloaded_p) const override
+  {
+    if (overloaded_p)
+      return nullptr;
+    b.append_base_name (instance.base_name);
+    b.append_name (type_suffixes[instance.type.index].vector);
+    return b.finish_name ();
+  }
+};
+
 /* misc_def class.  */
 struct misc_def : public build_base
 {
@@ -1907,6 +1931,7 @@ SHAPE(reduc_alu_frm, reduc_alu_frm)
 SHAPE(th_extract, th_extract)
 SHAPE(scalar_move, scalar_move)
 SHAPE(vundefined, vundefined)
+SHAPE(ime_pair_unpair, ime_pair_unpair)
 SHAPE(misc, misc)
 SHAPE(vset, vset)
 SHAPE(vget, vget)
