@@ -3852,6 +3852,41 @@ static CONSTEXPR const rvv_op_info i_us_ime_m16_vss_lm8_ops
   = {i_m16_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm8_args};
 
+/* IME `vunpairlo' / `vunpairhi' / `vpair' arg/op tables.
+
+   These primitives compose or decompose an m16 accumulator across
+   its two m8 halves.  Iteration is driven by the m16 type list
+   (i_m16_ops / u_m16_ops); the m8 halves are resolved via the
+   `lmul8_vector' arg kind, which `ime_lmul_input_idx' maps to the
+   m8 sibling at the m16 accumulator's SEW.  The return type for
+   pair is the iterating m16 type itself (RVV_BASE_vector), the
+   return type for unpair is the m8 half (RVV_BASE_lmul8_vector).  */
+
+static CONSTEXPR const rvv_arg_type_info ime_vunpair_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_vpair_args[]
+  = {rvv_arg_type_info (RVV_BASE_lmul8_vector),
+     rvv_arg_type_info (RVV_BASE_lmul8_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_op_info i_ime_vunpair_ops
+  = {i_m16_ops, OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), ime_vunpair_args};
+
+static CONSTEXPR const rvv_op_info u_ime_vunpair_ops
+  = {u_m16_ops, OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), ime_vunpair_args};
+
+static CONSTEXPR const rvv_op_info i_ime_vpair_ops
+  = {i_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
+
+static CONSTEXPR const rvv_op_info u_ime_vpair_ops
+  = {u_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
+
 /* Op-info structs for vwmmacc.vv (W=2) -- same-sign (ss, uu) and
    mixed-sign (su, us).  Signed accumulator is mandated by the spec
    for both _su and _us.  */

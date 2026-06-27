@@ -75,6 +75,21 @@ DEF_RVV_FUNCTION (vmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_vss_
 DEF_RVV_FUNCTION (vmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm2_ops)
 DEF_RVV_FUNCTION (vmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm4_ops)
 DEF_RVV_FUNCTION (vmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm8_ops)
+/* IME `pair' / `unpair' primitives.  Iterate over the m16 type list
+   to produce one variant per (signedness, element size) pair:
+       __riscv_ime_vpair_<i,u>{8,16,32,64}m16
+       __riscv_ime_vunpairlo_<i,u>{8,16,32,64}m16
+       __riscv_ime_vunpairhi_<i,u>{8,16,32,64}m16
+   `pair' returns the iterating m16 type and takes two m8 halves of
+   the same SEW; `unpairlo' / `unpairhi' take the m16 and return the
+   matching m8 half.  None of these emit a vsetvl (no IME vtype
+   setup) -- they lower post-RA to zero or more `vmv8r.v' moves.  */
+DEF_RVV_FUNCTION (ime_vpair,     ime_pair_unpair, none_preds, i_ime_vpair_ops)
+DEF_RVV_FUNCTION (ime_vpair,     ime_pair_unpair, none_preds, u_ime_vpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, i_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, u_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, i_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, u_ime_vunpair_ops)
 /* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2.  Four sign
    combinations and four input-LMUL forms (default LMUL=1, plus _lm2,
    _lm4, _lm8 source-LMUL siblings, mirroring the W=1 mmacc family).

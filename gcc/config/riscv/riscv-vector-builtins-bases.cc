@@ -3099,6 +3099,69 @@ static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US,
 				     code_for_pred_vmmacc_m16_lm8>
   vmmacc_us_m16_lm8_obj;
 
+/* IME pair / unpair primitive bases.
+
+   These are pure register-state reinterpretations on the m16
+   accumulator register group; no vsetvl is required (no IME vtype
+   setup, no mask, no merge, no tail policy).  The expand simply
+   generates the matching @vpair / @vunpairlo / @vunpairhi pattern
+   for the operand mode, which lowers post-RA to zero or more
+   vmv8r.v moves depending on hard-register placement.  */
+
+class ime_vunpairlo : public function_base
+{
+public:
+  bool apply_vl_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_tail_policy_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    /* `vector_mode' is the m16 input mode (the iterating type) -- the
+       insn pattern is indexed by it.  `use_exact_insn' walks the
+       call-expr's argument list and adds them as input operands, in
+       order, after the output that the function_expander constructor
+       already created.  */
+    return e.use_exact_insn (code_for_vunpairlo (e.vector_mode ()));
+  }
+};
+
+class ime_vunpairhi : public function_base
+{
+public:
+  bool apply_vl_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_tail_policy_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_vunpairhi (e.vector_mode ()));
+  }
+};
+
+class ime_vpair : public function_base
+{
+public:
+  bool apply_vl_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_tail_policy_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_exact_insn (code_for_vpair (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const ime_vunpairlo ime_vunpairlo_obj;
+static CONSTEXPR const ime_vunpairhi ime_vunpairhi_obj;
+static CONSTEXPR const ime_vpair     ime_vpair_obj;
+
 /* IME vector widening integer matrix multiply-accumulate (W=2).  Same
    structure as vmmacc_ime_op but dispatches to @pred_vwmmacc*<mode>.
    Four instances cover ss, uu, su, us.  The optional CODE_FOR template
@@ -4698,6 +4761,9 @@ BASE (vmmacc_su_m16_lm8)
 BASE (vmmacc_us_m16_lm2)
 BASE (vmmacc_us_m16_lm4)
 BASE (vmmacc_us_m16_lm8)
+BASE (ime_vunpairlo)
+BASE (ime_vunpairhi)
+BASE (ime_vpair)
 BASE (vmmacc_us_lm2)
 BASE (vmmacc_us_lm4)
 BASE (vmmacc_us_lm8)
