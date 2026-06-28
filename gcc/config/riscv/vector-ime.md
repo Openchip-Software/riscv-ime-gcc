@@ -72,6 +72,20 @@
   UNSPEC_VMTTS_L32
   UNSPEC_VMTTS_L64
 
+  ;; Storage-width-qualified tile load/store (spec §2983+).  The
+  ;; instruction is the same vmtl.v / vmts.v; the UNSPEC just selects
+  ;; which storage SEW (e8/e16/e32/e64) the surrounding vsetvl
+  ;; produces -- each pattern sets the `sew' attribute directly to
+  ;; override the default mode-derived SEW.
+  UNSPEC_VMTL_AS_E8
+  UNSPEC_VMTL_AS_E16
+  UNSPEC_VMTL_AS_E32
+  UNSPEC_VMTL_AS_E64
+  UNSPEC_VMTS_AS_E8
+  UNSPEC_VMTS_AS_E16
+  UNSPEC_VMTS_AS_E32
+  UNSPEC_VMTS_AS_E64
+
   ;; Zvvfmm - FP matrix multiply-accumulate
   UNSPEC_VFMMACC			;; vfmmacc.vv (W=1, same-format FP)
   ;; W=1 vfmmacc OFP8 -> OFP8: 8 UNSPECs covering all (acc,vs1,vs2)
@@ -409,6 +423,7 @@
 ;; "bs16" and "bs32" set the bs vtype bit accordingly.
 (define_attr "ime_bs" "none,bs16,bs32"
   (const_string "none"))
+
 
 ;; Operand index of the hidden "vtype source" operand on IME consumer
 ;; patterns.  Default INVALID_ATTRIBUTE (no such operand).  Otherwise
@@ -1733,6 +1748,257 @@
   "vmts.v\t%3,%0,%2,<vmts_L_imm>%p1"
   [(set_attr "type" "vsts")
    (set_attr "mode" "<MODE>")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmtls - Storage-width-qualified order-preserving tile load/store
+;;           (spec §2983+: `_as_e{S}' variants)
+;; ---------------------------------------------------------------------------
+;;
+;; The instruction is the same vmtl.v / vmts.v; only the SEW field in
+;; vtype changes from the natural width (derived from the data-vector
+;; mode) to the explicit storage width S.  Each S value goes through a
+;; dedicated UNSPEC so the operand layout stays identical to
+;; @pred_vmtl<mode> / @pred_vmts<mode> and use_contiguous_load_insn /
+;; use_contiguous_store_insn work unchanged.  The vsetvl pass reads
+;; each pattern's `sew' attribute (set directly to the storage width)
+;; to override the SEW it would otherwise derive from the operand mode
+;; via the default `sew' cond rule in vector.md.
+;;
+;; Per spec §3074-3078: storage width S must be >= logical element
+;; width.  Sub-byte logical types (Int4/UInt4/OFP4) have natural
+;; storage width 8 so the constraint `S >= 8' is automatic for the
+;; modes in VI_LMUL1 (no QImode is offered as logical EEW=4 -- the
+;; sub-byte types share RVVM*QI with Int8/OFP8).  For wider logical
+;; types we filter via mode iterators below so the cross product
+;; stays well-formed.
+
+;; Mode iterators selecting the data-vector modes whose natural
+;; element bit-size is <= S.  Each is a strict subset of VI_LMUL1.
+(define_mode_iterator VI_LMUL1_LE_E8 [RVVM1QI RVVM2QI RVVM4QI RVVM8QI])
+(define_mode_iterator VI_LMUL1_LE_E16
+  [RVVM1QI RVVM2QI RVVM4QI RVVM8QI
+   RVVM1HI RVVM2HI RVVM4HI RVVM8HI
+   (RVVM1HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM2HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM4HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM8HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM1BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM4BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")])
+(define_mode_iterator VI_LMUL1_LE_E32
+  [RVVM1QI RVVM2QI RVVM4QI RVVM8QI
+   RVVM1HI RVVM2HI RVVM4HI RVVM8HI
+   RVVM1SI RVVM2SI RVVM4SI RVVM8SI
+   (RVVM1HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM2HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM4HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM8HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM1BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM4BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM1SF "TARGET_VECTOR_ELEN_FP_32")
+   (RVVM2SF "TARGET_VECTOR_ELEN_FP_32")
+   (RVVM4SF "TARGET_VECTOR_ELEN_FP_32")
+   (RVVM8SF "TARGET_VECTOR_ELEN_FP_32")])
+(define_mode_iterator VI_LMUL1_LE_E64
+  [RVVM1QI RVVM2QI RVVM4QI RVVM8QI
+   RVVM1HI RVVM2HI RVVM4HI RVVM8HI
+   RVVM1SI RVVM2SI RVVM4SI RVVM8SI
+   RVVM1DI RVVM2DI RVVM4DI RVVM8DI
+   (RVVM1HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM2HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM4HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM8HF "TARGET_VECTOR_ELEN_FP_16")
+   (RVVM1BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM4BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM1SF "TARGET_VECTOR_ELEN_FP_32")
+   (RVVM2SF "TARGET_VECTOR_ELEN_FP_32")
+   (RVVM4SF "TARGET_VECTOR_ELEN_FP_32")
+   (RVVM8SF "TARGET_VECTOR_ELEN_FP_32")
+   (RVVM1DF "TARGET_VECTOR_ELEN_FP_64")
+   (RVVM2DF "TARGET_VECTOR_ELEN_FP_64")
+   (RVVM4DF "TARGET_VECTOR_ELEN_FP_64")
+   (RVVM8DF "TARGET_VECTOR_ELEN_FP_64")])
+
+;; @pred_vmtl_as_e8<mode> / _e16 / _e32 / _e64.
+;; Same RTL shape as @pred_vmtl<mode>; only the `sew' attribute differs.
+(define_insn "@pred_vmtl_as_e8<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E8 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E8
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E8
+	    [(match_operand:VI_LMUL1_LE_E8 3 "memory_operand" "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTL_AS_E8)
+	  (match_operand:VI_LMUL1_LE_E8 2 "vector_merge_operand" "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "8")])
+
+(define_insn "@pred_vmtl_as_e16<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E16 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E16
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E16
+	    [(match_operand:VI_LMUL1_LE_E16 3 "memory_operand" "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTL_AS_E16)
+	  (match_operand:VI_LMUL1_LE_E16 2 "vector_merge_operand" "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "16")])
+
+(define_insn "@pred_vmtl_as_e32<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E32 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E32
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E32
+	    [(match_operand:VI_LMUL1_LE_E32 3 "memory_operand" "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTL_AS_E32)
+	  (match_operand:VI_LMUL1_LE_E32 2 "vector_merge_operand" "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "32")])
+
+(define_insn "@pred_vmtl_as_e64<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E64 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E64
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E64
+	    [(match_operand:VI_LMUL1_LE_E64 3 "memory_operand" "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTL_AS_E64)
+	  (match_operand:VI_LMUL1_LE_E64 2 "vector_merge_operand" "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "64")])
+
+;; @pred_vmts_as_e8<mode> / _e16 / _e32 / _e64.
+;; Same RTL shape as @pred_vmts<mode>; only the `sew' attribute differs.
+(define_insn "@pred_vmts_as_e8<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E8 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E8 3 "register_operand" "   vr")]
+	  UNSPEC_VMTS_AS_E8))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "8")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmts_as_e16<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E16 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E16 3 "register_operand" "   vr")]
+	  UNSPEC_VMTS_AS_E16))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "16")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmts_as_e32<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E32 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E32 3 "register_operand" "   vr")]
+	  UNSPEC_VMTS_AS_E32))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "32")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmts_as_e64<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E64 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E64 3 "register_operand" "   vr")]
+	  UNSPEC_VMTS_AS_E64))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "64")
    (set (attr "avl_type_idx") (const_int 5))])
 
 ;; ---------------------------------------------------------------------------

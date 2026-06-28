@@ -4179,6 +4179,35 @@ static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops
      rvv_arg_type_info (RVV_BASE_void),
      scalar_ptr_ptrdiff_args};
 
+/* Arg lists for IME `_as_e{S}' tile load/store intrinsics (spec §2983+):
+   the base pointer is `const void *' / `void *' because the logical
+   type and storage element width are independent.  */
+static CONSTEXPR const rvv_arg_type_info untyped_const_ptr_ptrdiff_args[]
+  = {rvv_arg_type_info (RVV_BASE_untyped_const_ptr),
+     rvv_arg_type_info (RVV_BASE_ptrdiff), rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info untyped_ptr_ptrdiff_args[]
+  = {rvv_arg_type_info (RVV_BASE_untyped_ptr),
+     rvv_arg_type_info (RVV_BASE_ptrdiff), rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+
+/* Op-info for `_as_e{S}' vmtl.v.  Same logical-type list as unqualified
+   vmtl; mode-iterator gating in the RTL pattern silently skips
+   instances with logical EEW > S via build_one's check_type.  */
+static CONSTEXPR const rvv_op_info
+  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops
+  = {fiu_lmul_ge1_ops,
+     OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_vector),
+     untyped_const_ptr_ptrdiff_args};
+
+/* Op-info for `_as_e{S}' vmts.v.  */
+static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops
+  = {fiu_lmul_ge1_ops,
+     OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_void),
+     untyped_ptr_ptrdiff_args};
+
 /* Op-info structs for v8wmmacc.vv (W=8).  */
 
 static CONSTEXPR const rvv_op_info i_ime_8wvss_ops

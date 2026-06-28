@@ -4326,6 +4326,63 @@ static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L16> vmtts_L16_obj;
 static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L32> vmtts_L32_obj;
 static CONSTEXPR const vmtts_L_ime<UNSPEC_VMTTS_L64> vmtts_L64_obj;
 
+/* Zvvmtls storage-width-qualified tile load (spec §2983+):
+   vmtl.v at SEW=S regardless of the logical type.  Each S maps to
+   its own RTL pattern; the S parameter selects the `code_for_*'
+   getter.  Logical EEW > S instances are silently filtered out by
+   build_one's check_type because the pattern's mode iterator
+   (`VI_LMUL1_LE_E{S}') excludes too-wide modes.  */
+template <insn_code (*CODE_FOR)(machine_mode)>
+class vmtl_as_e_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (CODE_FOR (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmtl_as_e_ime<code_for_pred_vmtl_as_e8>  vmtl_as_e8_obj;
+static CONSTEXPR const vmtl_as_e_ime<code_for_pred_vmtl_as_e16> vmtl_as_e16_obj;
+static CONSTEXPR const vmtl_as_e_ime<code_for_pred_vmtl_as_e32> vmtl_as_e32_obj;
+static CONSTEXPR const vmtl_as_e_ime<code_for_pred_vmtl_as_e64> vmtl_as_e64_obj;
+
+/* Zvvmtls storage-width-qualified tile store (spec §2983+).  */
+template <insn_code (*CODE_FOR)(machine_mode)>
+class vmts_as_e_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (CODE_FOR (e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmts_as_e8>  vmts_as_e8_obj;
+static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmts_as_e16> vmts_as_e16_obj;
+static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmts_as_e32> vmts_as_e32_obj;
+static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmts_as_e64> vmts_as_e64_obj;
+
 /* Zvvmtls order-preserving tile store (vmts.v), MVP: LMUL=1,
    unmasked, dynamic lambda.  Intrinsic signature is
    (T *base, ptrdiff_t ld, vector_t data, size_t vl) -> void.  */
@@ -4883,6 +4940,14 @@ BASE (vmtl)
 BASE (vmts)
 BASE (vmttl)
 BASE (vmtts)
+BASE (vmtl_as_e8)
+BASE (vmtl_as_e16)
+BASE (vmtl_as_e32)
+BASE (vmtl_as_e64)
+BASE (vmts_as_e8)
+BASE (vmts_as_e16)
+BASE (vmts_as_e32)
+BASE (vmts_as_e64)
 BASE (vmtl_L1)
 BASE (vmtl_L2)
 BASE (vmtl_L4)
