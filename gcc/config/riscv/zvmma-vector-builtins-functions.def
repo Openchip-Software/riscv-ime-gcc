@@ -377,6 +377,235 @@ DEF_RVV_FUNCTION (vmtts_L32, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
 DEF_RVV_FUNCTION (vmtts_L64, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+
+/* Cross product of immediate-lambda (_L{N}) and storage-width-qualifier
+   (_as_e{S}) for all four tile load/store families per spec section 2542.
+   Each (family, S) pair shares one RTL pattern that iterates over the
+   seven L UNSPECs.  */
+DEF_RVV_FUNCTION (vmtl_L1_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L1_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L1_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L1_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L2_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L2_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L2_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L2_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L4_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L4_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L4_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L4_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L8_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L8_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L8_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L8_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L16_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L16_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L16_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L16_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L32_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L32_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L32_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L32_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L64_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L64_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L64_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl_L64_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L1_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L1_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L1_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L1_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L2_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L2_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L2_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L2_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L4_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L4_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L4_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L4_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L8_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L8_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L8_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L8_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L16_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L16_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L16_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L16_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L32_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L32_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L32_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L32_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L64_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L64_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L64_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts_L64_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L1_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L1_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L1_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L1_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L2_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L2_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L2_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L2_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L4_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L4_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L4_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L4_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L8_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L8_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L8_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L8_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L16_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L16_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L16_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L16_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L32_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L32_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L32_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L32_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L64_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L64_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L64_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_L64_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L1_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L1_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L1_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L1_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L2_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L2_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L2_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L2_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L4_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L4_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L4_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L4_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L8_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L8_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L8_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L8_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L16_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L16_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L16_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L16_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L32_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L32_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L32_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L32_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L64_as_e8, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L64_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L64_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_L64_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
 #undef REQUIRED_EXTENSIONS
 
 /* IME geometry query builtins.  These are gated on the Zvmma macro

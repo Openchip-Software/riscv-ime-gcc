@@ -4405,6 +4405,399 @@ static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmtts_as_e32>
 static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmtts_as_e64>
   vmtts_as_e64_obj;
 
+/* Zvvmtls / Zvvmttls storage-width-qualified L-immediate tile load
+   and store (spec §2542 cross product `_as_e{S}_L{N}').  16 class
+   templates (4 families x 4 storage widths) parametrised on the
+   L-iterator UNSPEC; 4 x 7 x 4 = 112 instances follow.  The
+   `code_for_pred_<family>_as_e{S}' getter is the OVERLOADED two-arg
+   form taking (int UNSPEC, machine_mode mode) -- C++ overload
+   resolution picks it because the call site passes two arguments
+   (the non-L variant is the one-arg form).  */
+template <int UNSPEC> class vmtl_L_as_e8_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmtl_as_e8 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmtl_L_as_e16_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmtl_as_e16 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmtl_L_as_e32_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmtl_as_e32 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmtl_L_as_e64_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmtl_as_e64 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmts_L_as_e8_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmts_as_e8 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmts_L_as_e16_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmts_as_e16 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmts_L_as_e32_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmts_as_e32 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmts_L_as_e64_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmts_as_e64 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmttl_L_as_e8_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmttl_as_e8 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmttl_L_as_e16_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmttl_as_e16 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmttl_L_as_e32_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmttl_as_e32 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmttl_L_as_e64_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_load_insn (
+      code_for_pred_vmttl_as_e64 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmtts_L_as_e8_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmtts_as_e8 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmtts_L_as_e16_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmtts_as_e16 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmtts_L_as_e32_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmtts_as_e32 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+template <int UNSPEC> class vmtts_L_as_e64_ime : public function_base
+{
+public:
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  { return false; }
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_WRITE_MEMORY; }
+  rtx expand (function_expander &e) const override
+  {
+    return e.use_contiguous_store_insn (
+      code_for_pred_vmtts_as_e64 (UNSPEC, e.vector_mode ()));
+  }
+};
+
+static CONSTEXPR const vmtl_L_as_e8_ime<UNSPEC_VMTL_L1_AS_E8> vmtl_L1_as_e8_obj;
+static CONSTEXPR const vmtl_L_as_e16_ime<UNSPEC_VMTL_L1_AS_E16> vmtl_L1_as_e16_obj;
+static CONSTEXPR const vmtl_L_as_e32_ime<UNSPEC_VMTL_L1_AS_E32> vmtl_L1_as_e32_obj;
+static CONSTEXPR const vmtl_L_as_e64_ime<UNSPEC_VMTL_L1_AS_E64> vmtl_L1_as_e64_obj;
+static CONSTEXPR const vmtl_L_as_e8_ime<UNSPEC_VMTL_L2_AS_E8> vmtl_L2_as_e8_obj;
+static CONSTEXPR const vmtl_L_as_e16_ime<UNSPEC_VMTL_L2_AS_E16> vmtl_L2_as_e16_obj;
+static CONSTEXPR const vmtl_L_as_e32_ime<UNSPEC_VMTL_L2_AS_E32> vmtl_L2_as_e32_obj;
+static CONSTEXPR const vmtl_L_as_e64_ime<UNSPEC_VMTL_L2_AS_E64> vmtl_L2_as_e64_obj;
+static CONSTEXPR const vmtl_L_as_e8_ime<UNSPEC_VMTL_L4_AS_E8> vmtl_L4_as_e8_obj;
+static CONSTEXPR const vmtl_L_as_e16_ime<UNSPEC_VMTL_L4_AS_E16> vmtl_L4_as_e16_obj;
+static CONSTEXPR const vmtl_L_as_e32_ime<UNSPEC_VMTL_L4_AS_E32> vmtl_L4_as_e32_obj;
+static CONSTEXPR const vmtl_L_as_e64_ime<UNSPEC_VMTL_L4_AS_E64> vmtl_L4_as_e64_obj;
+static CONSTEXPR const vmtl_L_as_e8_ime<UNSPEC_VMTL_L8_AS_E8> vmtl_L8_as_e8_obj;
+static CONSTEXPR const vmtl_L_as_e16_ime<UNSPEC_VMTL_L8_AS_E16> vmtl_L8_as_e16_obj;
+static CONSTEXPR const vmtl_L_as_e32_ime<UNSPEC_VMTL_L8_AS_E32> vmtl_L8_as_e32_obj;
+static CONSTEXPR const vmtl_L_as_e64_ime<UNSPEC_VMTL_L8_AS_E64> vmtl_L8_as_e64_obj;
+static CONSTEXPR const vmtl_L_as_e8_ime<UNSPEC_VMTL_L16_AS_E8> vmtl_L16_as_e8_obj;
+static CONSTEXPR const vmtl_L_as_e16_ime<UNSPEC_VMTL_L16_AS_E16> vmtl_L16_as_e16_obj;
+static CONSTEXPR const vmtl_L_as_e32_ime<UNSPEC_VMTL_L16_AS_E32> vmtl_L16_as_e32_obj;
+static CONSTEXPR const vmtl_L_as_e64_ime<UNSPEC_VMTL_L16_AS_E64> vmtl_L16_as_e64_obj;
+static CONSTEXPR const vmtl_L_as_e8_ime<UNSPEC_VMTL_L32_AS_E8> vmtl_L32_as_e8_obj;
+static CONSTEXPR const vmtl_L_as_e16_ime<UNSPEC_VMTL_L32_AS_E16> vmtl_L32_as_e16_obj;
+static CONSTEXPR const vmtl_L_as_e32_ime<UNSPEC_VMTL_L32_AS_E32> vmtl_L32_as_e32_obj;
+static CONSTEXPR const vmtl_L_as_e64_ime<UNSPEC_VMTL_L32_AS_E64> vmtl_L32_as_e64_obj;
+static CONSTEXPR const vmtl_L_as_e8_ime<UNSPEC_VMTL_L64_AS_E8> vmtl_L64_as_e8_obj;
+static CONSTEXPR const vmtl_L_as_e16_ime<UNSPEC_VMTL_L64_AS_E16> vmtl_L64_as_e16_obj;
+static CONSTEXPR const vmtl_L_as_e32_ime<UNSPEC_VMTL_L64_AS_E32> vmtl_L64_as_e32_obj;
+static CONSTEXPR const vmtl_L_as_e64_ime<UNSPEC_VMTL_L64_AS_E64> vmtl_L64_as_e64_obj;
+static CONSTEXPR const vmts_L_as_e8_ime<UNSPEC_VMTS_L1_AS_E8> vmts_L1_as_e8_obj;
+static CONSTEXPR const vmts_L_as_e16_ime<UNSPEC_VMTS_L1_AS_E16> vmts_L1_as_e16_obj;
+static CONSTEXPR const vmts_L_as_e32_ime<UNSPEC_VMTS_L1_AS_E32> vmts_L1_as_e32_obj;
+static CONSTEXPR const vmts_L_as_e64_ime<UNSPEC_VMTS_L1_AS_E64> vmts_L1_as_e64_obj;
+static CONSTEXPR const vmts_L_as_e8_ime<UNSPEC_VMTS_L2_AS_E8> vmts_L2_as_e8_obj;
+static CONSTEXPR const vmts_L_as_e16_ime<UNSPEC_VMTS_L2_AS_E16> vmts_L2_as_e16_obj;
+static CONSTEXPR const vmts_L_as_e32_ime<UNSPEC_VMTS_L2_AS_E32> vmts_L2_as_e32_obj;
+static CONSTEXPR const vmts_L_as_e64_ime<UNSPEC_VMTS_L2_AS_E64> vmts_L2_as_e64_obj;
+static CONSTEXPR const vmts_L_as_e8_ime<UNSPEC_VMTS_L4_AS_E8> vmts_L4_as_e8_obj;
+static CONSTEXPR const vmts_L_as_e16_ime<UNSPEC_VMTS_L4_AS_E16> vmts_L4_as_e16_obj;
+static CONSTEXPR const vmts_L_as_e32_ime<UNSPEC_VMTS_L4_AS_E32> vmts_L4_as_e32_obj;
+static CONSTEXPR const vmts_L_as_e64_ime<UNSPEC_VMTS_L4_AS_E64> vmts_L4_as_e64_obj;
+static CONSTEXPR const vmts_L_as_e8_ime<UNSPEC_VMTS_L8_AS_E8> vmts_L8_as_e8_obj;
+static CONSTEXPR const vmts_L_as_e16_ime<UNSPEC_VMTS_L8_AS_E16> vmts_L8_as_e16_obj;
+static CONSTEXPR const vmts_L_as_e32_ime<UNSPEC_VMTS_L8_AS_E32> vmts_L8_as_e32_obj;
+static CONSTEXPR const vmts_L_as_e64_ime<UNSPEC_VMTS_L8_AS_E64> vmts_L8_as_e64_obj;
+static CONSTEXPR const vmts_L_as_e8_ime<UNSPEC_VMTS_L16_AS_E8> vmts_L16_as_e8_obj;
+static CONSTEXPR const vmts_L_as_e16_ime<UNSPEC_VMTS_L16_AS_E16> vmts_L16_as_e16_obj;
+static CONSTEXPR const vmts_L_as_e32_ime<UNSPEC_VMTS_L16_AS_E32> vmts_L16_as_e32_obj;
+static CONSTEXPR const vmts_L_as_e64_ime<UNSPEC_VMTS_L16_AS_E64> vmts_L16_as_e64_obj;
+static CONSTEXPR const vmts_L_as_e8_ime<UNSPEC_VMTS_L32_AS_E8> vmts_L32_as_e8_obj;
+static CONSTEXPR const vmts_L_as_e16_ime<UNSPEC_VMTS_L32_AS_E16> vmts_L32_as_e16_obj;
+static CONSTEXPR const vmts_L_as_e32_ime<UNSPEC_VMTS_L32_AS_E32> vmts_L32_as_e32_obj;
+static CONSTEXPR const vmts_L_as_e64_ime<UNSPEC_VMTS_L32_AS_E64> vmts_L32_as_e64_obj;
+static CONSTEXPR const vmts_L_as_e8_ime<UNSPEC_VMTS_L64_AS_E8> vmts_L64_as_e8_obj;
+static CONSTEXPR const vmts_L_as_e16_ime<UNSPEC_VMTS_L64_AS_E16> vmts_L64_as_e16_obj;
+static CONSTEXPR const vmts_L_as_e32_ime<UNSPEC_VMTS_L64_AS_E32> vmts_L64_as_e32_obj;
+static CONSTEXPR const vmts_L_as_e64_ime<UNSPEC_VMTS_L64_AS_E64> vmts_L64_as_e64_obj;
+static CONSTEXPR const vmttl_L_as_e8_ime<UNSPEC_VMTTL_L1_AS_E8> vmttl_L1_as_e8_obj;
+static CONSTEXPR const vmttl_L_as_e16_ime<UNSPEC_VMTTL_L1_AS_E16> vmttl_L1_as_e16_obj;
+static CONSTEXPR const vmttl_L_as_e32_ime<UNSPEC_VMTTL_L1_AS_E32> vmttl_L1_as_e32_obj;
+static CONSTEXPR const vmttl_L_as_e64_ime<UNSPEC_VMTTL_L1_AS_E64> vmttl_L1_as_e64_obj;
+static CONSTEXPR const vmttl_L_as_e8_ime<UNSPEC_VMTTL_L2_AS_E8> vmttl_L2_as_e8_obj;
+static CONSTEXPR const vmttl_L_as_e16_ime<UNSPEC_VMTTL_L2_AS_E16> vmttl_L2_as_e16_obj;
+static CONSTEXPR const vmttl_L_as_e32_ime<UNSPEC_VMTTL_L2_AS_E32> vmttl_L2_as_e32_obj;
+static CONSTEXPR const vmttl_L_as_e64_ime<UNSPEC_VMTTL_L2_AS_E64> vmttl_L2_as_e64_obj;
+static CONSTEXPR const vmttl_L_as_e8_ime<UNSPEC_VMTTL_L4_AS_E8> vmttl_L4_as_e8_obj;
+static CONSTEXPR const vmttl_L_as_e16_ime<UNSPEC_VMTTL_L4_AS_E16> vmttl_L4_as_e16_obj;
+static CONSTEXPR const vmttl_L_as_e32_ime<UNSPEC_VMTTL_L4_AS_E32> vmttl_L4_as_e32_obj;
+static CONSTEXPR const vmttl_L_as_e64_ime<UNSPEC_VMTTL_L4_AS_E64> vmttl_L4_as_e64_obj;
+static CONSTEXPR const vmttl_L_as_e8_ime<UNSPEC_VMTTL_L8_AS_E8> vmttl_L8_as_e8_obj;
+static CONSTEXPR const vmttl_L_as_e16_ime<UNSPEC_VMTTL_L8_AS_E16> vmttl_L8_as_e16_obj;
+static CONSTEXPR const vmttl_L_as_e32_ime<UNSPEC_VMTTL_L8_AS_E32> vmttl_L8_as_e32_obj;
+static CONSTEXPR const vmttl_L_as_e64_ime<UNSPEC_VMTTL_L8_AS_E64> vmttl_L8_as_e64_obj;
+static CONSTEXPR const vmttl_L_as_e8_ime<UNSPEC_VMTTL_L16_AS_E8> vmttl_L16_as_e8_obj;
+static CONSTEXPR const vmttl_L_as_e16_ime<UNSPEC_VMTTL_L16_AS_E16> vmttl_L16_as_e16_obj;
+static CONSTEXPR const vmttl_L_as_e32_ime<UNSPEC_VMTTL_L16_AS_E32> vmttl_L16_as_e32_obj;
+static CONSTEXPR const vmttl_L_as_e64_ime<UNSPEC_VMTTL_L16_AS_E64> vmttl_L16_as_e64_obj;
+static CONSTEXPR const vmttl_L_as_e8_ime<UNSPEC_VMTTL_L32_AS_E8> vmttl_L32_as_e8_obj;
+static CONSTEXPR const vmttl_L_as_e16_ime<UNSPEC_VMTTL_L32_AS_E16> vmttl_L32_as_e16_obj;
+static CONSTEXPR const vmttl_L_as_e32_ime<UNSPEC_VMTTL_L32_AS_E32> vmttl_L32_as_e32_obj;
+static CONSTEXPR const vmttl_L_as_e64_ime<UNSPEC_VMTTL_L32_AS_E64> vmttl_L32_as_e64_obj;
+static CONSTEXPR const vmttl_L_as_e8_ime<UNSPEC_VMTTL_L64_AS_E8> vmttl_L64_as_e8_obj;
+static CONSTEXPR const vmttl_L_as_e16_ime<UNSPEC_VMTTL_L64_AS_E16> vmttl_L64_as_e16_obj;
+static CONSTEXPR const vmttl_L_as_e32_ime<UNSPEC_VMTTL_L64_AS_E32> vmttl_L64_as_e32_obj;
+static CONSTEXPR const vmttl_L_as_e64_ime<UNSPEC_VMTTL_L64_AS_E64> vmttl_L64_as_e64_obj;
+static CONSTEXPR const vmtts_L_as_e8_ime<UNSPEC_VMTTS_L1_AS_E8> vmtts_L1_as_e8_obj;
+static CONSTEXPR const vmtts_L_as_e16_ime<UNSPEC_VMTTS_L1_AS_E16> vmtts_L1_as_e16_obj;
+static CONSTEXPR const vmtts_L_as_e32_ime<UNSPEC_VMTTS_L1_AS_E32> vmtts_L1_as_e32_obj;
+static CONSTEXPR const vmtts_L_as_e64_ime<UNSPEC_VMTTS_L1_AS_E64> vmtts_L1_as_e64_obj;
+static CONSTEXPR const vmtts_L_as_e8_ime<UNSPEC_VMTTS_L2_AS_E8> vmtts_L2_as_e8_obj;
+static CONSTEXPR const vmtts_L_as_e16_ime<UNSPEC_VMTTS_L2_AS_E16> vmtts_L2_as_e16_obj;
+static CONSTEXPR const vmtts_L_as_e32_ime<UNSPEC_VMTTS_L2_AS_E32> vmtts_L2_as_e32_obj;
+static CONSTEXPR const vmtts_L_as_e64_ime<UNSPEC_VMTTS_L2_AS_E64> vmtts_L2_as_e64_obj;
+static CONSTEXPR const vmtts_L_as_e8_ime<UNSPEC_VMTTS_L4_AS_E8> vmtts_L4_as_e8_obj;
+static CONSTEXPR const vmtts_L_as_e16_ime<UNSPEC_VMTTS_L4_AS_E16> vmtts_L4_as_e16_obj;
+static CONSTEXPR const vmtts_L_as_e32_ime<UNSPEC_VMTTS_L4_AS_E32> vmtts_L4_as_e32_obj;
+static CONSTEXPR const vmtts_L_as_e64_ime<UNSPEC_VMTTS_L4_AS_E64> vmtts_L4_as_e64_obj;
+static CONSTEXPR const vmtts_L_as_e8_ime<UNSPEC_VMTTS_L8_AS_E8> vmtts_L8_as_e8_obj;
+static CONSTEXPR const vmtts_L_as_e16_ime<UNSPEC_VMTTS_L8_AS_E16> vmtts_L8_as_e16_obj;
+static CONSTEXPR const vmtts_L_as_e32_ime<UNSPEC_VMTTS_L8_AS_E32> vmtts_L8_as_e32_obj;
+static CONSTEXPR const vmtts_L_as_e64_ime<UNSPEC_VMTTS_L8_AS_E64> vmtts_L8_as_e64_obj;
+static CONSTEXPR const vmtts_L_as_e8_ime<UNSPEC_VMTTS_L16_AS_E8> vmtts_L16_as_e8_obj;
+static CONSTEXPR const vmtts_L_as_e16_ime<UNSPEC_VMTTS_L16_AS_E16> vmtts_L16_as_e16_obj;
+static CONSTEXPR const vmtts_L_as_e32_ime<UNSPEC_VMTTS_L16_AS_E32> vmtts_L16_as_e32_obj;
+static CONSTEXPR const vmtts_L_as_e64_ime<UNSPEC_VMTTS_L16_AS_E64> vmtts_L16_as_e64_obj;
+static CONSTEXPR const vmtts_L_as_e8_ime<UNSPEC_VMTTS_L32_AS_E8> vmtts_L32_as_e8_obj;
+static CONSTEXPR const vmtts_L_as_e16_ime<UNSPEC_VMTTS_L32_AS_E16> vmtts_L32_as_e16_obj;
+static CONSTEXPR const vmtts_L_as_e32_ime<UNSPEC_VMTTS_L32_AS_E32> vmtts_L32_as_e32_obj;
+static CONSTEXPR const vmtts_L_as_e64_ime<UNSPEC_VMTTS_L32_AS_E64> vmtts_L32_as_e64_obj;
+static CONSTEXPR const vmtts_L_as_e8_ime<UNSPEC_VMTTS_L64_AS_E8> vmtts_L64_as_e8_obj;
+static CONSTEXPR const vmtts_L_as_e16_ime<UNSPEC_VMTTS_L64_AS_E16> vmtts_L64_as_e16_obj;
+static CONSTEXPR const vmtts_L_as_e32_ime<UNSPEC_VMTTS_L64_AS_E32> vmtts_L64_as_e32_obj;
+static CONSTEXPR const vmtts_L_as_e64_ime<UNSPEC_VMTTS_L64_AS_E64> vmtts_L64_as_e64_obj;
+
 /* Zvvmtls order-preserving tile store (vmts.v), MVP: LMUL=1,
    unmasked, dynamic lambda.  Intrinsic signature is
    (T *base, ptrdiff_t ld, vector_t data, size_t vl) -> void.  */
@@ -4978,6 +5371,118 @@ BASE (vmtts_as_e8)
 BASE (vmtts_as_e16)
 BASE (vmtts_as_e32)
 BASE (vmtts_as_e64)
+BASE (vmtl_L1_as_e8)
+BASE (vmtl_L1_as_e16)
+BASE (vmtl_L1_as_e32)
+BASE (vmtl_L1_as_e64)
+BASE (vmtl_L2_as_e8)
+BASE (vmtl_L2_as_e16)
+BASE (vmtl_L2_as_e32)
+BASE (vmtl_L2_as_e64)
+BASE (vmtl_L4_as_e8)
+BASE (vmtl_L4_as_e16)
+BASE (vmtl_L4_as_e32)
+BASE (vmtl_L4_as_e64)
+BASE (vmtl_L8_as_e8)
+BASE (vmtl_L8_as_e16)
+BASE (vmtl_L8_as_e32)
+BASE (vmtl_L8_as_e64)
+BASE (vmtl_L16_as_e8)
+BASE (vmtl_L16_as_e16)
+BASE (vmtl_L16_as_e32)
+BASE (vmtl_L16_as_e64)
+BASE (vmtl_L32_as_e8)
+BASE (vmtl_L32_as_e16)
+BASE (vmtl_L32_as_e32)
+BASE (vmtl_L32_as_e64)
+BASE (vmtl_L64_as_e8)
+BASE (vmtl_L64_as_e16)
+BASE (vmtl_L64_as_e32)
+BASE (vmtl_L64_as_e64)
+BASE (vmts_L1_as_e8)
+BASE (vmts_L1_as_e16)
+BASE (vmts_L1_as_e32)
+BASE (vmts_L1_as_e64)
+BASE (vmts_L2_as_e8)
+BASE (vmts_L2_as_e16)
+BASE (vmts_L2_as_e32)
+BASE (vmts_L2_as_e64)
+BASE (vmts_L4_as_e8)
+BASE (vmts_L4_as_e16)
+BASE (vmts_L4_as_e32)
+BASE (vmts_L4_as_e64)
+BASE (vmts_L8_as_e8)
+BASE (vmts_L8_as_e16)
+BASE (vmts_L8_as_e32)
+BASE (vmts_L8_as_e64)
+BASE (vmts_L16_as_e8)
+BASE (vmts_L16_as_e16)
+BASE (vmts_L16_as_e32)
+BASE (vmts_L16_as_e64)
+BASE (vmts_L32_as_e8)
+BASE (vmts_L32_as_e16)
+BASE (vmts_L32_as_e32)
+BASE (vmts_L32_as_e64)
+BASE (vmts_L64_as_e8)
+BASE (vmts_L64_as_e16)
+BASE (vmts_L64_as_e32)
+BASE (vmts_L64_as_e64)
+BASE (vmttl_L1_as_e8)
+BASE (vmttl_L1_as_e16)
+BASE (vmttl_L1_as_e32)
+BASE (vmttl_L1_as_e64)
+BASE (vmttl_L2_as_e8)
+BASE (vmttl_L2_as_e16)
+BASE (vmttl_L2_as_e32)
+BASE (vmttl_L2_as_e64)
+BASE (vmttl_L4_as_e8)
+BASE (vmttl_L4_as_e16)
+BASE (vmttl_L4_as_e32)
+BASE (vmttl_L4_as_e64)
+BASE (vmttl_L8_as_e8)
+BASE (vmttl_L8_as_e16)
+BASE (vmttl_L8_as_e32)
+BASE (vmttl_L8_as_e64)
+BASE (vmttl_L16_as_e8)
+BASE (vmttl_L16_as_e16)
+BASE (vmttl_L16_as_e32)
+BASE (vmttl_L16_as_e64)
+BASE (vmttl_L32_as_e8)
+BASE (vmttl_L32_as_e16)
+BASE (vmttl_L32_as_e32)
+BASE (vmttl_L32_as_e64)
+BASE (vmttl_L64_as_e8)
+BASE (vmttl_L64_as_e16)
+BASE (vmttl_L64_as_e32)
+BASE (vmttl_L64_as_e64)
+BASE (vmtts_L1_as_e8)
+BASE (vmtts_L1_as_e16)
+BASE (vmtts_L1_as_e32)
+BASE (vmtts_L1_as_e64)
+BASE (vmtts_L2_as_e8)
+BASE (vmtts_L2_as_e16)
+BASE (vmtts_L2_as_e32)
+BASE (vmtts_L2_as_e64)
+BASE (vmtts_L4_as_e8)
+BASE (vmtts_L4_as_e16)
+BASE (vmtts_L4_as_e32)
+BASE (vmtts_L4_as_e64)
+BASE (vmtts_L8_as_e8)
+BASE (vmtts_L8_as_e16)
+BASE (vmtts_L8_as_e32)
+BASE (vmtts_L8_as_e64)
+BASE (vmtts_L16_as_e8)
+BASE (vmtts_L16_as_e16)
+BASE (vmtts_L16_as_e32)
+BASE (vmtts_L16_as_e64)
+BASE (vmtts_L32_as_e8)
+BASE (vmtts_L32_as_e16)
+BASE (vmtts_L32_as_e32)
+BASE (vmtts_L32_as_e64)
+BASE (vmtts_L64_as_e8)
+BASE (vmtts_L64_as_e16)
+BASE (vmtts_L64_as_e32)
+BASE (vmtts_L64_as_e64)
 BASE (vmtl_L1)
 BASE (vmtl_L2)
 BASE (vmtl_L4)
