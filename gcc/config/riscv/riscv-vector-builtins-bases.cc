@@ -3591,6 +3591,18 @@ public:
   bool can_be_overloaded_p (enum predication_type_index) const override
   { return false; }
 
+  /* W=1 OFP8 mmacc is the only IME FP variant whose accumulator AND
+     both inputs are all packed in QImode -- there is no FP-mode
+     operand for `function_instance::any_type_float_p' to detect.
+     Without an explicit override, `call_properties' would return 0,
+     `modifies_global_state_p' would say false, the builtin would be
+     marked `const' and gimple `sink1' would sink the call past a
+     user-side `asm volatile' that clobbers FRM.  Surface the
+     FPCR-read / FP-exception side-effects directly so the call is
+     pinned in dataflow exactly the same way native FP mmaccs are.  */
+  unsigned int call_properties (const function_instance &) const override
+  { return CP_READ_FPCR | CP_RAISE_FP_EXCEPTIONS; }
+
   rtx expand (function_expander &e) const override
   {
     ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
