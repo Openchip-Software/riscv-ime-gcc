@@ -1493,33 +1493,70 @@ struct ime_tile_def : public build_base
     if (overloaded_p && !instance.base->can_be_overloaded_p (instance.pred))
       return nullptr;
 
-    /* Decode an optional trailing "_L{N}" tile-immediate-lambda
-       token from the internal base_name, e.g. "vmtl_L4" -> base
-       "vmtl" plus suffix "_L4".  */
+    /* Decode optional internal suffixes from the base_name, in any
+       order (accept both authoring forms, e.g. `vmtl_L4_as_e32' and
+       `vmtl_as_e32_L4'):
+
+	 _L{N}     immediate-lambda override     (N = 1/2/4/8/16/32/64)
+	 _as_e{S}  storage-width qualifier       (S = 8/16/32/64)
+
+       The user-visible name re-emits them in the spec-mandated order
+       `{type}[_as_e{S}][_L{N}][_m]' (§2542).  */
     const char *internal = instance.base_name;
-    size_t ilen = strlen (internal);
-    size_t base_len = ilen;
-    const char *lambda_suffix = "";
-    const char *u = strrchr (internal, '_');
-    if (u && u[1] == 'L' && u[2] != '\0')
+    size_t base_len = strlen (internal);
+    char lambda_buf[16] = "";
+    char storage_buf[16] = "";
+
+    auto strip_lambda = [&] () -> bool
       {
-	const char *p = u + 2;
-	bool all_digits = true;
-	while (*p)
-	  {
-	    if (*p < '0' || *p > '9')
-	      {
-		all_digits = false;
-		break;
-	      }
-	    ++p;
-	  }
-	if (all_digits)
-	  {
-	    lambda_suffix = u;	    /* e.g. "_L4"  */
-	    base_len = u - internal;
-	  }
-      }
+	if (lambda_buf[0] || base_len < 3)
+	  return false;
+	size_t off = base_len;
+	while (off > 0 && internal[off - 1] != '_')
+	  --off;
+	if (off == 0)
+	  return false;
+	size_t tok_off = off - 1;
+	if (internal[tok_off + 1] != 'L' || tok_off + 2 >= base_len)
+	  return false;
+	for (size_t i = tok_off + 2; i < base_len; ++i)
+	  if (internal[i] < '0' || internal[i] > '9')
+	    return false;
+	size_t len = base_len - tok_off;
+	gcc_assert (len + 1 <= sizeof (lambda_buf));
+	memcpy (lambda_buf, internal + tok_off, len);
+	lambda_buf[len] = '\0';
+	base_len = tok_off;
+	return true;
+      };
+
+    auto strip_storage = [&] () -> bool
+      {
+	if (storage_buf[0] || base_len < 6)
+	  return false;
+	size_t off = base_len;
+	while (off > 0 && internal[off - 1] != '_')
+	  --off;
+	if (off == 0)
+	  return false;
+	size_t tok_off = off - 1;
+	if (internal[tok_off + 1] != 'e' || tok_off + 2 >= base_len)
+	  return false;
+	for (size_t i = tok_off + 2; i < base_len; ++i)
+	  if (internal[i] < '0' || internal[i] > '9')
+	    return false;
+	if (tok_off < 3 || memcmp (internal + tok_off - 3, "_as", 3) != 0)
+	  return false;
+	size_t len = base_len - (tok_off - 3);
+	gcc_assert (len + 1 <= sizeof (storage_buf));
+	memcpy (storage_buf, internal + tok_off - 3, len);
+	storage_buf[len] = '\0';
+	base_len = tok_off - 3;
+	return true;
+      };
+
+    while (strip_lambda () || strip_storage ())
+      ;
 
     char base_buf[24];
     gcc_assert (base_len + 1 <= sizeof (base_buf));
@@ -1531,9 +1568,11 @@ struct ime_tile_def : public build_base
     b.append_name (operand_suffixes[instance.op_info->op]);
     if (!overloaded_p)
       b.append_name (type_suffixes[instance.type.index].vector);
-    /* "_Lλ" immediate-lambda suffix, if present.  */
-    if (*lambda_suffix)
-      b.append_name (lambda_suffix);
+    /* Spec §2542: `{type}[_as_e{S}][_L{N}][_m]'.  */
+    if (storage_buf[0])
+      b.append_name (storage_buf);
+    if (lambda_buf[0])
+      b.append_name (lambda_buf);
     b.append_name (predication_suffixes[instance.pred]);
     return b.finish_name ();
   }
