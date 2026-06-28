@@ -4383,6 +4383,28 @@ static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmts_as_e16> vmts_as_e16_obj;
 static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmts_as_e32> vmts_as_e32_obj;
 static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmts_as_e64> vmts_as_e64_obj;
 
+/* Zvvmttls storage-width-qualified transposing tile load/store (spec
+   §2983+).  Same expansion shape as vmtl_as_e_ime / vmts_as_e_ime;
+   only the underlying `code_for_*' pattern differs (vmttl.v / vmtts.v
+   instead of vmtl.v / vmts.v).  */
+static CONSTEXPR const vmtl_as_e_ime<code_for_pred_vmttl_as_e8>
+  vmttl_as_e8_obj;
+static CONSTEXPR const vmtl_as_e_ime<code_for_pred_vmttl_as_e16>
+  vmttl_as_e16_obj;
+static CONSTEXPR const vmtl_as_e_ime<code_for_pred_vmttl_as_e32>
+  vmttl_as_e32_obj;
+static CONSTEXPR const vmtl_as_e_ime<code_for_pred_vmttl_as_e64>
+  vmttl_as_e64_obj;
+
+static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmtts_as_e8>
+  vmtts_as_e8_obj;
+static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmtts_as_e16>
+  vmtts_as_e16_obj;
+static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmtts_as_e32>
+  vmtts_as_e32_obj;
+static CONSTEXPR const vmts_as_e_ime<code_for_pred_vmtts_as_e64>
+  vmtts_as_e64_obj;
+
 /* Zvvmtls order-preserving tile store (vmts.v), MVP: LMUL=1,
    unmasked, dynamic lambda.  Intrinsic signature is
    (T *base, ptrdiff_t ld, vector_t data, size_t vl) -> void.  */
@@ -4948,6 +4970,14 @@ BASE (vmts_as_e8)
 BASE (vmts_as_e16)
 BASE (vmts_as_e32)
 BASE (vmts_as_e64)
+BASE (vmttl_as_e8)
+BASE (vmttl_as_e16)
+BASE (vmttl_as_e32)
+BASE (vmttl_as_e64)
+BASE (vmtts_as_e8)
+BASE (vmtts_as_e16)
+BASE (vmtts_as_e32)
+BASE (vmtts_as_e64)
 BASE (vmtl_L1)
 BASE (vmtl_L2)
 BASE (vmtl_L4)

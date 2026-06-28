@@ -328,6 +328,26 @@ DEF_RVV_FUNCTION (vmttl, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
 DEF_RVV_FUNCTION (vmtts, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+/* Storage-width-qualified `_as_e{S}' variants of vmttl.v (spec §2983+).
+   Sub-byte logical types are excluded both by the spec and by the
+   pattern's mode iterator.  */
+DEF_RVV_FUNCTION (vmttl_as_e8,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmttl_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops)
+/* Storage-width-qualified `_as_e{S}' variants of vmtts.v.  */
+DEF_RVV_FUNCTION (vmtts_as_e8,  ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_as_e16, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_as_e32, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtts_as_e64, ime_tile, none_m_preds,
+		  iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops)
 /* Immediate-lambda variants of vmttl.v / vmtts.v.  */
 DEF_RVV_FUNCTION (vmttl_L1,  ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)

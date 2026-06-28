@@ -85,6 +85,18 @@
   UNSPEC_VMTS_AS_E16
   UNSPEC_VMTS_AS_E32
   UNSPEC_VMTS_AS_E64
+  ;; Transposing variants -- spec excludes sub-byte logical types
+  ;; (OFP4, Int4) because tile transposition cannot be performed at
+  ;; sub-byte granularity.  The mode iterators below already drop
+  ;; those because they are not part of VI_LMUL1_LE_E{S}.
+  UNSPEC_VMTTL_AS_E8
+  UNSPEC_VMTTL_AS_E16
+  UNSPEC_VMTTL_AS_E32
+  UNSPEC_VMTTL_AS_E64
+  UNSPEC_VMTTS_AS_E8
+  UNSPEC_VMTTS_AS_E16
+  UNSPEC_VMTTS_AS_E32
+  UNSPEC_VMTTS_AS_E64
 
   ;; Zvvfmm - FP matrix multiply-accumulate
   UNSPEC_VFMMACC			;; vfmmacc.vv (W=1, same-format FP)
@@ -1996,6 +2008,193 @@
 	  UNSPEC_VMTS_AS_E64))]
   "TARGET_ZVVMTLS"
   "vmts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "64")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmttls - Storage-width-qualified transposing tile load/store
+;;            (spec §2983+: `_as_e{S}' variants of vmttl.v / vmts.v)
+;; ---------------------------------------------------------------------------
+;;
+;; Identical scheme to the non-transposing `_as_e{S}' patterns above
+;; (only the mnemonic and the UNSPEC selector differ).  Sub-byte
+;; logical types (Int4, UInt4, OFP4) are excluded by the IME spec
+;; because the transposition cannot be done at sub-byte granularity;
+;; nothing extra is needed here because those types use RVVM*QI mode
+;; that the VI_LMUL1_LE_E{S} iterators already restrict to plain
+;; 8-bit storage anyway, and the user-callable shape never produces
+;; sub-byte logical types for vmttl/vmtts (the type list in the DEF
+;; entry filters them out).
+
+(define_insn "@pred_vmttl_as_e8<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E8 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E8
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E8
+	    [(match_operand:VI_LMUL1_LE_E8 3 "memory_operand" "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTTL_AS_E8)
+	  (match_operand:VI_LMUL1_LE_E8 2 "vector_merge_operand" "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "8")])
+
+(define_insn "@pred_vmttl_as_e16<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E16 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E16
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E16
+	    [(match_operand:VI_LMUL1_LE_E16 3 "memory_operand" "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTTL_AS_E16)
+	  (match_operand:VI_LMUL1_LE_E16 2 "vector_merge_operand" "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "16")])
+
+(define_insn "@pred_vmttl_as_e32<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E32 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E32
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E32
+	    [(match_operand:VI_LMUL1_LE_E32 3 "memory_operand" "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTTL_AS_E32)
+	  (match_operand:VI_LMUL1_LE_E32 2 "vector_merge_operand" "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "32")])
+
+(define_insn "@pred_vmttl_as_e64<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E64 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E64
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E64
+	    [(match_operand:VI_LMUL1_LE_E64 3 "memory_operand" "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    UNSPEC_VMTTL_AS_E64)
+	  (match_operand:VI_LMUL1_LE_E64 2 "vector_merge_operand" "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "64")])
+
+(define_insn "@pred_vmtts_as_e8<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E8 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E8 3 "register_operand" "   vr")]
+	  UNSPEC_VMTTS_AS_E8))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "8")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmtts_as_e16<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E16 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E16 3 "register_operand" "   vr")]
+	  UNSPEC_VMTTS_AS_E16))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "16")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmtts_as_e32<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E32 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E32 3 "register_operand" "   vr")]
+	  UNSPEC_VMTTS_AS_E32))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "32")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmtts_as_e64<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E64 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E64 3 "register_operand" "   vr")]
+	  UNSPEC_VMTTS_AS_E64))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2%p1"
   [(set_attr "type" "vsts")
    (set_attr "mode" "<MODE>")
    (set_attr "sew" "64")
