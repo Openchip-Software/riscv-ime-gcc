@@ -97,6 +97,119 @@
   UNSPEC_VMTTS_AS_E16
   UNSPEC_VMTTS_AS_E32
   UNSPEC_VMTTS_AS_E64
+;; --- Cross-product UNSPECs: _L{N}_as_e{S} ---
+  UNSPEC_VMTL_L1_AS_E8
+  UNSPEC_VMTL_L2_AS_E8
+  UNSPEC_VMTL_L4_AS_E8
+  UNSPEC_VMTL_L8_AS_E8
+  UNSPEC_VMTL_L16_AS_E8
+  UNSPEC_VMTL_L32_AS_E8
+  UNSPEC_VMTL_L64_AS_E8
+  UNSPEC_VMTL_L1_AS_E16
+  UNSPEC_VMTL_L2_AS_E16
+  UNSPEC_VMTL_L4_AS_E16
+  UNSPEC_VMTL_L8_AS_E16
+  UNSPEC_VMTL_L16_AS_E16
+  UNSPEC_VMTL_L32_AS_E16
+  UNSPEC_VMTL_L64_AS_E16
+  UNSPEC_VMTL_L1_AS_E32
+  UNSPEC_VMTL_L2_AS_E32
+  UNSPEC_VMTL_L4_AS_E32
+  UNSPEC_VMTL_L8_AS_E32
+  UNSPEC_VMTL_L16_AS_E32
+  UNSPEC_VMTL_L32_AS_E32
+  UNSPEC_VMTL_L64_AS_E32
+  UNSPEC_VMTL_L1_AS_E64
+  UNSPEC_VMTL_L2_AS_E64
+  UNSPEC_VMTL_L4_AS_E64
+  UNSPEC_VMTL_L8_AS_E64
+  UNSPEC_VMTL_L16_AS_E64
+  UNSPEC_VMTL_L32_AS_E64
+  UNSPEC_VMTL_L64_AS_E64
+  UNSPEC_VMTS_L1_AS_E8
+  UNSPEC_VMTS_L2_AS_E8
+  UNSPEC_VMTS_L4_AS_E8
+  UNSPEC_VMTS_L8_AS_E8
+  UNSPEC_VMTS_L16_AS_E8
+  UNSPEC_VMTS_L32_AS_E8
+  UNSPEC_VMTS_L64_AS_E8
+  UNSPEC_VMTS_L1_AS_E16
+  UNSPEC_VMTS_L2_AS_E16
+  UNSPEC_VMTS_L4_AS_E16
+  UNSPEC_VMTS_L8_AS_E16
+  UNSPEC_VMTS_L16_AS_E16
+  UNSPEC_VMTS_L32_AS_E16
+  UNSPEC_VMTS_L64_AS_E16
+  UNSPEC_VMTS_L1_AS_E32
+  UNSPEC_VMTS_L2_AS_E32
+  UNSPEC_VMTS_L4_AS_E32
+  UNSPEC_VMTS_L8_AS_E32
+  UNSPEC_VMTS_L16_AS_E32
+  UNSPEC_VMTS_L32_AS_E32
+  UNSPEC_VMTS_L64_AS_E32
+  UNSPEC_VMTS_L1_AS_E64
+  UNSPEC_VMTS_L2_AS_E64
+  UNSPEC_VMTS_L4_AS_E64
+  UNSPEC_VMTS_L8_AS_E64
+  UNSPEC_VMTS_L16_AS_E64
+  UNSPEC_VMTS_L32_AS_E64
+  UNSPEC_VMTS_L64_AS_E64
+  UNSPEC_VMTTL_L1_AS_E8
+  UNSPEC_VMTTL_L2_AS_E8
+  UNSPEC_VMTTL_L4_AS_E8
+  UNSPEC_VMTTL_L8_AS_E8
+  UNSPEC_VMTTL_L16_AS_E8
+  UNSPEC_VMTTL_L32_AS_E8
+  UNSPEC_VMTTL_L64_AS_E8
+  UNSPEC_VMTTL_L1_AS_E16
+  UNSPEC_VMTTL_L2_AS_E16
+  UNSPEC_VMTTL_L4_AS_E16
+  UNSPEC_VMTTL_L8_AS_E16
+  UNSPEC_VMTTL_L16_AS_E16
+  UNSPEC_VMTTL_L32_AS_E16
+  UNSPEC_VMTTL_L64_AS_E16
+  UNSPEC_VMTTL_L1_AS_E32
+  UNSPEC_VMTTL_L2_AS_E32
+  UNSPEC_VMTTL_L4_AS_E32
+  UNSPEC_VMTTL_L8_AS_E32
+  UNSPEC_VMTTL_L16_AS_E32
+  UNSPEC_VMTTL_L32_AS_E32
+  UNSPEC_VMTTL_L64_AS_E32
+  UNSPEC_VMTTL_L1_AS_E64
+  UNSPEC_VMTTL_L2_AS_E64
+  UNSPEC_VMTTL_L4_AS_E64
+  UNSPEC_VMTTL_L8_AS_E64
+  UNSPEC_VMTTL_L16_AS_E64
+  UNSPEC_VMTTL_L32_AS_E64
+  UNSPEC_VMTTL_L64_AS_E64
+  UNSPEC_VMTTS_L1_AS_E8
+  UNSPEC_VMTTS_L2_AS_E8
+  UNSPEC_VMTTS_L4_AS_E8
+  UNSPEC_VMTTS_L8_AS_E8
+  UNSPEC_VMTTS_L16_AS_E8
+  UNSPEC_VMTTS_L32_AS_E8
+  UNSPEC_VMTTS_L64_AS_E8
+  UNSPEC_VMTTS_L1_AS_E16
+  UNSPEC_VMTTS_L2_AS_E16
+  UNSPEC_VMTTS_L4_AS_E16
+  UNSPEC_VMTTS_L8_AS_E16
+  UNSPEC_VMTTS_L16_AS_E16
+  UNSPEC_VMTTS_L32_AS_E16
+  UNSPEC_VMTTS_L64_AS_E16
+  UNSPEC_VMTTS_L1_AS_E32
+  UNSPEC_VMTTS_L2_AS_E32
+  UNSPEC_VMTTS_L4_AS_E32
+  UNSPEC_VMTTS_L8_AS_E32
+  UNSPEC_VMTTS_L16_AS_E32
+  UNSPEC_VMTTS_L32_AS_E32
+  UNSPEC_VMTTS_L64_AS_E32
+  UNSPEC_VMTTS_L1_AS_E64
+  UNSPEC_VMTTS_L2_AS_E64
+  UNSPEC_VMTTS_L4_AS_E64
+  UNSPEC_VMTTS_L8_AS_E64
+  UNSPEC_VMTTS_L16_AS_E64
+  UNSPEC_VMTTS_L32_AS_E64
+  UNSPEC_VMTTS_L64_AS_E64
 
   ;; Zvvfmm - FP matrix multiply-accumulate
   UNSPEC_VFMMACC			;; vfmmacc.vv (W=1, same-format FP)
@@ -2195,6 +2308,700 @@
 	  UNSPEC_VMTTS_AS_E64))]
   "TARGET_ZVVMTTLS"
   "vmtts.v\t%3,%0,%2%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "64")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+;; ---------------------------------------------------------------------------
+;; Zvvmtls / Zvvmttls - Cross product _L{N} x _as_e{S}
+;; (spec §2542: `{type}[_as_e{S}][_L{N}][_m]')
+;; ---------------------------------------------------------------------------
+;;
+;; Combines the immediate-lambda override (one of L1/L2/L4/L8/L16/L32/L64)
+;; with the storage-width-qualifier (one of e8/e16/e32/e64).  Each
+;; (S, family) pair has one pattern that iterates over the seven L
+;; UNSPECs via an int iterator; the `sew' attribute is set per pattern
+;; to the storage S.  The mode iterator (VI_LMUL1_LE_E{S}) excludes
+;; logical EEW > S.  Each family x S x L combo emits the same
+;; vmtl.v/vmts.v/vmttl.v/vmtts.v instruction with the appropriate L
+;; immediate in the operand and SEW=S in the surrounding vsetvl.
+
+(define_int_iterator VMTL_L_AS_E8
+  [UNSPEC_VMTL_L1_AS_E8 UNSPEC_VMTL_L2_AS_E8 UNSPEC_VMTL_L4_AS_E8 UNSPEC_VMTL_L8_AS_E8 UNSPEC_VMTL_L16_AS_E8 UNSPEC_VMTL_L32_AS_E8 UNSPEC_VMTL_L64_AS_E8])
+
+(define_int_attr vmtl_L_as_e8_imm
+  [(UNSPEC_VMTL_L1_AS_E8 "L1")
+   (UNSPEC_VMTL_L2_AS_E8 "L2")
+   (UNSPEC_VMTL_L4_AS_E8 "L4")
+   (UNSPEC_VMTL_L8_AS_E8 "L8")
+   (UNSPEC_VMTL_L16_AS_E8 "L16")
+   (UNSPEC_VMTL_L32_AS_E8 "L32")
+   (UNSPEC_VMTL_L64_AS_E8 "L64")])
+
+(define_int_attr vmtl_L_as_e8_name
+  [(UNSPEC_VMTL_L1_AS_E8 "_L1")
+   (UNSPEC_VMTL_L2_AS_E8 "_L2")
+   (UNSPEC_VMTL_L4_AS_E8 "_L4")
+   (UNSPEC_VMTL_L8_AS_E8 "_L8")
+   (UNSPEC_VMTL_L16_AS_E8 "_L16")
+   (UNSPEC_VMTL_L32_AS_E8 "_L32")
+   (UNSPEC_VMTL_L64_AS_E8 "_L64")])
+
+(define_int_iterator VMTL_L_AS_E16
+  [UNSPEC_VMTL_L1_AS_E16 UNSPEC_VMTL_L2_AS_E16 UNSPEC_VMTL_L4_AS_E16 UNSPEC_VMTL_L8_AS_E16 UNSPEC_VMTL_L16_AS_E16 UNSPEC_VMTL_L32_AS_E16 UNSPEC_VMTL_L64_AS_E16])
+
+(define_int_attr vmtl_L_as_e16_imm
+  [(UNSPEC_VMTL_L1_AS_E16 "L1")
+   (UNSPEC_VMTL_L2_AS_E16 "L2")
+   (UNSPEC_VMTL_L4_AS_E16 "L4")
+   (UNSPEC_VMTL_L8_AS_E16 "L8")
+   (UNSPEC_VMTL_L16_AS_E16 "L16")
+   (UNSPEC_VMTL_L32_AS_E16 "L32")
+   (UNSPEC_VMTL_L64_AS_E16 "L64")])
+
+(define_int_attr vmtl_L_as_e16_name
+  [(UNSPEC_VMTL_L1_AS_E16 "_L1")
+   (UNSPEC_VMTL_L2_AS_E16 "_L2")
+   (UNSPEC_VMTL_L4_AS_E16 "_L4")
+   (UNSPEC_VMTL_L8_AS_E16 "_L8")
+   (UNSPEC_VMTL_L16_AS_E16 "_L16")
+   (UNSPEC_VMTL_L32_AS_E16 "_L32")
+   (UNSPEC_VMTL_L64_AS_E16 "_L64")])
+
+(define_int_iterator VMTL_L_AS_E32
+  [UNSPEC_VMTL_L1_AS_E32 UNSPEC_VMTL_L2_AS_E32 UNSPEC_VMTL_L4_AS_E32 UNSPEC_VMTL_L8_AS_E32 UNSPEC_VMTL_L16_AS_E32 UNSPEC_VMTL_L32_AS_E32 UNSPEC_VMTL_L64_AS_E32])
+
+(define_int_attr vmtl_L_as_e32_imm
+  [(UNSPEC_VMTL_L1_AS_E32 "L1")
+   (UNSPEC_VMTL_L2_AS_E32 "L2")
+   (UNSPEC_VMTL_L4_AS_E32 "L4")
+   (UNSPEC_VMTL_L8_AS_E32 "L8")
+   (UNSPEC_VMTL_L16_AS_E32 "L16")
+   (UNSPEC_VMTL_L32_AS_E32 "L32")
+   (UNSPEC_VMTL_L64_AS_E32 "L64")])
+
+(define_int_attr vmtl_L_as_e32_name
+  [(UNSPEC_VMTL_L1_AS_E32 "_L1")
+   (UNSPEC_VMTL_L2_AS_E32 "_L2")
+   (UNSPEC_VMTL_L4_AS_E32 "_L4")
+   (UNSPEC_VMTL_L8_AS_E32 "_L8")
+   (UNSPEC_VMTL_L16_AS_E32 "_L16")
+   (UNSPEC_VMTL_L32_AS_E32 "_L32")
+   (UNSPEC_VMTL_L64_AS_E32 "_L64")])
+
+(define_int_iterator VMTL_L_AS_E64
+  [UNSPEC_VMTL_L1_AS_E64 UNSPEC_VMTL_L2_AS_E64 UNSPEC_VMTL_L4_AS_E64 UNSPEC_VMTL_L8_AS_E64 UNSPEC_VMTL_L16_AS_E64 UNSPEC_VMTL_L32_AS_E64 UNSPEC_VMTL_L64_AS_E64])
+
+(define_int_attr vmtl_L_as_e64_imm
+  [(UNSPEC_VMTL_L1_AS_E64 "L1")
+   (UNSPEC_VMTL_L2_AS_E64 "L2")
+   (UNSPEC_VMTL_L4_AS_E64 "L4")
+   (UNSPEC_VMTL_L8_AS_E64 "L8")
+   (UNSPEC_VMTL_L16_AS_E64 "L16")
+   (UNSPEC_VMTL_L32_AS_E64 "L32")
+   (UNSPEC_VMTL_L64_AS_E64 "L64")])
+
+(define_int_attr vmtl_L_as_e64_name
+  [(UNSPEC_VMTL_L1_AS_E64 "_L1")
+   (UNSPEC_VMTL_L2_AS_E64 "_L2")
+   (UNSPEC_VMTL_L4_AS_E64 "_L4")
+   (UNSPEC_VMTL_L8_AS_E64 "_L8")
+   (UNSPEC_VMTL_L16_AS_E64 "_L16")
+   (UNSPEC_VMTL_L32_AS_E64 "_L32")
+   (UNSPEC_VMTL_L64_AS_E64 "_L64")])
+
+(define_int_iterator VMTS_L_AS_E8
+  [UNSPEC_VMTS_L1_AS_E8 UNSPEC_VMTS_L2_AS_E8 UNSPEC_VMTS_L4_AS_E8 UNSPEC_VMTS_L8_AS_E8 UNSPEC_VMTS_L16_AS_E8 UNSPEC_VMTS_L32_AS_E8 UNSPEC_VMTS_L64_AS_E8])
+
+(define_int_attr vmts_L_as_e8_imm
+  [(UNSPEC_VMTS_L1_AS_E8 "L1")
+   (UNSPEC_VMTS_L2_AS_E8 "L2")
+   (UNSPEC_VMTS_L4_AS_E8 "L4")
+   (UNSPEC_VMTS_L8_AS_E8 "L8")
+   (UNSPEC_VMTS_L16_AS_E8 "L16")
+   (UNSPEC_VMTS_L32_AS_E8 "L32")
+   (UNSPEC_VMTS_L64_AS_E8 "L64")])
+
+(define_int_attr vmts_L_as_e8_name
+  [(UNSPEC_VMTS_L1_AS_E8 "_L1")
+   (UNSPEC_VMTS_L2_AS_E8 "_L2")
+   (UNSPEC_VMTS_L4_AS_E8 "_L4")
+   (UNSPEC_VMTS_L8_AS_E8 "_L8")
+   (UNSPEC_VMTS_L16_AS_E8 "_L16")
+   (UNSPEC_VMTS_L32_AS_E8 "_L32")
+   (UNSPEC_VMTS_L64_AS_E8 "_L64")])
+
+(define_int_iterator VMTS_L_AS_E16
+  [UNSPEC_VMTS_L1_AS_E16 UNSPEC_VMTS_L2_AS_E16 UNSPEC_VMTS_L4_AS_E16 UNSPEC_VMTS_L8_AS_E16 UNSPEC_VMTS_L16_AS_E16 UNSPEC_VMTS_L32_AS_E16 UNSPEC_VMTS_L64_AS_E16])
+
+(define_int_attr vmts_L_as_e16_imm
+  [(UNSPEC_VMTS_L1_AS_E16 "L1")
+   (UNSPEC_VMTS_L2_AS_E16 "L2")
+   (UNSPEC_VMTS_L4_AS_E16 "L4")
+   (UNSPEC_VMTS_L8_AS_E16 "L8")
+   (UNSPEC_VMTS_L16_AS_E16 "L16")
+   (UNSPEC_VMTS_L32_AS_E16 "L32")
+   (UNSPEC_VMTS_L64_AS_E16 "L64")])
+
+(define_int_attr vmts_L_as_e16_name
+  [(UNSPEC_VMTS_L1_AS_E16 "_L1")
+   (UNSPEC_VMTS_L2_AS_E16 "_L2")
+   (UNSPEC_VMTS_L4_AS_E16 "_L4")
+   (UNSPEC_VMTS_L8_AS_E16 "_L8")
+   (UNSPEC_VMTS_L16_AS_E16 "_L16")
+   (UNSPEC_VMTS_L32_AS_E16 "_L32")
+   (UNSPEC_VMTS_L64_AS_E16 "_L64")])
+
+(define_int_iterator VMTS_L_AS_E32
+  [UNSPEC_VMTS_L1_AS_E32 UNSPEC_VMTS_L2_AS_E32 UNSPEC_VMTS_L4_AS_E32 UNSPEC_VMTS_L8_AS_E32 UNSPEC_VMTS_L16_AS_E32 UNSPEC_VMTS_L32_AS_E32 UNSPEC_VMTS_L64_AS_E32])
+
+(define_int_attr vmts_L_as_e32_imm
+  [(UNSPEC_VMTS_L1_AS_E32 "L1")
+   (UNSPEC_VMTS_L2_AS_E32 "L2")
+   (UNSPEC_VMTS_L4_AS_E32 "L4")
+   (UNSPEC_VMTS_L8_AS_E32 "L8")
+   (UNSPEC_VMTS_L16_AS_E32 "L16")
+   (UNSPEC_VMTS_L32_AS_E32 "L32")
+   (UNSPEC_VMTS_L64_AS_E32 "L64")])
+
+(define_int_attr vmts_L_as_e32_name
+  [(UNSPEC_VMTS_L1_AS_E32 "_L1")
+   (UNSPEC_VMTS_L2_AS_E32 "_L2")
+   (UNSPEC_VMTS_L4_AS_E32 "_L4")
+   (UNSPEC_VMTS_L8_AS_E32 "_L8")
+   (UNSPEC_VMTS_L16_AS_E32 "_L16")
+   (UNSPEC_VMTS_L32_AS_E32 "_L32")
+   (UNSPEC_VMTS_L64_AS_E32 "_L64")])
+
+(define_int_iterator VMTS_L_AS_E64
+  [UNSPEC_VMTS_L1_AS_E64 UNSPEC_VMTS_L2_AS_E64 UNSPEC_VMTS_L4_AS_E64 UNSPEC_VMTS_L8_AS_E64 UNSPEC_VMTS_L16_AS_E64 UNSPEC_VMTS_L32_AS_E64 UNSPEC_VMTS_L64_AS_E64])
+
+(define_int_attr vmts_L_as_e64_imm
+  [(UNSPEC_VMTS_L1_AS_E64 "L1")
+   (UNSPEC_VMTS_L2_AS_E64 "L2")
+   (UNSPEC_VMTS_L4_AS_E64 "L4")
+   (UNSPEC_VMTS_L8_AS_E64 "L8")
+   (UNSPEC_VMTS_L16_AS_E64 "L16")
+   (UNSPEC_VMTS_L32_AS_E64 "L32")
+   (UNSPEC_VMTS_L64_AS_E64 "L64")])
+
+(define_int_attr vmts_L_as_e64_name
+  [(UNSPEC_VMTS_L1_AS_E64 "_L1")
+   (UNSPEC_VMTS_L2_AS_E64 "_L2")
+   (UNSPEC_VMTS_L4_AS_E64 "_L4")
+   (UNSPEC_VMTS_L8_AS_E64 "_L8")
+   (UNSPEC_VMTS_L16_AS_E64 "_L16")
+   (UNSPEC_VMTS_L32_AS_E64 "_L32")
+   (UNSPEC_VMTS_L64_AS_E64 "_L64")])
+
+(define_int_iterator VMTTL_L_AS_E8
+  [UNSPEC_VMTTL_L1_AS_E8 UNSPEC_VMTTL_L2_AS_E8 UNSPEC_VMTTL_L4_AS_E8 UNSPEC_VMTTL_L8_AS_E8 UNSPEC_VMTTL_L16_AS_E8 UNSPEC_VMTTL_L32_AS_E8 UNSPEC_VMTTL_L64_AS_E8])
+
+(define_int_attr vmttl_L_as_e8_imm
+  [(UNSPEC_VMTTL_L1_AS_E8 "L1")
+   (UNSPEC_VMTTL_L2_AS_E8 "L2")
+   (UNSPEC_VMTTL_L4_AS_E8 "L4")
+   (UNSPEC_VMTTL_L8_AS_E8 "L8")
+   (UNSPEC_VMTTL_L16_AS_E8 "L16")
+   (UNSPEC_VMTTL_L32_AS_E8 "L32")
+   (UNSPEC_VMTTL_L64_AS_E8 "L64")])
+
+(define_int_attr vmttl_L_as_e8_name
+  [(UNSPEC_VMTTL_L1_AS_E8 "_L1")
+   (UNSPEC_VMTTL_L2_AS_E8 "_L2")
+   (UNSPEC_VMTTL_L4_AS_E8 "_L4")
+   (UNSPEC_VMTTL_L8_AS_E8 "_L8")
+   (UNSPEC_VMTTL_L16_AS_E8 "_L16")
+   (UNSPEC_VMTTL_L32_AS_E8 "_L32")
+   (UNSPEC_VMTTL_L64_AS_E8 "_L64")])
+
+(define_int_iterator VMTTL_L_AS_E16
+  [UNSPEC_VMTTL_L1_AS_E16 UNSPEC_VMTTL_L2_AS_E16 UNSPEC_VMTTL_L4_AS_E16 UNSPEC_VMTTL_L8_AS_E16 UNSPEC_VMTTL_L16_AS_E16 UNSPEC_VMTTL_L32_AS_E16 UNSPEC_VMTTL_L64_AS_E16])
+
+(define_int_attr vmttl_L_as_e16_imm
+  [(UNSPEC_VMTTL_L1_AS_E16 "L1")
+   (UNSPEC_VMTTL_L2_AS_E16 "L2")
+   (UNSPEC_VMTTL_L4_AS_E16 "L4")
+   (UNSPEC_VMTTL_L8_AS_E16 "L8")
+   (UNSPEC_VMTTL_L16_AS_E16 "L16")
+   (UNSPEC_VMTTL_L32_AS_E16 "L32")
+   (UNSPEC_VMTTL_L64_AS_E16 "L64")])
+
+(define_int_attr vmttl_L_as_e16_name
+  [(UNSPEC_VMTTL_L1_AS_E16 "_L1")
+   (UNSPEC_VMTTL_L2_AS_E16 "_L2")
+   (UNSPEC_VMTTL_L4_AS_E16 "_L4")
+   (UNSPEC_VMTTL_L8_AS_E16 "_L8")
+   (UNSPEC_VMTTL_L16_AS_E16 "_L16")
+   (UNSPEC_VMTTL_L32_AS_E16 "_L32")
+   (UNSPEC_VMTTL_L64_AS_E16 "_L64")])
+
+(define_int_iterator VMTTL_L_AS_E32
+  [UNSPEC_VMTTL_L1_AS_E32 UNSPEC_VMTTL_L2_AS_E32 UNSPEC_VMTTL_L4_AS_E32 UNSPEC_VMTTL_L8_AS_E32 UNSPEC_VMTTL_L16_AS_E32 UNSPEC_VMTTL_L32_AS_E32 UNSPEC_VMTTL_L64_AS_E32])
+
+(define_int_attr vmttl_L_as_e32_imm
+  [(UNSPEC_VMTTL_L1_AS_E32 "L1")
+   (UNSPEC_VMTTL_L2_AS_E32 "L2")
+   (UNSPEC_VMTTL_L4_AS_E32 "L4")
+   (UNSPEC_VMTTL_L8_AS_E32 "L8")
+   (UNSPEC_VMTTL_L16_AS_E32 "L16")
+   (UNSPEC_VMTTL_L32_AS_E32 "L32")
+   (UNSPEC_VMTTL_L64_AS_E32 "L64")])
+
+(define_int_attr vmttl_L_as_e32_name
+  [(UNSPEC_VMTTL_L1_AS_E32 "_L1")
+   (UNSPEC_VMTTL_L2_AS_E32 "_L2")
+   (UNSPEC_VMTTL_L4_AS_E32 "_L4")
+   (UNSPEC_VMTTL_L8_AS_E32 "_L8")
+   (UNSPEC_VMTTL_L16_AS_E32 "_L16")
+   (UNSPEC_VMTTL_L32_AS_E32 "_L32")
+   (UNSPEC_VMTTL_L64_AS_E32 "_L64")])
+
+(define_int_iterator VMTTL_L_AS_E64
+  [UNSPEC_VMTTL_L1_AS_E64 UNSPEC_VMTTL_L2_AS_E64 UNSPEC_VMTTL_L4_AS_E64 UNSPEC_VMTTL_L8_AS_E64 UNSPEC_VMTTL_L16_AS_E64 UNSPEC_VMTTL_L32_AS_E64 UNSPEC_VMTTL_L64_AS_E64])
+
+(define_int_attr vmttl_L_as_e64_imm
+  [(UNSPEC_VMTTL_L1_AS_E64 "L1")
+   (UNSPEC_VMTTL_L2_AS_E64 "L2")
+   (UNSPEC_VMTTL_L4_AS_E64 "L4")
+   (UNSPEC_VMTTL_L8_AS_E64 "L8")
+   (UNSPEC_VMTTL_L16_AS_E64 "L16")
+   (UNSPEC_VMTTL_L32_AS_E64 "L32")
+   (UNSPEC_VMTTL_L64_AS_E64 "L64")])
+
+(define_int_attr vmttl_L_as_e64_name
+  [(UNSPEC_VMTTL_L1_AS_E64 "_L1")
+   (UNSPEC_VMTTL_L2_AS_E64 "_L2")
+   (UNSPEC_VMTTL_L4_AS_E64 "_L4")
+   (UNSPEC_VMTTL_L8_AS_E64 "_L8")
+   (UNSPEC_VMTTL_L16_AS_E64 "_L16")
+   (UNSPEC_VMTTL_L32_AS_E64 "_L32")
+   (UNSPEC_VMTTL_L64_AS_E64 "_L64")])
+
+(define_int_iterator VMTTS_L_AS_E8
+  [UNSPEC_VMTTS_L1_AS_E8 UNSPEC_VMTTS_L2_AS_E8 UNSPEC_VMTTS_L4_AS_E8 UNSPEC_VMTTS_L8_AS_E8 UNSPEC_VMTTS_L16_AS_E8 UNSPEC_VMTTS_L32_AS_E8 UNSPEC_VMTTS_L64_AS_E8])
+
+(define_int_attr vmtts_L_as_e8_imm
+  [(UNSPEC_VMTTS_L1_AS_E8 "L1")
+   (UNSPEC_VMTTS_L2_AS_E8 "L2")
+   (UNSPEC_VMTTS_L4_AS_E8 "L4")
+   (UNSPEC_VMTTS_L8_AS_E8 "L8")
+   (UNSPEC_VMTTS_L16_AS_E8 "L16")
+   (UNSPEC_VMTTS_L32_AS_E8 "L32")
+   (UNSPEC_VMTTS_L64_AS_E8 "L64")])
+
+(define_int_attr vmtts_L_as_e8_name
+  [(UNSPEC_VMTTS_L1_AS_E8 "_L1")
+   (UNSPEC_VMTTS_L2_AS_E8 "_L2")
+   (UNSPEC_VMTTS_L4_AS_E8 "_L4")
+   (UNSPEC_VMTTS_L8_AS_E8 "_L8")
+   (UNSPEC_VMTTS_L16_AS_E8 "_L16")
+   (UNSPEC_VMTTS_L32_AS_E8 "_L32")
+   (UNSPEC_VMTTS_L64_AS_E8 "_L64")])
+
+(define_int_iterator VMTTS_L_AS_E16
+  [UNSPEC_VMTTS_L1_AS_E16 UNSPEC_VMTTS_L2_AS_E16 UNSPEC_VMTTS_L4_AS_E16 UNSPEC_VMTTS_L8_AS_E16 UNSPEC_VMTTS_L16_AS_E16 UNSPEC_VMTTS_L32_AS_E16 UNSPEC_VMTTS_L64_AS_E16])
+
+(define_int_attr vmtts_L_as_e16_imm
+  [(UNSPEC_VMTTS_L1_AS_E16 "L1")
+   (UNSPEC_VMTTS_L2_AS_E16 "L2")
+   (UNSPEC_VMTTS_L4_AS_E16 "L4")
+   (UNSPEC_VMTTS_L8_AS_E16 "L8")
+   (UNSPEC_VMTTS_L16_AS_E16 "L16")
+   (UNSPEC_VMTTS_L32_AS_E16 "L32")
+   (UNSPEC_VMTTS_L64_AS_E16 "L64")])
+
+(define_int_attr vmtts_L_as_e16_name
+  [(UNSPEC_VMTTS_L1_AS_E16 "_L1")
+   (UNSPEC_VMTTS_L2_AS_E16 "_L2")
+   (UNSPEC_VMTTS_L4_AS_E16 "_L4")
+   (UNSPEC_VMTTS_L8_AS_E16 "_L8")
+   (UNSPEC_VMTTS_L16_AS_E16 "_L16")
+   (UNSPEC_VMTTS_L32_AS_E16 "_L32")
+   (UNSPEC_VMTTS_L64_AS_E16 "_L64")])
+
+(define_int_iterator VMTTS_L_AS_E32
+  [UNSPEC_VMTTS_L1_AS_E32 UNSPEC_VMTTS_L2_AS_E32 UNSPEC_VMTTS_L4_AS_E32 UNSPEC_VMTTS_L8_AS_E32 UNSPEC_VMTTS_L16_AS_E32 UNSPEC_VMTTS_L32_AS_E32 UNSPEC_VMTTS_L64_AS_E32])
+
+(define_int_attr vmtts_L_as_e32_imm
+  [(UNSPEC_VMTTS_L1_AS_E32 "L1")
+   (UNSPEC_VMTTS_L2_AS_E32 "L2")
+   (UNSPEC_VMTTS_L4_AS_E32 "L4")
+   (UNSPEC_VMTTS_L8_AS_E32 "L8")
+   (UNSPEC_VMTTS_L16_AS_E32 "L16")
+   (UNSPEC_VMTTS_L32_AS_E32 "L32")
+   (UNSPEC_VMTTS_L64_AS_E32 "L64")])
+
+(define_int_attr vmtts_L_as_e32_name
+  [(UNSPEC_VMTTS_L1_AS_E32 "_L1")
+   (UNSPEC_VMTTS_L2_AS_E32 "_L2")
+   (UNSPEC_VMTTS_L4_AS_E32 "_L4")
+   (UNSPEC_VMTTS_L8_AS_E32 "_L8")
+   (UNSPEC_VMTTS_L16_AS_E32 "_L16")
+   (UNSPEC_VMTTS_L32_AS_E32 "_L32")
+   (UNSPEC_VMTTS_L64_AS_E32 "_L64")])
+
+(define_int_iterator VMTTS_L_AS_E64
+  [UNSPEC_VMTTS_L1_AS_E64 UNSPEC_VMTTS_L2_AS_E64 UNSPEC_VMTTS_L4_AS_E64 UNSPEC_VMTTS_L8_AS_E64 UNSPEC_VMTTS_L16_AS_E64 UNSPEC_VMTTS_L32_AS_E64 UNSPEC_VMTTS_L64_AS_E64])
+
+(define_int_attr vmtts_L_as_e64_imm
+  [(UNSPEC_VMTTS_L1_AS_E64 "L1")
+   (UNSPEC_VMTTS_L2_AS_E64 "L2")
+   (UNSPEC_VMTTS_L4_AS_E64 "L4")
+   (UNSPEC_VMTTS_L8_AS_E64 "L8")
+   (UNSPEC_VMTTS_L16_AS_E64 "L16")
+   (UNSPEC_VMTTS_L32_AS_E64 "L32")
+   (UNSPEC_VMTTS_L64_AS_E64 "L64")])
+
+(define_int_attr vmtts_L_as_e64_name
+  [(UNSPEC_VMTTS_L1_AS_E64 "_L1")
+   (UNSPEC_VMTTS_L2_AS_E64 "_L2")
+   (UNSPEC_VMTTS_L4_AS_E64 "_L4")
+   (UNSPEC_VMTTS_L8_AS_E64 "_L8")
+   (UNSPEC_VMTTS_L16_AS_E64 "_L16")
+   (UNSPEC_VMTTS_L32_AS_E64 "_L32")
+   (UNSPEC_VMTTS_L64_AS_E64 "_L64")])
+
+(define_insn "@pred_vmtl<vmtl_L_as_e8_name>_as_e8<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E8 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E8
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E8
+	    [(match_operand:VI_LMUL1_LE_E8 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTL_L_AS_E8)
+	  (match_operand:VI_LMUL1_LE_E8 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4,<vmtl_L_as_e8_imm>%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "8")])
+
+(define_insn "@pred_vmtl<vmtl_L_as_e16_name>_as_e16<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E16 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E16
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E16
+	    [(match_operand:VI_LMUL1_LE_E16 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTL_L_AS_E16)
+	  (match_operand:VI_LMUL1_LE_E16 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4,<vmtl_L_as_e16_imm>%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "16")])
+
+(define_insn "@pred_vmtl<vmtl_L_as_e32_name>_as_e32<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E32 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E32
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E32
+	    [(match_operand:VI_LMUL1_LE_E32 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTL_L_AS_E32)
+	  (match_operand:VI_LMUL1_LE_E32 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4,<vmtl_L_as_e32_imm>%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "32")])
+
+(define_insn "@pred_vmtl<vmtl_L_as_e64_name>_as_e64<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E64 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E64
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E64
+	    [(match_operand:VI_LMUL1_LE_E64 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTL_L_AS_E64)
+	  (match_operand:VI_LMUL1_LE_E64 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTLS"
+  "vmtl.v\t%0,%3,%4,<vmtl_L_as_e64_imm>%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "64")])
+
+(define_insn "@pred_vmts<vmts_L_as_e8_name>_as_e8<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E8 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E8 3 "register_operand" "   vr")]
+	  VMTS_L_AS_E8))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2,<vmts_L_as_e8_imm>%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "8")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmts<vmts_L_as_e16_name>_as_e16<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E16 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E16 3 "register_operand" "   vr")]
+	  VMTS_L_AS_E16))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2,<vmts_L_as_e16_imm>%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "16")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmts<vmts_L_as_e32_name>_as_e32<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E32 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E32 3 "register_operand" "   vr")]
+	  VMTS_L_AS_E32))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2,<vmts_L_as_e32_imm>%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "32")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmts<vmts_L_as_e64_name>_as_e64<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E64 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E64 3 "register_operand" "   vr")]
+	  VMTS_L_AS_E64))]
+  "TARGET_ZVVMTLS"
+  "vmts.v\t%3,%0,%2,<vmts_L_as_e64_imm>%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "64")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmttl<vmttl_L_as_e8_name>_as_e8<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E8 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E8
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E8
+	    [(match_operand:VI_LMUL1_LE_E8 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTTL_L_AS_E8)
+	  (match_operand:VI_LMUL1_LE_E8 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4,<vmttl_L_as_e8_imm>%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "8")])
+
+(define_insn "@pred_vmttl<vmttl_L_as_e16_name>_as_e16<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E16 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E16
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E16
+	    [(match_operand:VI_LMUL1_LE_E16 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTTL_L_AS_E16)
+	  (match_operand:VI_LMUL1_LE_E16 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4,<vmttl_L_as_e16_imm>%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "16")])
+
+(define_insn "@pred_vmttl<vmttl_L_as_e32_name>_as_e32<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E32 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E32
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E32
+	    [(match_operand:VI_LMUL1_LE_E32 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTTL_L_AS_E32)
+	  (match_operand:VI_LMUL1_LE_E32 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4,<vmttl_L_as_e32_imm>%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "32")])
+
+(define_insn "@pred_vmttl<vmttl_L_as_e64_name>_as_e64<mode>"
+  [(set (match_operand:VI_LMUL1_LE_E64 0 "register_operand"     "=vr")
+	(if_then_else:VI_LMUL1_LE_E64
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
+	     (match_operand 5 "vector_length_operand"        "   rK")
+	     (match_operand 6 "const_int_operand"            "    i")
+	     (match_operand 7 "const_int_operand"            "    i")
+	     (match_operand 8 "const_int_operand"            "    i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VI_LMUL1_LE_E64
+	    [(match_operand:VI_LMUL1_LE_E64 3 "memory_operand"      "    m")
+	     (mem:BLK (scratch))
+	     (match_operand 4 "register_operand"             "    r")]
+	    VMTTL_L_AS_E64)
+	  (match_operand:VI_LMUL1_LE_E64 2 "vector_merge_operand"   "   vu")))]
+  "TARGET_ZVVMTTLS"
+  "vmttl.v\t%0,%3,%4,<vmttl_L_as_e64_imm>%p1"
+  [(set_attr "type" "vlds")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "64")])
+
+(define_insn "@pred_vmtts<vmtts_L_as_e8_name>_as_e8<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E8 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E8 3 "register_operand" "   vr")]
+	  VMTTS_L_AS_E8))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2,<vmtts_L_as_e8_imm>%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "8")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmtts<vmtts_L_as_e16_name>_as_e16<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E16 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E16 3 "register_operand" "   vr")]
+	  VMTTS_L_AS_E16))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2,<vmtts_L_as_e16_imm>%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "16")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmtts<vmtts_L_as_e32_name>_as_e32<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E32 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E32 3 "register_operand" "   vr")]
+	  VMTTS_L_AS_E32))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2,<vmtts_L_as_e32_imm>%p1"
+  [(set_attr "type" "vsts")
+   (set_attr "mode" "<MODE>")
+   (set_attr "sew" "32")
+   (set (attr "avl_type_idx") (const_int 5))])
+
+(define_insn "@pred_vmtts<vmtts_L_as_e64_name>_as_e64<mode>"
+  [(set (mem:BLK (scratch))
+	(unspec:BLK
+	  [(match_operand:VI_LMUL1_LE_E64 0 "memory_operand"   "    m")
+	   (unspec:<VM>
+	     [(match_operand:<VM> 1 "vector_mask_operand" "vmWc1")
+	      (match_operand 4 "vector_length_operand"   "   rK")
+	      (match_operand 5 "const_int_operand"       "    i")
+	      (reg:SI VL_REGNUM)
+	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand:VI_LMUL1_LE_E64 3 "register_operand" "   vr")]
+	  VMTTS_L_AS_E64))]
+  "TARGET_ZVVMTTLS"
+  "vmtts.v\t%3,%0,%2,<vmtts_L_as_e64_imm>%p1"
   [(set_attr "type" "vsts")
    (set_attr "mode" "<MODE>")
    (set_attr "sew" "64")
