@@ -1959,7 +1959,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfmmacc with vs1/vs2 at LMUL=2 (same SEW as accumulator).  Same as
 ;; @pred_vfmmacc but the source operand mode comes from <V_LMUL2>.
@@ -1986,7 +1987,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfmmacc with vs1/vs2 at LMUL=4.
 (define_insn "@pred_vfmmacc_lm4<mode>"
@@ -2012,7 +2014,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfmmacc with vs1/vs2 at LMUL=8.
 (define_insn "@pred_vfmmacc_lm8<mode>"
@@ -2038,7 +2041,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfmmacc.vv (W=1) OFP8 -> OFP8: 8 variants over the (acc, vs1, vs2)
 ;; altfmt cube.  All inputs and the accumulator share RVVM*QI mode at
@@ -2068,7 +2072,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_fp_altfmt" "<vfmmacc_ofp8_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; ---------------------------------------------------------------------------
 ;; Zvvfmm - FP matrix multiply-accumulate, W=2 (vfwmmacc.vv)
@@ -2098,7 +2103,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfwmmacc BF16 -> FP32
 (define_insn "@pred_vfwmmacc_bf16<mode>"
@@ -2124,7 +2130,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfwmmacc OFP8 -> FP16: 4 input combinations, acc altfmt = 0
 ;; (selects fp16 over bf16 at SEW=16).
@@ -2152,7 +2159,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_fp_altfmt" "<vfwmmacc_ofp8_fp16_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfwmmacc OFP8 -> BF16: 4 input combinations, acc altfmt = 1.
 (define_insn "@pred_vfwmmacc_ofp8_bf16<vfwmmacc_ofp8_bf16_name><mode>"
@@ -2179,7 +2187,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_fp_altfmt" "<vfwmmacc_ofp8_bf16_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfwmmacc FP32 -> FP64
 (define_insn "@pred_vfwmmacc_f32<mode>"
@@ -2205,7 +2214,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; ---------------------------------------------------------------------------
 ;; Zvvfmm - FP matrix multiply-accumulate, W=4 (vfqwmmacc.vv)
@@ -2235,7 +2245,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfqwmmacc BF16 -> FP64
 (define_insn "@pred_vfqwmmacc_bf16<mode>"
@@ -2261,7 +2272,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfqwmmacc OFP8 (E4M3/E5M2) -> FP32: two variants via int iterator.
 (define_insn "@pred_vfqwmmacc_ofp8<vfqwmmacc_ofp8_name><mode>"
@@ -2288,7 +2300,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_fp_altfmt" "<vfqwmmacc_ofp8_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; ---------------------------------------------------------------------------
 ;; Zvvfmm - FP matrix multiply-accumulate, W=8 (vf8wmmacc.vv)
@@ -2319,7 +2332,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_fp_altfmt" "<vf8wmmacc_ofp8_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vf8wmmacc OFP4_E2M1 -> FP32
 
@@ -2346,7 +2360,8 @@
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; ---------------------------------------------------------------------------
 ;; Microscaled (section 8) FP-input scaled variants
@@ -2462,7 +2477,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_bs" "<vfwmmacc_f16_bs_attr>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfqwmmacc_scaled OFP8_E4M3 -> FP32, BS=32/BS=16
 (define_insn "@pred_vfqwmmacc_scaled_f8e4m3<vfqwmmacc_f8e4m3_bs_name><mode>"
@@ -2490,7 +2506,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_bs" "<vfqwmmacc_f8e4m3_bs_attr>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vf8wmmacc_scaled OFP8_E4M3 -> FP64, BS=32/BS=16
 (define_insn "@pred_vf8wmmacc_scaled_f8e4m3<vf8wmmacc_f8e4m3_bs_name><mode>"
@@ -2518,7 +2535,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_bs" "<vf8wmmacc_f8e4m3_bs_attr>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; ---------------------------------------------------------------------------
 ;; Microscaled (section 8) integer-input variants (NEW instructions)
@@ -2550,7 +2568,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_bs" "<vfwimmacc_i8_bs_attr>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vfqwimmacc.vv Int8 -> FP32, BS=32/BS=16
 (define_insn "@pred_vfqwimmacc_i8<vfqwimmacc_i8_bs_name><mode>"
@@ -2578,7 +2597,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_bs" "<vfqwimmacc_i8_bs_attr>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vf8wimmacc.vv Int8 -> FP64, BS=32/BS=16
 (define_insn "@pred_vf8wimmacc_i8<vf8wimmacc_i8_bs_name><mode>"
@@ -2606,7 +2626,8 @@
    (set_attr "ime_altfmt" "ss")
    (set_attr "ime_bs" "<vf8wimmacc_i8_bs_attr>")
    (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; -----------------------------------------------------------------------
 ;; ---- IME pair / unpair primitives
