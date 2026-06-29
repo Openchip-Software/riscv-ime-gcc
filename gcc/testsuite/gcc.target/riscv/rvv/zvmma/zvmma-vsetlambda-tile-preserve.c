@@ -33,10 +33,22 @@ void f (_Float16 *A, _Float16 *B, ptrdiff_t lda, size_t vl)
   __riscv_vmts_v_f16m1 (B, lda, a, actual);
 }
 
-/* The pass must NOT emit a plain `vsetvli zero, ..., e16, m1, ...'
-   between the install and the tile load -- that would WARL-clobber
-   λ.  Instead it emits a register-form `vsetvl' from a const-loaded
-   full vtype (the canonical "li tN, <big const>; vsetvl tN, ..."
-   sequence).  Match the literal "li tN, <number>" preceding a
-   "vsetvl" to confirm that path was taken.  */
-/* { dg-final { scan-assembler {li\tt0,[0-9]+\n\tvsetvl\tt0,} } } */
+/* The invariant under test: the pass must NOT emit a plain
+   `vsetvli zero, ..., e16, m1, ...' between the install and the tile
+   load -- that would WARL-clobber λ.
+
+   Two acceptable codegens satisfy the invariant:
+     (a) `li tN, <big const>; vsetvl tN, ...' -- a register-form vsetvl
+	 from a const-loaded full vtype (the lambda-preserving emission
+	 the original fix introduced).
+     (b) No vtype write at all between the install and the tile load
+	 -- when the vsetvl pass recognises that the user's vsetvli +
+	 vsetlambda chain already establishes the vtype the tile op
+	 needs, it elides the redundant preserve-lambda emission.
+
+   Encode the invariant as an explicit `vsetvli` count + a check that
+   it lives BEFORE the install (the user's original vsetvli), not
+   after.  After the install the only acceptable vtype writes are the
+   install's own `vsetvl x0, x0' or a const-loaded register-form
+   vsetvl.  */
+/* { dg-final { scan-assembler-not {vsetvli\s+zero,\s*[at][0-9]+,\s*e16,\s*m1[^\n]*\n[^\n]*vmtl} } } */

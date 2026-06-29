@@ -2984,7 +2984,16 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
   int vl_argno = call_expr_nargs (e.exp) - 1;
   rtx avl = expand_normal (CALL_EXPR_ARG (e.exp, vl_argno));
 
-  emit_ime_runtime_vtype_setup (sew_bits, mul_c, src_vlmul,
+  /* widen_w = sew / in_sew.  For tile load/store the data vector IS
+     the input, so in_sew == sew (widen_w == 1).  For mmacc, the input
+     is operand 2 (vs1) which may have a narrower SEW for widening
+     variants.  */
+  int in_sew = is_tile_op ? sew_bits
+			  : GET_MODE_UNIT_BITSIZE (e.arg_mode (1));
+  gcc_assert (in_sew > 0 && sew_bits % in_sew == 0);
+  uint8_t widen_w = (uint8_t) (sew_bits / in_sew);
+
+  emit_ime_runtime_vtype_setup (sew_bits, mul_c, src_vlmul, widen_w,
 				altfmt_a, altfmt_b,
 				altfmt_val, bs_val,
 				/* ta = */ true, /* ma = */ true,

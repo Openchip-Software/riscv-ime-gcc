@@ -86,11 +86,21 @@ private:
 extern bool valid_vec_immediate_p(rtx);
 extern void emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 					  vlmul_type vlmul_enc,
+					  uint8_t widen_w,
 					  bool altfmt_a, bool altfmt_b,
 					  bool altfmt, bool bs,
 					  bool ta, bool ma,
 					  rtx avl,
 					  int static_lambda_log2 = -1);
+
+/* Pack the IME demand tuple into a CONST_INT operand for the
+   `@vsetvl_ime<mode>' / `@vsetvl_ime_reg<mode>' patterns.  Defined in
+   riscv-vsetvl.cc.  */
+extern HOST_WIDE_INT riscv_pack_ime_req (uint8_t sew, uint8_t mul_c,
+					 uint8_t lmul, uint8_t widen_w,
+					 bool altfmt_a, bool altfmt_b,
+					 bool altfmt, bool bs,
+					 int8_t lambda_log2);
 
 } // namespace riscv_vector
 
