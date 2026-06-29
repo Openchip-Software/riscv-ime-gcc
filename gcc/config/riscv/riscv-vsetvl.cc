@@ -5443,6 +5443,14 @@ pre_vsetvl::emit_vsetvl ()
   remove_fake_exit_edges ();
   for (const bb_info *bb : crtl->ssa->bbs ())
     {
+      /* Track whether any prior local_info in this BB has actually
+	 emitted (or kept) a vsetvl.  The WARL-aware skip below relies
+	 on `m_vsetvl_def_in[bb]', which only reflects state at BB
+	 entry; once a prior local_info has emitted a vsetvl, the
+	 reaching state at the consumer's position is determined by
+	 that emission, not by def_in.  delete_p local_infos do NOT
+	 flip this flag (they emit nothing).  */
+      bool prior_emission_in_bb = false;
       for (const auto &curr_info : get_block_info (bb).local_infos)
 	{
 	  insn_info *insn = curr_info.get_insn ();
@@ -5468,6 +5476,7 @@ pre_vsetvl::emit_vsetvl ()
 			}
 		      change_vsetvl_insn (curr_info);
 		    }
+		  prior_emission_in_bb = true;
 		}
 	      else if (is_preserve_lambda_p (insn->rtl ()))
 		{
@@ -5486,7 +5495,18 @@ pre_vsetvl::emit_vsetvl ()
 		     WARL -- RISC-V vector spec §319-320, §322-336,
 		     §369-371), no fresh IME vsetvl needs to be emitted.  */
 		  bool reach_satisfies = false;
+		  /* The def_in bitmap only reflects state at BB ENTRY.
+		     If a vsetvl-emitting local_info precedes curr_info
+		     in the same BB, IT determines the state at
+		     curr_info's position, not def_in.  Restrict the skip
+		     to the case where curr_info IS the BB entry info --
+		     then def_in is the actual reaching state.  A more
+		     general position-aware analysis would also catch
+		     skip opportunities where every intervening local_info
+		     is itself a propagating WARL-compatible vsetvl;
+		     keeping it conservative for now until validated.  */
 		  if (curr_info.ime_required_p ()
+		      && !prior_emission_in_bb
 		      && m_vsetvl_def_in
 		      && !bitmap_empty_p (m_vsetvl_def_in[bb->index ()]))
 		    {
@@ -5504,6 +5524,17 @@ pre_vsetvl::emit_vsetvl ()
 			      || prev.get_vlmul () != curr_info.get_vlmul ()
 			      || prev.get_ta () != curr_info.get_ta ()
 			      || prev.get_ma () != curr_info.get_ma ())
+			    {
+			      all_compatible = false;
+			      break;
+			    }
+			  /* AVL must also match: skipping the consumer's
+			     vsetvl means VL stays at whatever the last
+			     reaching def wrote.  If prev's AVL differs
+			     from curr_info's, VL after the skip is wrong
+			     for the consumer.  avl_available_p handles
+			     imm-vs-imm, reg-vs-reg and VLMAX rules.  */
+			  if (!m_dem.avl_available_p (prev, curr_info))
 			    {
 			      all_compatible = false;
 			      break;
@@ -5543,6 +5574,7 @@ pre_vsetvl::emit_vsetvl ()
 			}
 		      insert_vsetvl_insn (EMIT_BEFORE, curr_info);
 		    }
+		  prior_emission_in_bb = true;
 		}
 	    }
 	}
