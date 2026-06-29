@@ -109,6 +109,14 @@ struct riscv_address_info {
 extern rtx riscv_ime_get_last_full_vtype (void);
 extern void riscv_ime_set_last_full_vtype (rtx);
 
+/* Per-function IME probe-dedup cache.  `lookup' returns the cached
+   `full_vtype' rtx for KEY if present, NULL_RTX otherwise.  `store'
+   records (KEY, FULL_VTYPE) in the next free slot, or silently does
+   nothing if the bounded cache is full.  See
+   `machine_function::ime_probe_cache_*' in riscv.cc.  */
+extern rtx riscv_ime_probe_cache_lookup (HOST_WIDE_INT key);
+extern void riscv_ime_probe_cache_store (HOST_WIDE_INT key, rtx full_vtype);
+
 extern const char *riscv_asm_output_opcode (FILE *asm_out_file, const char *p);
 extern enum riscv_symbol_type riscv_classify_symbolic_expression (rtx);
 extern bool riscv_symbolic_constant_p (rtx, enum riscv_symbol_type *);
