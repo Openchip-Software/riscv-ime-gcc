@@ -54,6 +54,7 @@
 #include "riscv-v.h"
 #include "dojump.h"
 #include "diagnostic-core.h"
+#include "cfgrtl.h"
 
 using namespace riscv_vector;
 
@@ -6742,9 +6743,23 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
      setup and the consumer.  */
   riscv_ime_set_last_full_vtype (full_vtype);
 
-  /* Close the entry-edge sequence and inject at function entry.  */
+  /* Close the entry-edge sequence and inject at function entry.
+     We deliberately do NOT call `emit_insn_at_entry' here -- that
+     helper invokes `commit_edge_insertions' immediately, but during
+     the RTL expand pass the CFG is still being built and the entry
+     block's successor may not yet have BB_END set (this segfaults
+     `commit_one_edge_insertion' at cfgrtl.cc:2061 for any non-trivial
+     loop nest containing the IME consumer).  Instead, queue the
+     insertion on the entry-block fall-through edge with
+     `insert_insn_on_edge'.  The expand pass calls
+     `commit_edge_insertions' near the end of `pass_expand::execute',
+     by which time the CFG is fully formed and the deferred insertion
+     commits safely.  */
   rtx_insn *probe_seq = end_sequence ();
-  emit_insn_at_entry (probe_seq);
+  edge_iterator ei = ei_start (ENTRY_BLOCK_PTR_FOR_FN (cfun)->succs);
+  edge e = ei_safe_edge (ei);
+  gcc_assert (e->flags & EDGE_FALLTHRU);
+  insert_insn_on_edge (probe_seq, e);
 }
 
 } // namespace riscv_vector
