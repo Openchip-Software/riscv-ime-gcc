@@ -6532,16 +6532,50 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 {
   gcc_assert (!BYTES_PER_RISCV_VECTOR.is_constant ());
 
-  /* Hoist the entire probe (lambda compute, perfect-square check,
-     vsetvl_ime_reg write, WARL readback verification) to function
-     entry by building it into a separate insn sequence and inserting
-     it on the entry-block fall-through edge.  Once the probe runs at
-     function entry, vtype carries the IME-specific bits (lambda,
-     altfmt_A/B, altfmt, bs).  Inside any loop, a basic vsetvli at
-     the loop header that matches (SEW, VLMUL, ta, ma) preserves
-     those bits via WARL (RISC-V vector spec §319-320, §322-336,
-     §369-371), so the IME consumer in the loop body finds vtype
-     already correctly programmed -- no in-loop IME vsetvl needed.
+  /* Per-function probe-dedup cache lookup.  The packed `ime_vtype_req'
+     tuple is computed up front (excluding AVL by construction -- AVL
+     is not a field in the tuple), so multiple IME consumers in the
+     same function with the same IME geometry share a single probe.
+     Compute the mul_c encoding first so the key matches what we'd
+     pack on emission below.  */
+  uint8_t mul_c_enc_key;
+  switch (mul_c)
+    {
+    case 1:  mul_c_enc_key = LMUL_1; break;
+    case 2:  mul_c_enc_key = LMUL_2; break;
+    case 4:  mul_c_enc_key = LMUL_4; break;
+    case 8:  mul_c_enc_key = LMUL_8; break;
+    case 16: mul_c_enc_key = LMUL_16; break;
+    default: gcc_unreachable ();
+    }
+  HOST_WIDE_INT cache_key
+    = riscv_pack_ime_req ((uint8_t) sew_bits, mul_c_enc_key,
+			  (uint8_t) vlmul_enc, widen_w,
+			  altfmt_a, altfmt_b, altfmt, bs,
+			  (int8_t) static_lambda_log2);
+  rtx cached_full_vtype = riscv_ime_probe_cache_lookup (cache_key);
+  if (cached_full_vtype)
+    {
+      /* Cache hit: a probe with this exact IME tuple already runs at
+	 function entry.  Reuse the cached full_vtype pseudo so the
+	 consumer's pattern threads it as its hidden vtype source.  The
+	 vsetvl pass takes care of emitting a per-consumer
+	 `vsetvl_ime_reg' if and only if the consumer's AVL or position
+	 require it.  */
+      riscv_ime_set_last_full_vtype (cached_full_vtype);
+      return;
+    }
+
+  /* Cache miss.  Hoist the entire probe (lambda compute, perfect-square
+     check, vsetvl_ime_reg write, WARL readback verification) to
+     function entry by building it into a separate insn sequence and
+     inserting it on the entry-block fall-through edge.  Once the
+     probe runs at function entry, vtype carries the IME-specific bits
+     (lambda, altfmt_A/B, altfmt, bs).  Inside any loop, a basic
+     vsetvli at the loop header that matches (SEW, VLMUL, ta, ma)
+     preserves those bits via WARL (RISC-V vector spec §319-320,
+     §322-336, §369-371), so the IME consumer in the loop body finds
+     vtype already correctly programmed -- no in-loop IME vsetvl needed.
 
      A function whose IME consumer is reached only on one CFG path
      pays a probe at entry even if the consumer is dynamically never
@@ -6760,6 +6794,13 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   edge e = ei_safe_edge (ei);
   gcc_assert (e->flags & EDGE_FALLTHRU);
   insert_insn_on_edge (probe_seq, e);
+
+  /* Record the probe in the per-function cache so subsequent consumers
+     with the same IME tuple reuse `full_vtype' and skip the probe.
+     Bounded; on overflow we just stop caching -- correctness is
+     preserved, only the dedup benefit degrades to "always emit a
+     probe."  */
+  riscv_ime_probe_cache_store (cache_key, full_vtype);
 }
 
 } // namespace riscv_vector

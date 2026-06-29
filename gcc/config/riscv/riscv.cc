@@ -232,6 +232,20 @@ struct GTY(())  machine_function {
      pseudo from the expander into the consumer insn so the vsetvl
      pass can re-anchor IME vtype after spill-induced clobbers.  */
   rtx ime_last_full_vtype;
+
+  /* Per-function cache of runtime IME probes keyed by packed
+     `ime_vtype_req' tuple (the same value the patterns carry in their
+     metadata operand; AVL is NOT part of the key, so consumers with
+     the same IME geometry but different AVLs share a probe).  A
+     subsequent consumer matching a cached key reuses the cached
+     `full_vtype' pseudo and emits no fresh probe.  Bounded at a small
+     fixed size: real functions rarely have more than a handful of
+     distinct IME tuples, and overflow just degrades to "emit a probe"
+     -- no correctness impact.  */
+#define RISCV_IME_PROBE_CACHE_SIZE 8
+  HOST_WIDE_INT ime_probe_cache_key[RISCV_IME_PROBE_CACHE_SIZE];
+  rtx ime_probe_cache_val[RISCV_IME_PROBE_CACHE_SIZE];
+  int ime_probe_cache_count;
 };
 
 /* Information about a single argument.  */
@@ -12328,6 +12342,29 @@ void
 riscv_ime_set_last_full_vtype (rtx pseudo)
 {
   cfun->machine->ime_last_full_vtype = pseudo;
+}
+
+rtx
+riscv_ime_probe_cache_lookup (HOST_WIDE_INT key)
+{
+  if (!cfun || !cfun->machine)
+    return NULL_RTX;
+  for (int i = 0; i < cfun->machine->ime_probe_cache_count; i++)
+    if (cfun->machine->ime_probe_cache_key[i] == key)
+      return cfun->machine->ime_probe_cache_val[i];
+  return NULL_RTX;
+}
+
+void
+riscv_ime_probe_cache_store (HOST_WIDE_INT key, rtx full_vtype)
+{
+  if (!cfun || !cfun->machine)
+    return;
+  if (cfun->machine->ime_probe_cache_count >= RISCV_IME_PROBE_CACHE_SIZE)
+    return;
+  int idx = cfun->machine->ime_probe_cache_count++;
+  cfun->machine->ime_probe_cache_key[idx] = key;
+  cfun->machine->ime_probe_cache_val[idx] = full_vtype;
 }
 
 /* Return the VLEN value associated with -march and -mrvv-vector-bits.
