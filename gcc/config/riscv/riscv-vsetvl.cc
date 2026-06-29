@@ -590,6 +590,60 @@ decode_static_vtype_const (HOST_WIDE_INT vtype_const,
   return true;
 }
 
+/* Pack the consumer-side IME demand (the fields of `ime_vtype_req' that
+   are NOT recoverable from the static vtype bits) into a CONST_INT so it
+   can ride along as an operand of the `@vsetvl_ime<mode>' / `@vsetvl_ime_reg<mode>'
+   patterns.  This lets `vsetvl_info::parse_insn' recover the full IME
+   demand for the emitted vsetvl, instead of marking it UNKNOWN.
+
+   Layout (HOST_WIDE_INT):
+     [ 7: 0] sew         (8/16/32/64)
+     [11: 8] mul_c       (vlmul_type)
+     [15:12] lmul        (input lmul, vlmul_type)
+     [19:16] widen_w     (1/2/4/8)
+     [   20] altfmt_a
+     [   21] altfmt_b
+     [   22] altfmt
+     [   23] bs
+     [31:24] lambda_log2 + 128  (-1..6 stored offset)  */
+static HOST_WIDE_INT
+pack_ime_req_fields (uint8_t sew, uint8_t mul_c, uint8_t lmul,
+		     uint8_t widen_w,
+		     bool altfmt_a, bool altfmt_b,
+		     bool altfmt, bool bs,
+		     int8_t lambda_log2)
+{
+  HOST_WIDE_INT p = 0;
+  p |= (HOST_WIDE_INT) sew & 0xff;
+  p |= ((HOST_WIDE_INT) mul_c & 0xf) << 8;
+  p |= ((HOST_WIDE_INT) lmul & 0xf) << 12;
+  p |= ((HOST_WIDE_INT) widen_w & 0xf) << 16;
+  p |= ((HOST_WIDE_INT) (altfmt_a ? 1 : 0)) << 20;
+  p |= ((HOST_WIDE_INT) (altfmt_b ? 1 : 0)) << 21;
+  p |= ((HOST_WIDE_INT) (altfmt ? 1 : 0)) << 22;
+  p |= ((HOST_WIDE_INT) (bs ? 1 : 0)) << 23;
+  p |= ((HOST_WIDE_INT) ((int) lambda_log2 + 128) & 0xff) << 24;
+  return p;
+}
+
+/* Forward-declared for use from riscv-v.cc (emit_ime_runtime_vtype_setup).
+   Declared in riscv-v.h inside the riscv_vector namespace; provide the
+   matching definition here.  */
+namespace riscv_vector
+{
+HOST_WIDE_INT
+riscv_pack_ime_req (uint8_t sew, uint8_t mul_c, uint8_t lmul,
+		    uint8_t widen_w,
+		    bool altfmt_a, bool altfmt_b,
+		    bool altfmt, bool bs,
+		    int8_t lambda_log2)
+{
+  return pack_ime_req_fields (sew, mul_c, lmul, widen_w,
+			      altfmt_a, altfmt_b, altfmt, bs,
+			      lambda_log2);
+}
+} // namespace riscv_vector
+
 /* Get the currently supported maximum sew used in the int rvv instructions. */
 static uint8_t
 get_max_int_sew ()
@@ -972,6 +1026,33 @@ struct ime_vtype_req
   }
   bool operator!= (const ime_vtype_req &o) const { return !(*this == o); }
 };
+
+/* Pack an `ime_vtype_req' tuple to ride along as a CONST_INT operand on
+   the `@vsetvl_ime*' patterns.  See `pack_ime_req_fields' for the layout.  */
+static HOST_WIDE_INT
+pack_ime_req (const ime_vtype_req &r)
+{
+  return pack_ime_req_fields (r.sew, (uint8_t) r.mul_c, r.lmul, r.widen_w,
+			      r.altfmt_a, r.altfmt_b, r.altfmt, r.bs,
+			      r.lambda_log2);
+}
+
+/* Reverse of `pack_ime_req' / `pack_ime_req_fields'.  */
+static ime_vtype_req
+unpack_ime_req (HOST_WIDE_INT p)
+{
+  ime_vtype_req r;
+  r.sew = (uint8_t) (p & 0xff);
+  r.mul_c = (vlmul_type) ((p >> 8) & 0xf);
+  r.lmul = (uint8_t) ((p >> 12) & 0xf);
+  r.widen_w = (uint8_t) ((p >> 16) & 0xf);
+  r.altfmt_a = (p >> 20) & 1;
+  r.altfmt_b = (p >> 21) & 1;
+  r.altfmt = (p >> 22) & 1;
+  r.bs = (p >> 23) & 1;
+  r.lambda_log2 = (int8_t) (((int) ((p >> 24) & 0xff)) - 128);
+  return r;
+}
 
 /* Compute log2(lambda) for an IME instruction with the given accumulator
    SEW_BITS and register-group multiplier MUL_C, using the compile-time
@@ -2128,20 +2209,103 @@ public:
 	return;
       }
 
+    /* `@read_vtype<mode>': pure vtype READ.  It does NOT write vtype, so
+       leave the demand state uninitialised (the BB's reaching IME vsetvl
+       remains the effective vtype source).  Only record the lambda
+       use-only effect.  Marking this UNKNOWN here used to break the BB
+       footer chain right after the runtime probe, hiding the IME vsetvl
+       from downstream demand matching.  */
+    if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+      {
+	m_lambda = lambda_state::make_use_only ();
+	return;
+      }
+
     /* IME vsetvl helpers (`@vsetvl_ime<mode>', `@vsetvl_ime_reg<mode>')
-       and `@read_vtype<mode>' write the full vtype as a single value
-       (const_int or register).  Treat them as opaque vtype writes
-       here.  */
+       carry a packed IME-demand operand (operand 3).  Decode it and the
+       static vtype const (operand 2, for the static-path variant) to
+       expose the insn as a VALID, demand-carrying vsetvl source; a
+       downstream consumer with matching demand will then see the IME
+       vtype as available and the pass will not insert a redundant
+       second IME vsetvl right before it.
+
+       A sentinel of operand 3 == 0 (sew == 0 in the unpacked tuple)
+       means "no IME demand" -- this is how the lambda-preserving
+       emissions for non-IME consumers ride the same pattern; treat
+       those as basic SEW/LMUL writers with no IME bookkeeping.  */
     if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
 	|| code == CODE_FOR_vsetvl_ime_regdi
-	|| code == CODE_FOR_vsetvl_ime_regsi
-	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+	|| code == CODE_FOR_vsetvl_ime_regsi)
       {
-	set_unknown ();
-	if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
-	  m_lambda = lambda_state::make_use_only ();
+	extract_insn_cached (rinsn);
+	bool is_static_path = (code == CODE_FOR_vsetvl_imedi
+			       || code == CODE_FOR_vsetvl_imesi);
+	HOST_WIDE_INT ime_pack = INTVAL (recog_data.operand[3]);
+	ime_vtype_req req = unpack_ime_req (ime_pack);
+	bool have_ime_demand = (req.sew != 0);
+
+	uint8_t sew = 0;
+	vlmul_type vlmul = LMUL_RESERVED;
+	bool ta_bit = true, ma_bit = true;
+
+	if (is_static_path)
+	  {
+	    HOST_WIDE_INT vtype_const = INTVAL (recog_data.operand[2]);
+	    if (!decode_static_vtype_const (vtype_const, &sew, &vlmul,
+					    &ta_bit, &ma_bit))
+	      {
+		set_unknown ();
+		m_lambda = lambda_state::make_killed ();
+		return;
+	      }
+	  }
+	else if (have_ime_demand)
+	  {
+	    /* Runtime path: the basic vtype fields are determined by the
+	       IME demand the caller asked for (sew/lmul/ta/ma).  */
+	    sew = req.sew;
+	    vlmul = (vlmul_type) req.lmul;
+	    /* IME emissions are always tail/mask agnostic by construction
+	       (see emit_ime_runtime_vtype_setup: ta = true, ma = true).  */
+	    ta_bit = ma_bit = true;
+	  }
 	else
-	  m_lambda = lambda_state::make_killed ();
+	  {
+	    /* Runtime path with no IME demand: should not occur (the
+	       runtime variant is only emitted from IME consumer expand).  */
+	    set_unknown ();
+	    m_lambda = lambda_state::make_killed ();
+	    return;
+	  }
+
+	set_valid ();
+	m_avl = recog_data.operand[1];
+	m_vl = recog_data.operand[0];
+	m_sew = sew;
+	m_vlmul = vlmul;
+	m_ta = ta_bit;
+	m_ma = ma_bit;
+	m_ratio = calculate_ratio (m_sew, m_vlmul);
+	m_max_sew = get_max_int_sew ();
+	unsigned dflags = demand_flags::DEMAND_AVL_P;
+	if (have_ime_demand)
+	  {
+	    m_ime_required = true;
+	    m_ime_req = req;
+	    /* For an IME mmacc, the physically encoded vtype.LMUL is the
+	       *input* LMUL (m_ime_req.lmul).  Mirror the logic in the
+	       generic-recog path below so downstream sew_lmul checks
+	       observe the same effective LMUL.  */
+	    m_vlmul = (vlmul_type) m_ime_req.lmul;
+	    m_ratio = calculate_ratio (m_sew, m_vlmul);
+	    dflags |= demand_flags::DEMAND_SEW_P
+		      | demand_flags::DEMAND_LMUL_P
+		      | demand_flags::DEMAND_IME_P;
+	  }
+	else
+	  dflags |= demand_flags::DEMAND_RATIO_P;
+	normalize_demand (dflags);
+	m_lambda = classify_lambda_effect (rinsn);
 	return;
       }
 
@@ -2246,19 +2410,85 @@ public:
 	return;
       }
 
+    /* `@read_vtype<mode>': pure vtype READ.  See the matching branch in
+       `parse_insn(rtx_insn *)' for why we leave the demand state
+       uninitialised instead of marking UNKNOWN.  */
+    if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+      {
+	m_lambda = lambda_state::make_use_only ();
+	return;
+      }
+
+    /* IME vsetvl helpers carry a packed IME-demand operand (operand 3).
+       Mirror the rtx_insn* variant: expose them as VALID vsetvl sources
+       so downstream IME consumers see their demand already satisfied
+       and no redundant second IME vsetvl is inserted.  See the
+       corresponding branch in `parse_insn(rtx_insn *)' for the layout
+       rationale.  */
     if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
 	|| code == CODE_FOR_vsetvl_ime_regdi
-	|| code == CODE_FOR_vsetvl_ime_regsi
-	|| code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+	|| code == CODE_FOR_vsetvl_ime_regsi)
       {
-	set_unknown ();
-	/* Per-pattern lambda classification:
-	     read_vtype             -> USE_ONLY (pure read);
-	     other IME-helper vsetvls -> KILLED (writes full vtype).  */
-	if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
-	  m_lambda = lambda_state::make_use_only ();
+	extract_insn_cached (insn->rtl ());
+	bool is_static_path = (code == CODE_FOR_vsetvl_imedi
+			       || code == CODE_FOR_vsetvl_imesi);
+	HOST_WIDE_INT ime_pack = INTVAL (recog_data.operand[3]);
+	ime_vtype_req req = unpack_ime_req (ime_pack);
+	bool have_ime_demand = (req.sew != 0);
+
+	uint8_t sew = 0;
+	vlmul_type vlmul = LMUL_RESERVED;
+	bool ta_bit = true, ma_bit = true;
+
+	if (is_static_path)
+	  {
+	    HOST_WIDE_INT vtype_const = INTVAL (recog_data.operand[2]);
+	    if (!decode_static_vtype_const (vtype_const, &sew, &vlmul,
+					    &ta_bit, &ma_bit))
+	      {
+		set_unknown ();
+		m_lambda = lambda_state::make_killed ();
+		return;
+	      }
+	  }
+	else if (have_ime_demand)
+	  {
+	    sew = req.sew;
+	    vlmul = (vlmul_type) req.lmul;
+	    ta_bit = ma_bit = true;
+	  }
 	else
-	  m_lambda = lambda_state::make_killed ();
+	  {
+	    set_unknown ();
+	    m_lambda = lambda_state::make_killed ();
+	    return;
+	  }
+
+	set_valid ();
+	m_avl = recog_data.operand[1];
+	m_vl = recog_data.operand[0];
+	dest_vl = m_vl;
+	m_sew = sew;
+	m_vlmul = vlmul;
+	m_ta = ta_bit;
+	m_ma = ma_bit;
+	m_ratio = calculate_ratio (m_sew, m_vlmul);
+	m_max_sew = get_max_int_sew ();
+	unsigned dflags = demand_flags::DEMAND_AVL_P;
+	if (have_ime_demand)
+	  {
+	    m_ime_required = true;
+	    m_ime_req = req;
+	    m_vlmul = (vlmul_type) m_ime_req.lmul;
+	    m_ratio = calculate_ratio (m_sew, m_vlmul);
+	    dflags |= demand_flags::DEMAND_SEW_P
+		      | demand_flags::DEMAND_LMUL_P
+		      | demand_flags::DEMAND_IME_P;
+	  }
+	else
+	  dflags |= demand_flags::DEMAND_RATIO_P;
+	normalize_demand (dflags);
+	m_lambda = classify_lambda_effect (insn->rtl ());
 	return;
       }
 
@@ -3878,7 +4108,9 @@ private:
 	    emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
 	    avl = temp;
 	  }
-	pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX);
+	rtx ime_pack = gen_int_mode (pack_ime_req (info.get_ime_req ()),
+				     Pmode);
+	pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX, ime_pack);
       }
     else
       {
@@ -3902,7 +4134,9 @@ private:
 	    emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
 	    avl = temp;
 	  }
-	pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+	rtx ime_pack = gen_int_mode (pack_ime_req (info.get_ime_req ()),
+				     Pmode);
+	pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const, ime_pack);
       }
     rtx_insn *inserted = NULL;
 
@@ -3992,8 +4226,12 @@ private:
 	    int enc = reach.known_log2 + 1;
 	    HOST_WIDE_INT vtype
 	      = static_vtype | ((HOST_WIDE_INT) enc << (xlen - 4));
+	    /* Lambda-preserving emission for a non-IME consumer: no IME
+	       demand to carry through (sew=0 sentinel decodes to "no IME
+	       demand" in parse_insn).  */
 	    rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl,
-				      gen_int_mode (vtype, Pmode));
+				      gen_int_mode (vtype, Pmode),
+				      const0_rtx);
 	    emit_insn_before (pat, rinsn);
 	    if (dump_file)
 	      fprintf (dump_file,
@@ -5502,7 +5740,13 @@ pass_vsetvl::simple_vsetvl ()
 			  emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
 			  avl = temp;
 			}
-		      pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX);
+		      {
+			rtx ime_pack
+			  = gen_int_mode (pack_ime_req (info.get_ime_req ()),
+					  Pmode);
+			pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX,
+						  ime_pack);
+		      }
 		    }
 		  else
 		    {
@@ -5524,7 +5768,13 @@ pass_vsetvl::simple_vsetvl ()
 			  emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
 			  avl = temp;
 			}
-		      pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const);
+		      {
+			rtx ime_pack
+			  = gen_int_mode (pack_ime_req (info.get_ime_req ()),
+					  Pmode);
+			pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const,
+					      ime_pack);
+		      }
 		    }
 		  emit_insn_before (pat, rinsn);
 		  if (dump_file)
@@ -5740,8 +5990,12 @@ rewrite_placeholder_lambda_preserving (rtx_insn *placeholder,
       int enc = reach.known_log2 + 1;
       HOST_WIDE_INT vtype
 	= static_vtype | ((HOST_WIDE_INT) enc << (xlen - 4));
+      /* Lambda-preserving emission for a non-IME consumer: pass 0 as the
+	 IME-demand operand (sew=0 sentinel decodes to "no IME demand" in
+	 parse_insn).  */
       pat = gen_vsetvl_ime (Pmode, dest_vl, avl,
-			    gen_int_mode (vtype, Pmode));
+			    gen_int_mode (vtype, Pmode),
+			    const0_rtx);
     }
   else
     {

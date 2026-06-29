@@ -6522,6 +6522,7 @@ splat_to_scalar_move_p (rtx *ops)
 void
 emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 			      vlmul_type vlmul_enc,
+			      uint8_t widen_w,
 			      bool altfmt_a, bool altfmt_b,
 			      bool altfmt, bool bs,
 			      bool ta, bool ma,
@@ -6665,7 +6666,28 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
   rtx new_vl = gen_reg_rtx (xmode);
   if (avl != const0_rtx && !REG_P (avl))
     avl = force_reg (xmode, avl);
-  emit_insn (gen_vsetvl_ime_reg (xmode, new_vl, avl, full_vtype));
+
+  /* Convert the int mul_c (1/2/4/8/16) to its vlmul_type encoding so the
+     vsetvl pass sees the same `ime_vtype_req' tuple that
+     `riscv_extract_ime_requirements' would derive at the consumer.  */
+  uint8_t mul_c_enc;
+  switch (mul_c)
+    {
+    case 1:  mul_c_enc = LMUL_1; break;
+    case 2:  mul_c_enc = LMUL_2; break;
+    case 4:  mul_c_enc = LMUL_4; break;
+    case 8:  mul_c_enc = LMUL_8; break;
+    case 16: mul_c_enc = LMUL_16; break;
+    default: gcc_unreachable ();
+    }
+
+  HOST_WIDE_INT ime_packed
+    = riscv_pack_ime_req ((uint8_t) sew_bits, mul_c_enc,
+			  (uint8_t) vlmul_enc, widen_w,
+			  altfmt_a, altfmt_b, altfmt, bs,
+			  (int8_t) static_lambda_log2);
+  emit_insn (gen_vsetvl_ime_reg (xmode, new_vl, avl, full_vtype,
+				 gen_int_mode (ime_packed, xmode)));
 
   /* WARL verification only on the runtime-derived path.  When lambda is
      statically known the value we wrote has already been validated by

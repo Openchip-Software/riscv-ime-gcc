@@ -1009,10 +1009,16 @@
 ;;   1: AVL -- register or zero for VLMAX
 ;;   2: full vtype value as a const_int (synthesised by the vsetvl
 ;;      pass from the static sew/vlmul/ta/ma/IME tuple)
+;;   3: packed IME demand tuple (const_int).  Metadata only: the asm
+;;      template does not reference operand 3; the vsetvl pass reads it
+;;      to recover the full `ime_vtype_req' (mul_c, input LMUL, widen_w,
+;;      altfmt_*, bs, lambda_log2).  Packing layout: see
+;;      `pack_ime_req_fields' in riscv-vsetvl.cc.
 (define_insn "@vsetvl_ime<mode>"
   [(set (match_operand:P 0 "register_operand"             "=&r")
 	(unspec:P [(match_operand:P 1 "pmode_reg_or_0_operand" "rJ")
-		   (match_operand 2 "const_int_operand"    " i")]
+		   (match_operand 2 "const_int_operand"    " i")
+		   (match_operand 3 "const_int_operand"    " i")]
 		  UNSPEC_VSETVL_IME))
    (set (reg:SI VL_REGNUM)
 	(unspec:SI [(match_dup 1)
@@ -1037,10 +1043,17 @@
 ;;   0: destination VL register
 ;;   1: AVL -- register or zero for VLMAX
 ;;   2: full vtype value in a register
+;;   3: packed IME demand tuple (const_int).  Metadata only: the asm
+;;      template does not reference operand 3; the vsetvl pass reads it
+;;      to recover the full `ime_vtype_req' so this insn appears as a
+;;      VALID, IME-demand-carrying vsetvl source (rather than UNKNOWN)
+;;      and downstream IME consumers see their demand already satisfied.
+;;      Packing layout: see `pack_ime_req_fields' in riscv-vsetvl.cc.
 (define_insn "@vsetvl_ime_reg<mode>"
   [(set (match_operand:P 0 "register_operand"             "=r")
 	(unspec:P [(match_operand:P 1 "pmode_reg_or_0_operand" "rJ")
-		   (match_operand:P 2 "register_operand"  "r")]
+		   (match_operand:P 2 "register_operand"  "r")
+		   (match_operand 3 "const_int_operand"   "i")]
 	      UNSPEC_VSETVL_IME))
    (set (reg:SI VL_REGNUM)
 	(unspec:SI [(match_dup 1) (match_dup 2)] UNSPEC_VSETVL_IME))
