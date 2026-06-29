@@ -4569,13 +4569,42 @@ pre_vsetvl::compute_vsetvl_def_data ()
 		|| footer_info.get_vlmul () != info.get_vlmul ()
 		|| footer_info.get_ta () != info.get_ta ()
 		|| footer_info.get_ma () != info.get_ma ())
-	      continue;
+	      {
+		if (dump_file && (dump_flags & TDF_DETAILS)
+		    && info.ime_required_p ())
+		  fprintf (dump_file,
+			   "    BB %u: keep kill bit %u (Expr[%u] IME) -- "
+			   "geometry mismatch with footer "
+			   "(footer SEW=%u VLMUL=%d ta=%d ma=%d vs "
+			   "Expr SEW=%u VLMUL=%d ta=%d ma=%d)\n",
+			   bb->index (), i, i,
+			   footer_info.get_sew (), footer_info.get_vlmul (),
+			   footer_info.get_ta (), footer_info.get_ma (),
+			   info.get_sew (), info.get_vlmul (),
+			   info.get_ta (), info.get_ma ());
+		continue;
+	      }
 	    /* When both sides have an IME demand, the IME tuples must
 	       also match -- otherwise the footer rewrites lambda/altfmt
 	       to a different value and the prior IME state is destroyed.  */
 	    if (footer_info.ime_required_p () && info.ime_required_p ()
 		&& !(footer_info.get_ime_req () == info.get_ime_req ()))
-	      continue;
+	      {
+		if (dump_file && (dump_flags & TDF_DETAILS))
+		  fprintf (dump_file,
+			   "    BB %u: keep kill bit %u (Expr[%u] IME) -- "
+			   "IME tuple mismatch with footer's IME tuple\n",
+			   bb->index (), i, i);
+		continue;
+	      }
+	    if (dump_file && (dump_flags & TDF_DETAILS)
+		&& info.ime_required_p ())
+	      fprintf (dump_file,
+		       "    BB %u: clear kill bit %u (Expr[%u] IME) -- "
+		       "WARL-compatible: same SEW/VLMUL/ta/ma "
+		       "(lambda preserved per spec §322-336; "
+		       "altfmt_A/B/bs preserved per §319-320)\n",
+		       bb->index (), i, i);
 	    bitmap_clear_bit (m_kill[bb->index ()], i);
 	  }
     }
@@ -5525,6 +5554,11 @@ pre_vsetvl::emit_vsetvl ()
 			      || prev.get_ta () != curr_info.get_ta ()
 			      || prev.get_ma () != curr_info.get_ma ())
 			    {
+			      if (dump_file && (dump_flags & TDF_DETAILS))
+				fprintf (dump_file,
+					 "\n  Skip rejected (insn %d): Expr[%u] "
+					 "geometry mismatch\n",
+					 insn->uid (), expr_index);
 			      all_compatible = false;
 			      break;
 			    }
@@ -5536,6 +5570,11 @@ pre_vsetvl::emit_vsetvl ()
 			     imm-vs-imm, reg-vs-reg and VLMAX rules.  */
 			  if (!m_dem.avl_available_p (prev, curr_info))
 			    {
+			      if (dump_file && (dump_flags & TDF_DETAILS))
+				fprintf (dump_file,
+					 "\n  Skip rejected (insn %d): Expr[%u] "
+					 "AVL not available\n",
+					 insn->uid (), expr_index);
 			      all_compatible = false;
 			      break;
 			    }
@@ -5544,6 +5583,11 @@ pre_vsetvl::emit_vsetvl ()
 			      if (!(prev.get_ime_req ()
 				    == curr_info.get_ime_req ()))
 				{
+				  if (dump_file && (dump_flags & TDF_DETAILS))
+				    fprintf (dump_file,
+					     "\n  Skip rejected (insn %d): "
+					     "Expr[%u] IME tuple mismatch\n",
+					     insn->uid (), expr_index);
 				  all_compatible = false;
 				  break;
 				}
