@@ -6531,6 +6531,23 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 {
   gcc_assert (!BYTES_PER_RISCV_VECTOR.is_constant ());
 
+  /* Hoist the entire probe (lambda compute, perfect-square check,
+     vsetvl_ime_reg write, WARL readback verification) to function
+     entry by building it into a separate insn sequence and inserting
+     it on the entry-block fall-through edge.  Once the probe runs at
+     function entry, vtype carries the IME-specific bits (lambda,
+     altfmt_A/B, altfmt, bs).  Inside any loop, a basic vsetvli at
+     the loop header that matches (SEW, VLMUL, ta, ma) preserves
+     those bits via WARL (RISC-V vector spec §319-320, §322-336,
+     §369-371), so the IME consumer in the loop body finds vtype
+     already correctly programmed -- no in-loop IME vsetvl needed.
+
+     A function whose IME consumer is reached only on one CFG path
+     pays a probe at entry even if the consumer is dynamically never
+     executed; this is acceptable since the compiler has already
+     decided to emit the consumer.  */
+  start_sequence ();
+
   /* If the caller already knows lambda (e.g. an `_L{N}' tile-immediate
      consumer where the instruction encodes its own lambda and
      vtype.lambda is don't-care), skip the runtime probe -- we don't
@@ -6724,6 +6741,10 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
      `vsetvldi' (e.g. for a caller-save vector spill) between this
      setup and the consumer.  */
   riscv_ime_set_last_full_vtype (full_vtype);
+
+  /* Close the entry-edge sequence and inject at function entry.  */
+  rtx_insn *probe_seq = end_sequence ();
+  emit_insn_at_entry (probe_seq);
 }
 
 } // namespace riscv_vector

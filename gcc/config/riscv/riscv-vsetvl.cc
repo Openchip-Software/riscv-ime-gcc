@@ -4550,6 +4550,34 @@ pre_vsetvl::compute_vsetvl_def_data ()
       bitmap_ones (m_kill[bb->index ()]);
       bitmap_set_bit (def_loc[bb->index ()],
 		      get_expr_index (m_vsetvl_def_exprs, footer_info));
+
+      /* WARL-preservation refinement on the reaching-definition kill.
+	 When the footer's basic geometry (SEW, VLMUL, ta, ma) matches an
+	 expression's basic geometry, the footer's vtype write preserves
+	 the IME-specific bits of that expression (RISC-V vector spec
+	 §319-320, §322-336, §369-371: lambda preserved when (VLEN, SEW)
+	 still supports it; altfmt_A/B/bs always preserved across
+	 vsetvli/vsetivli/vsetvl).  Don't kill compatible IME expressions
+	 across such a footer.  */
+      if (footer_info.valid_p ())
+	for (unsigned i = 0; i < m_vsetvl_def_exprs.length (); i++)
+	  {
+	    const auto &info = *m_vsetvl_def_exprs[i];
+	    if (!info.valid_p ())
+	      continue;
+	    if (footer_info.get_sew () != info.get_sew ()
+		|| footer_info.get_vlmul () != info.get_vlmul ()
+		|| footer_info.get_ta () != info.get_ta ()
+		|| footer_info.get_ma () != info.get_ma ())
+	      continue;
+	    /* When both sides have an IME demand, the IME tuples must
+	       also match -- otherwise the footer rewrites lambda/altfmt
+	       to a different value and the prior IME state is destroyed.  */
+	    if (footer_info.ime_required_p () && info.ime_required_p ()
+		&& !(footer_info.get_ime_req () == info.get_ime_req ()))
+	      continue;
+	    bitmap_clear_bit (m_kill[bb->index ()], i);
+	  }
     }
 
   /* Set the def_out of the ENTRY basic block to m_unknown_info expr.  */
@@ -5450,14 +5478,71 @@ pre_vsetvl::emit_vsetvl ()
 		}
 	      else
 		{
-		  if (dump_file)
+		  /* WARL-aware skip for IME consumers: if the reaching
+		     def set at this BB contains an expression that
+		     satisfies curr_info's IME demand AND every other
+		     reaching def is a basic vsetvl at compatible
+		     geometry (so its write preserves the IME bits via
+		     WARL -- RISC-V vector spec §319-320, §322-336,
+		     §369-371), no fresh IME vsetvl needs to be emitted.  */
+		  bool reach_satisfies = false;
+		  if (curr_info.ime_required_p ()
+		      && m_vsetvl_def_in
+		      && !bitmap_empty_p (m_vsetvl_def_in[bb->index ()]))
 		    {
-		      fprintf (dump_file,
-			       "\n  Insert vsetvl info before insn %d: ",
-			       insn->uid ());
-		      curr_info.dump (dump_file, "    ");
+		      bool any_ime_satisfies = false;
+		      bool all_compatible = true;
+		      unsigned int expr_index;
+		      sbitmap_iterator sbi;
+		      EXECUTE_IF_SET_IN_BITMAP (m_vsetvl_def_in[bb->index ()],
+						0, expr_index, sbi)
+			{
+			  vsetvl_info &prev
+			    = *m_vsetvl_def_exprs[expr_index];
+			  if (!prev.valid_p ()
+			      || prev.get_sew () != curr_info.get_sew ()
+			      || prev.get_vlmul () != curr_info.get_vlmul ()
+			      || prev.get_ta () != curr_info.get_ta ()
+			      || prev.get_ma () != curr_info.get_ma ())
+			    {
+			      all_compatible = false;
+			      break;
+			    }
+			  if (prev.ime_required_p ())
+			    {
+			      if (!(prev.get_ime_req ()
+				    == curr_info.get_ime_req ()))
+				{
+				  all_compatible = false;
+				  break;
+				}
+			      any_ime_satisfies = true;
+			    }
+			}
+		      reach_satisfies
+			= all_compatible && any_ime_satisfies;
 		    }
-		  insert_vsetvl_insn (EMIT_BEFORE, curr_info);
+
+		  if (reach_satisfies)
+		    {
+		      if (dump_file)
+			fprintf (dump_file,
+				 "\n  Skip vsetvl emit before insn %d: "
+				 "reaching IME def + WARL-compatible "
+				 "preservers satisfy demand\n",
+				 insn->uid ());
+		    }
+		  else
+		    {
+		      if (dump_file)
+			{
+			  fprintf (dump_file,
+				   "\n  Insert vsetvl info before insn %d: ",
+				   insn->uid ());
+			  curr_info.dump (dump_file, "    ");
+			}
+		      insert_vsetvl_insn (EMIT_BEFORE, curr_info);
+		    }
 		}
 	    }
 	}
