@@ -1815,6 +1815,8 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_fp16_lmul2_vector:
       case RVV_BASE_ime_bf16_lmul2_vector:
       case RVV_BASE_ime_fp32_lmul2_vector:
+      case RVV_BASE_ime_f8e4m3_lmul2_vector:
+      case RVV_BASE_ime_f8e5m2_lmul2_vector:
 	/* fall through to the integer-lmul2 case below.  */
       case RVV_BASE_lmul2_vector:
       case RVV_BASE_lmul2_signed_vector:
@@ -1832,6 +1834,8 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_fp16_lmul4_vector:
       case RVV_BASE_ime_bf16_lmul4_vector:
       case RVV_BASE_ime_fp32_lmul4_vector:
+      case RVV_BASE_ime_f8e4m3_lmul4_vector:
+      case RVV_BASE_ime_f8e5m2_lmul4_vector:
 	/* fall through */
       case RVV_BASE_lmul4_vector:
       case RVV_BASE_lmul4_signed_vector:
@@ -1849,6 +1853,8 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_fp16_lmul8_vector:
       case RVV_BASE_ime_bf16_lmul8_vector:
       case RVV_BASE_ime_fp32_lmul8_vector:
+      case RVV_BASE_ime_f8e4m3_lmul8_vector:
+      case RVV_BASE_ime_f8e5m2_lmul8_vector:
 	/* fall through */
       case RVV_BASE_lmul8_vector:
       case RVV_BASE_lmul8_signed_vector:
@@ -1944,8 +1950,26 @@ struct ime_mmacc_def : public build_base
 	      case RVV_BASE_ime_f8e4m3_lmul1_vector:
 		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m1_t].vector);
 		return true;
+	      case RVV_BASE_ime_f8e4m3_lmul2_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m2_t].vector);
+		return true;
+	      case RVV_BASE_ime_f8e4m3_lmul4_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m4_t].vector);
+		return true;
+	      case RVV_BASE_ime_f8e4m3_lmul8_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m8_t].vector);
+		return true;
 	      case RVV_BASE_ime_f8e5m2_lmul1_vector:
 		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m1_t].vector);
+		return true;
+	      case RVV_BASE_ime_f8e5m2_lmul2_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m2_t].vector);
+		return true;
+	      case RVV_BASE_ime_f8e5m2_lmul4_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m4_t].vector);
+		return true;
+	      case RVV_BASE_ime_f8e5m2_lmul8_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m8_t].vector);
 		return true;
 	      case RVV_BASE_ime_f4e2m1_lmul1_vector:
 		b.append_name (type_suffixes[VECTOR_TYPE_vfloat4e2m1m1_t].vector);
