@@ -1016,6 +1016,21 @@ DEF_RVV_BASE_TYPE (ime_fp32_lmul4_vector,
 DEF_RVV_BASE_TYPE (ime_fp32_lmul8_vector,
 		   builtin_types[VECTOR_TYPE_vfloat32m8_t].vector)
 
+/* OFP8 (E4M3 / E5M2) `_lm{N}' input base types, for the W=2 OFP8 ->
+   FP16/BF16, W=4 OFP8 -> FP32 and W=8 OFP8 -> FP64 _lm{N} variants.  */
+DEF_RVV_BASE_TYPE (ime_f8e4m3_lmul2_vector,
+		   builtin_types[VECTOR_TYPE_vfloat8e4m3m2_t].vector)
+DEF_RVV_BASE_TYPE (ime_f8e4m3_lmul4_vector,
+		   builtin_types[VECTOR_TYPE_vfloat8e4m3m4_t].vector)
+DEF_RVV_BASE_TYPE (ime_f8e4m3_lmul8_vector,
+		   builtin_types[VECTOR_TYPE_vfloat8e4m3m8_t].vector)
+DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul2_vector,
+		   builtin_types[VECTOR_TYPE_vfloat8e5m2m2_t].vector)
+DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul4_vector,
+		   builtin_types[VECTOR_TYPE_vfloat8e5m2m4_t].vector)
+DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul8_vector,
+		   builtin_types[VECTOR_TYPE_vfloat8e5m2m8_t].vector)
+
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)
