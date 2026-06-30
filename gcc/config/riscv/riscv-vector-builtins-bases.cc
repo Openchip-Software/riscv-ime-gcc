@@ -3401,6 +3401,21 @@ static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm4>
 static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm8>
   vfmmacc_lm8_obj;
 
+/* W=1 vfmmacc with m16 accumulator (EMUL_C=16).  Unlike the integer
+   side -- where `vmmacc<su>_m16<mode>' is a separate RTL pattern --
+   the FP `@pred_vfmmacc<mode>' pattern already covers m16 via the
+   VFMMACC_ACC iterator and the V_LMUL{1,2,4,8} mode_attrs, so these
+   instances reuse the same `code_for_pred_vfmmacc{,_lm{N}}'
+   icode-getters as the m1..m8 family above.  Separate `_m16_obj'
+   names are required by BASE() / DEF_RVV_FUNCTION naming.  */
+static CONSTEXPR const vfmmacc_ime_op<> vfmmacc_m16_obj;
+static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm2>
+  vfmmacc_m16_lm2_obj;
+static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm4>
+  vfmmacc_m16_lm4_obj;
+static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm8>
+  vfmmacc_m16_lm8_obj;
+
 /* Zvvfmm FP matrix multiply-accumulate, W=2 (vfwmmacc.vv).  */
 class vfwmmacc_f16_ime_op : public function_base
 {
@@ -3746,6 +3761,27 @@ static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3>
   vfmmacc_f8e5m2_f8e5m2_f8e4m3_obj;
 static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2>
   vfmmacc_f8e5m2_f8e5m2_f8e5m2_obj;
+
+/* W=1 vfmmacc OFP8 with m16 accumulator.  Reuses the same template
+   above: `VFMMACC_OFP8_ACC' already includes RVVM16QI and the inputs
+   are always hard-coded to RVVM1QI (no _lm{N} for OFP8 W=1).  Eight
+   instances cover the same (acc, vs1, vs2) altfmt cube as m1..m8.  */
+static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3>
+  vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16_obj;
+static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2>
+  vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16_obj;
+static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3>
+  vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16_obj;
+static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2>
+  vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16_obj;
+static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3>
+  vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16_obj;
+static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2>
+  vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16_obj;
+static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3>
+  vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16_obj;
+static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2>
+  vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16_obj;
 
 template<int UNSPEC>
 class vfqwmmacc_ofp8_ime_op : public function_base
@@ -5731,6 +5767,19 @@ BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3)
 BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2)
 BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3)
 BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2)
+/* IME m16 acc (W=1 FP / OFP8).  */
+BASE (vfmmacc_m16)
+BASE (vfmmacc_m16_lm2)
+BASE (vfmmacc_m16_lm4)
+BASE (vfmmacc_m16_lm8)
+BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16)
+BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16)
+BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16)
+BASE (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16)
+BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16)
+BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16)
+BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16)
+BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16)
 BASE (vfqwmmacc_f8e4m3)
 BASE (vfqwmmacc_f8e4m3_lm2)
 BASE (vfqwmmacc_f8e4m3_lm4)

@@ -40,6 +40,28 @@ along with GCC; see the file COPYING3. If not see
 #define DEF_RVV_U_M16_OPS(TYPE, REQUIRE)
 #endif
 
+/* Floating-point `m16' accumulator types for IME mmacc/vpair
+   intrinsics (same role as DEF_RVV_I_M16_OPS but for the FP and OFP8
+   surface).  Not part of any standard RVV iterator.  */
+#ifndef DEF_RVV_F16_M16_OPS
+#define DEF_RVV_F16_M16_OPS(TYPE, REQUIRE)
+#endif
+#ifndef DEF_RVV_BF16_M16_OPS
+#define DEF_RVV_BF16_M16_OPS(TYPE, REQUIRE)
+#endif
+#ifndef DEF_RVV_F32_M16_OPS
+#define DEF_RVV_F32_M16_OPS(TYPE, REQUIRE)
+#endif
+#ifndef DEF_RVV_F64_M16_OPS
+#define DEF_RVV_F64_M16_OPS(TYPE, REQUIRE)
+#endif
+#ifndef DEF_RVV_F8E4M3_M16_OPS
+#define DEF_RVV_F8E4M3_M16_OPS(TYPE, REQUIRE)
+#endif
+#ifndef DEF_RVV_F8E5M2_M16_OPS
+#define DEF_RVV_F8E5M2_M16_OPS(TYPE, REQUIRE)
+#endif
+
 /* Use "DEF_RVV_F_OPS" macro include all floating-point which will be
    iterated and registered as intrinsic functions.  */
 #ifndef DEF_RVV_F_OPS
@@ -493,6 +515,12 @@ DEF_RVV_U_M16_OPS (vuint8m16_t,  0)
 DEF_RVV_U_M16_OPS (vuint16m16_t, 0)
 DEF_RVV_U_M16_OPS (vuint32m16_t, 0)
 DEF_RVV_U_M16_OPS (vuint64m16_t, RVV_REQUIRE_ELEN_64)
+DEF_RVV_F16_M16_OPS    (vfloat16m16_t,    RVV_REQUIRE_ELEN_FP_16)
+DEF_RVV_BF16_M16_OPS   (vbfloat16m16_t,   RVV_REQUIRE_ELEN_BF_16)
+DEF_RVV_F32_M16_OPS    (vfloat32m16_t,    RVV_REQUIRE_ELEN_FP_32)
+DEF_RVV_F64_M16_OPS    (vfloat64m16_t,    RVV_REQUIRE_ELEN_FP_64)
+DEF_RVV_F8E4M3_M16_OPS (vfloat8e4m3m16_t, RVV_REQUIRE_ELEN_FP_16)
+DEF_RVV_F8E5M2_M16_OPS (vfloat8e5m2m16_t, RVV_REQUIRE_ELEN_FP_16)
 
 DEF_RVV_F_OPS (vbfloat16mf4_t, RVV_REQUIRE_ELEN_BF_16 | RVV_REQUIRE_ELEN_64)
 DEF_RVV_F_OPS (vbfloat16mf2_t, RVV_REQUIRE_ELEN_BF_16)
@@ -1646,6 +1674,12 @@ DEF_RVV_F8E5M2_LMUL1_OPS (vfloat8e5m2m8_t, 0)
 #undef DEF_RVV_U_OPS
 #undef DEF_RVV_I_M16_OPS
 #undef DEF_RVV_U_M16_OPS
+#undef DEF_RVV_F16_M16_OPS
+#undef DEF_RVV_BF16_M16_OPS
+#undef DEF_RVV_F32_M16_OPS
+#undef DEF_RVV_F64_M16_OPS
+#undef DEF_RVV_F8E4M3_M16_OPS
+#undef DEF_RVV_F8E5M2_M16_OPS
 #undef DEF_RVV_F_OPS
 #undef DEF_RVV_B_OPS
 #undef DEF_RVV_WEXTI_OPS

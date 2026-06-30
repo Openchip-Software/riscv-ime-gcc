@@ -186,6 +186,40 @@ static const rvv_type_info u_m16_ops[] = {
 #include "riscv-vector-builtins-types.def"
   {NUM_VECTOR_TYPES, 0}};
 
+/* IME `m16' floating-point and OFP8 accumulator types.  Mirror the
+   integer `i_m16_ops' / `u_m16_ops' tables.  Used by IME FP mmacc
+   intrinsics with an EMUL_C=16 accumulator and by the FP vpair /
+   vunpair shapes.  */
+static const rvv_type_info f16_m16_ops[] = {
+#define DEF_RVV_F16_M16_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+static const rvv_type_info bf16_m16_ops[] = {
+#define DEF_RVV_BF16_M16_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+static const rvv_type_info f32_m16_ops[] = {
+#define DEF_RVV_F32_M16_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+static const rvv_type_info f64_m16_ops[] = {
+#define DEF_RVV_F64_M16_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+static const rvv_type_info f8e4m3_m16_ops[] = {
+#define DEF_RVV_F8E4M3_M16_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+static const rvv_type_info f8e5m2_m16_ops[] = {
+#define DEF_RVV_F8E5M2_M16_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
 /* A list of all signed integer can be widened will be registered for intrinsic
  * functions.  */
 static const rvv_type_info wi_ops[] = {
@@ -3977,6 +4011,59 @@ static CONSTEXPR const rvv_op_info u_ime_vpair_ops
   = {u_m16_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
 
+/* IME `m16' FP/OFP8 vunpair / vpair op-info structs.  Same shape as
+   the integer m16 variants above; the type set is one of the
+   per-format `f*_m16_ops' tables.  vs1/vs2 args resolve to the m8
+   half via the `lmul8_vector' arg kind handled by
+   `ime_lmul_input_idx'.  */
+static CONSTEXPR const rvv_op_info f16_ime_vunpair_ops
+  = {f16_m16_ops, OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), ime_vunpair_args};
+
+static CONSTEXPR const rvv_op_info bf16_ime_vunpair_ops
+  = {bf16_m16_ops, OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), ime_vunpair_args};
+
+static CONSTEXPR const rvv_op_info f32_ime_vunpair_ops
+  = {f32_m16_ops, OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), ime_vunpair_args};
+
+static CONSTEXPR const rvv_op_info f64_ime_vunpair_ops
+  = {f64_m16_ops, OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), ime_vunpair_args};
+
+static CONSTEXPR const rvv_op_info f8e4m3_ime_vunpair_ops
+  = {f8e4m3_m16_ops, OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), ime_vunpair_args};
+
+static CONSTEXPR const rvv_op_info f8e5m2_ime_vunpair_ops
+  = {f8e5m2_m16_ops, OP_TYPE_v,
+     rvv_arg_type_info (RVV_BASE_lmul8_vector), ime_vunpair_args};
+
+static CONSTEXPR const rvv_op_info f16_ime_vpair_ops
+  = {f16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
+
+static CONSTEXPR const rvv_op_info bf16_ime_vpair_ops
+  = {bf16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
+
+static CONSTEXPR const rvv_op_info f32_ime_vpair_ops
+  = {f32_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
+
+static CONSTEXPR const rvv_op_info f64_ime_vpair_ops
+  = {f64_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
+
+static CONSTEXPR const rvv_op_info f8e4m3_ime_vpair_ops
+  = {f8e4m3_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
+
+static CONSTEXPR const rvv_op_info f8e5m2_ime_vpair_ops
+  = {f8e5m2_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vpair_args};
+
 /* Op-info structs for vwmmacc.vv (W=2) -- same-sign (ss, uu) and
    mixed-sign (su, us).  Signed accumulator is mandated by the spec
    for both _su and _us.  */
@@ -4385,6 +4472,64 @@ static CONSTEXPR const rvv_op_info f_ime_vss_lm8_ops
   = {fp_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
 
+/* IME `m16' W=1 FP/OFP8 mmacc op_info structs.  Same shape as the
+   m1..m8 FP W=1 op_infos above (and as the integer m16 op_infos
+   `i_ime_m16_vss_ops' / `u_ime_m16_vss_ops'); the type set is one of
+   the per-format `f*_m16_ops' tables and the input args reuse
+   `ime_vss_args' / `ime_vss_lm{N}_args' (LMUL=N at the m16
+   accumulator's SEW).  */
+static CONSTEXPR const rvv_op_info f16_ime_m16_vss_ops
+  = {f16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
+static CONSTEXPR const rvv_op_info bf16_ime_m16_vss_ops
+  = {bf16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
+static CONSTEXPR const rvv_op_info f32_ime_m16_vss_ops
+  = {f32_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
+static CONSTEXPR const rvv_op_info f64_ime_m16_vss_ops
+  = {f64_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
+
+static CONSTEXPR const rvv_op_info f16_ime_m16_vss_lm2_ops
+  = {f16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
+static CONSTEXPR const rvv_op_info bf16_ime_m16_vss_lm2_ops
+  = {bf16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
+static CONSTEXPR const rvv_op_info f32_ime_m16_vss_lm2_ops
+  = {f32_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
+static CONSTEXPR const rvv_op_info f64_ime_m16_vss_lm2_ops
+  = {f64_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
+
+static CONSTEXPR const rvv_op_info f16_ime_m16_vss_lm4_ops
+  = {f16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
+static CONSTEXPR const rvv_op_info bf16_ime_m16_vss_lm4_ops
+  = {bf16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
+static CONSTEXPR const rvv_op_info f32_ime_m16_vss_lm4_ops
+  = {f32_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
+static CONSTEXPR const rvv_op_info f64_ime_m16_vss_lm4_ops
+  = {f64_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
+
+static CONSTEXPR const rvv_op_info f16_ime_m16_vss_lm8_ops
+  = {f16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
+static CONSTEXPR const rvv_op_info bf16_ime_m16_vss_lm8_ops
+  = {bf16_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
+static CONSTEXPR const rvv_op_info f32_ime_m16_vss_lm8_ops
+  = {f32_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
+static CONSTEXPR const rvv_op_info f64_ime_m16_vss_lm8_ops
+  = {f64_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
+
 /* vfwmmacc_f16: FP16 -> FP32 accumulator.  */
 static CONSTEXPR const rvv_op_info f32_ime_wvss_f16_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
@@ -4494,6 +4639,35 @@ static CONSTEXPR const rvv_op_info f8e5m2_ime_vss_f8e5m2_f8e4m3_ops
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_f8e4m3_args};
 static CONSTEXPR const rvv_op_info f8e5m2_ime_vss_f8e5m2_f8e5m2_ops
   = {f8e5m2_lmul1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
+
+/* W=1 vfmmacc OFP8 -> OFP8 op_infos for the IME `m16' accumulator.
+   Same eight (acc, vs1, vs2) altfmt cube as above but with the
+   accumulator at EMUL_C=16; the type set picks the acc format.  As
+   on the m1..m8 path, vs1/vs2 are at LMUL=1 (`ime_fwvss_*' args).  */
+static CONSTEXPR const rvv_op_info f8e4m3_ime_m16_vss_f8e4m3_f8e4m3_ops
+  = {f8e4m3_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_args};
+static CONSTEXPR const rvv_op_info f8e4m3_ime_m16_vss_f8e4m3_f8e5m2_ops
+  = {f8e4m3_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_f8e5m2_args};
+static CONSTEXPR const rvv_op_info f8e4m3_ime_m16_vss_f8e5m2_f8e4m3_ops
+  = {f8e4m3_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_f8e4m3_args};
+static CONSTEXPR const rvv_op_info f8e4m3_ime_m16_vss_f8e5m2_f8e5m2_ops
+  = {f8e4m3_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
+static CONSTEXPR const rvv_op_info f8e5m2_ime_m16_vss_f8e4m3_f8e4m3_ops
+  = {f8e5m2_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_args};
+static CONSTEXPR const rvv_op_info f8e5m2_ime_m16_vss_f8e4m3_f8e5m2_ops
+  = {f8e5m2_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e4m3_f8e5m2_args};
+static CONSTEXPR const rvv_op_info f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_ops
+  = {f8e5m2_m16_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_f8e4m3_args};
+static CONSTEXPR const rvv_op_info f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_ops
+  = {f8e5m2_m16_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
 
 /* vfqwmmacc_f8e4m3: OFP8_E4M3 -> FP32 accumulator.  */
@@ -6205,7 +6379,49 @@ ime_lmul_input_idx (vector_type_index type_idx, rvv_base_type kind)
 		       vbfloat16m8_t)
       IME_LMUL_FP_MAP (vfloat32m1_t, vfloat32m2_t, vfloat32m4_t, vfloat32m8_t)
       IME_LMUL_FP_MAP (vfloat64m1_t, vfloat64m2_t, vfloat64m4_t, vfloat64m8_t)
+      IME_LMUL_FP_MAP (vfloat8e4m3m1_t, vfloat8e4m3m2_t,
+		       vfloat8e4m3m4_t, vfloat8e4m3m8_t)
+      IME_LMUL_FP_MAP (vfloat8e5m2m1_t, vfloat8e5m2m2_t,
+		       vfloat8e5m2m4_t, vfloat8e5m2m8_t)
 #undef IME_LMUL_FP_MAP
+
+      /* IME `m16' FP / OFP8 accumulator types: route LMUL{1,2,4,8}
+	 source-LMUL lookups to the m{1,2,4,8} sibling at the
+	 accumulator's SEW.  Mirrors IME_LMUL_INT_M16_MAP above but for
+	 FP and OFP8.  Used by the W=1 FP m16 mmacc family's default
+	 (LMUL=1) and `_lm{N}' variants, and by the FP / OFP8 vpair /
+	 vunpair primitives (where `lmul8_vector' selects the m8 half).
+	 The explicit-signedness kinds are not meaningful for FP types
+	 and return NUM_VECTOR_TYPES.  */
+#define IME_LMUL_FP_M16_MAP(ELEM_M16, ELEM_M1, ELEM_M2, ELEM_M4, ELEM_M8) \
+      case VECTOR_TYPE_##ELEM_M16:					\
+	switch (kind)							\
+	  {								\
+	  case RVV_BASE_lmul1_vector:					\
+	    target = VECTOR_TYPE_##ELEM_M1; break;			\
+	  case RVV_BASE_lmul2_vector:					\
+	    target = VECTOR_TYPE_##ELEM_M2; break;			\
+	  case RVV_BASE_lmul4_vector:					\
+	    target = VECTOR_TYPE_##ELEM_M4; break;			\
+	  case RVV_BASE_lmul8_vector:					\
+	    target = VECTOR_TYPE_##ELEM_M8; break;			\
+	  default:							\
+	    return NUM_VECTOR_TYPES;					\
+	  }								\
+	break;
+      IME_LMUL_FP_M16_MAP (vfloat16m16_t, vfloat16m1_t, vfloat16m2_t,
+			   vfloat16m4_t, vfloat16m8_t)
+      IME_LMUL_FP_M16_MAP (vbfloat16m16_t, vbfloat16m1_t, vbfloat16m2_t,
+			   vbfloat16m4_t, vbfloat16m8_t)
+      IME_LMUL_FP_M16_MAP (vfloat32m16_t, vfloat32m1_t, vfloat32m2_t,
+			   vfloat32m4_t, vfloat32m8_t)
+      IME_LMUL_FP_M16_MAP (vfloat64m16_t, vfloat64m1_t, vfloat64m2_t,
+			   vfloat64m4_t, vfloat64m8_t)
+      IME_LMUL_FP_M16_MAP (vfloat8e4m3m16_t, vfloat8e4m3m1_t, vfloat8e4m3m2_t,
+			   vfloat8e4m3m4_t, vfloat8e4m3m8_t)
+      IME_LMUL_FP_M16_MAP (vfloat8e5m2m16_t, vfloat8e5m2m1_t, vfloat8e5m2m2_t,
+			   vfloat8e5m2m4_t, vfloat8e5m2m8_t)
+#undef IME_LMUL_FP_M16_MAP
       default:
 	return NUM_VECTOR_TYPES;
     }
