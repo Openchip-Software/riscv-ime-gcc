@@ -3360,6 +3360,92 @@
    (set_attr "mode" "<MODE>")
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
+;; vfmmacc.vv (W=1) OFP8 -> OFP8 with vs1/vs2 at LMUL=N (`_lm{N}'
+;; source-LMUL siblings).  Same UNSPEC iteration over the (acc, vs1,
+;; vs2) altfmt cube as the LMUL=1 form above; only the source mode
+;; changes from RVVM1QI to RVVM{N}QI.  Spec § 2657: src_lmul applies
+;; uniformly to the W=1 mmacc family.
+(define_insn "@pred_vfmmacc_ofp8<vfmmacc_ofp8_name>_lm2<mode>"
+  [(set (match_operand:VFMMACC_OFP8_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VFMMACC_OFP8_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VFMMACC_OFP8_ACC
+	    [(match_operand:VFMMACC_OFP8_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM2QI          2 "register_operand" " vr")
+	     (match_operand:RVVM2QI          3 "register_operand" " vr")]
+	    VFMMACC_OFP8)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVFMM"
+  "vfmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<vfmmacc_ofp8_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
+
+(define_insn "@pred_vfmmacc_ofp8<vfmmacc_ofp8_name>_lm4<mode>"
+  [(set (match_operand:VFMMACC_OFP8_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VFMMACC_OFP8_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VFMMACC_OFP8_ACC
+	    [(match_operand:VFMMACC_OFP8_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM4QI          2 "register_operand" " vr")
+	     (match_operand:RVVM4QI          3 "register_operand" " vr")]
+	    VFMMACC_OFP8)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVFMM"
+  "vfmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<vfmmacc_ofp8_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
+
+(define_insn "@pred_vfmmacc_ofp8<vfmmacc_ofp8_name>_lm8<mode>"
+  [(set (match_operand:VFMMACC_OFP8_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VFMMACC_OFP8_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VFMMACC_OFP8_ACC
+	    [(match_operand:VFMMACC_OFP8_ACC 1 "register_operand" "  0")
+	     (match_operand:RVVM8QI          2 "register_operand" " vr")
+	     (match_operand:RVVM8QI          3 "register_operand" " vr")]
+	    VFMMACC_OFP8)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "TARGET_ZVVFMM"
+  "vfmmacc.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<vfmmacc_ofp8_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
+
 ;; ---------------------------------------------------------------------------
 ;; Zvvfmm - FP matrix multiply-accumulate, W=2 (vfwmmacc.vv)
 ;; ---------------------------------------------------------------------------

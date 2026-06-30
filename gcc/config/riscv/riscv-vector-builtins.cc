@@ -4641,6 +4641,64 @@ static CONSTEXPR const rvv_op_info f8e5m2_ime_vss_f8e5m2_f8e5m2_ops
   = {f8e5m2_lmul1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
 
+/* W=1 vfmmacc OFP8 `_lm{N}' op_infos (B.2).  Same eight (acc, vs1,
+   vs2) altfmt cube as the LMUL=1 form above, with vs1/vs2 at LMUL=N.
+   Reuses the existing OFP8 `_lm{N}' args lists also used by the W=2
+   widening forms; the type set picks the acc format.  */
+#define IME_OFP8_VSS_LM_OP(NAME, TYPESET, ARGS)				\
+  static CONSTEXPR const rvv_op_info NAME				\
+    = {TYPESET, OP_TYPE_vv,						\
+       rvv_arg_type_info (RVV_BASE_vector), ARGS}
+
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e4m3_f8e4m3_lm2_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e4m3_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e4m3_f8e4m3_lm4_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e4m3_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e4m3_f8e4m3_lm8_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e4m3_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e4m3_f8e5m2_lm2_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e4m3_f8e5m2_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e4m3_f8e5m2_lm4_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e4m3_f8e5m2_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e4m3_f8e5m2_lm8_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e4m3_f8e5m2_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e5m2_f8e4m3_lm2_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e5m2_f8e4m3_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e5m2_f8e4m3_lm4_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e5m2_f8e4m3_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e5m2_f8e4m3_lm8_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e5m2_f8e4m3_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e5m2_f8e5m2_lm2_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e5m2_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e5m2_f8e5m2_lm4_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e5m2_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_vss_f8e5m2_f8e5m2_lm8_ops,
+		    f8e4m3_lmul1_ops, ime_fwvss_f8e5m2_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e4m3_f8e4m3_lm2_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e4m3_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e4m3_f8e4m3_lm4_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e4m3_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e4m3_f8e4m3_lm8_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e4m3_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e4m3_f8e5m2_lm2_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e4m3_f8e5m2_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e4m3_f8e5m2_lm4_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e4m3_f8e5m2_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e4m3_f8e5m2_lm8_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e4m3_f8e5m2_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e5m2_f8e4m3_lm2_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e5m2_f8e4m3_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e5m2_f8e4m3_lm4_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e5m2_f8e4m3_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e5m2_f8e4m3_lm8_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e5m2_f8e4m3_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e5m2_f8e5m2_lm2_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e5m2_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e5m2_f8e5m2_lm4_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e5m2_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_vss_f8e5m2_f8e5m2_lm8_ops,
+		    f8e5m2_lmul1_ops, ime_fwvss_f8e5m2_lm8_args);
+
 /* W=1 vfmmacc OFP8 -> OFP8 op_infos for the IME `m16' accumulator.
    Same eight (acc, vs1, vs2) altfmt cube as above but with the
    accumulator at EMUL_C=16; the type set picks the acc format.  As
@@ -4669,6 +4727,60 @@ static CONSTEXPR const rvv_op_info f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_ops
 static CONSTEXPR const rvv_op_info f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_ops
   = {f8e5m2_m16_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f8e5m2_args};
+
+/* W=1 OFP8 m16 acc `_lm{N}' op_infos.  Same eight (acc, vs1, vs2)
+   altfmt cube and three source-LMUL siblings as the m1..m8 _lm{N}
+   set; only the type set selects the m16 acc.  */
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e4m3_f8e4m3_lm2_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e4m3_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e4m3_f8e4m3_lm4_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e4m3_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e4m3_f8e4m3_lm8_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e4m3_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e4m3_f8e5m2_lm2_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e4m3_f8e5m2_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e4m3_f8e5m2_lm4_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e4m3_f8e5m2_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e4m3_f8e5m2_lm8_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e4m3_f8e5m2_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e5m2_f8e4m3_lm2_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e5m2_f8e4m3_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e5m2_f8e4m3_lm4_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e5m2_f8e4m3_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e5m2_f8e4m3_lm8_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e5m2_f8e4m3_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e5m2_f8e5m2_lm2_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e5m2_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e5m2_f8e5m2_lm4_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e5m2_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e4m3_ime_m16_vss_f8e5m2_f8e5m2_lm8_ops,
+		    f8e4m3_m16_ops, ime_fwvss_f8e5m2_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e4m3_f8e4m3_lm2_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e4m3_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e4m3_f8e4m3_lm4_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e4m3_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e4m3_f8e4m3_lm8_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e4m3_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e4m3_f8e5m2_lm2_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e4m3_f8e5m2_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e4m3_f8e5m2_lm4_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e4m3_f8e5m2_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e4m3_f8e5m2_lm8_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e4m3_f8e5m2_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_lm2_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e5m2_f8e4m3_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_lm4_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e5m2_f8e4m3_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_lm8_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e5m2_f8e4m3_lm8_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_lm2_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e5m2_lm2_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_lm4_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e5m2_lm4_args);
+IME_OFP8_VSS_LM_OP (f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_lm8_ops,
+		    f8e5m2_m16_ops, ime_fwvss_f8e5m2_lm8_args);
+
+#undef IME_OFP8_VSS_LM_OP
 
 /* vfqwmmacc_f8e4m3: OFP8_E4M3 -> FP32 accumulator.  */
 static CONSTEXPR const rvv_op_info f32_ime_qwvss_f8e4m3_ops

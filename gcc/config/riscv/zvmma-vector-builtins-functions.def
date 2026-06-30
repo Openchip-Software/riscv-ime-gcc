@@ -198,6 +198,60 @@ DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3, ime_mmacc, none_tu_preds,
 		  f8e5m2_ime_vss_f8e5m2_f8e4m3_ops)
 DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2, ime_mmacc, none_tu_preds,
 		  f8e5m2_ime_vss_f8e5m2_f8e5m2_ops)
+/* W=1 vfmmacc OFP8 -> OFP8 `_lm{N}' source-LMUL siblings (B.2).
+   Same eight (acc, vs1, vs2) altfmt cube as the LMUL=1 form above,
+   with vs1/vs2 at LMUL=N.  Three source-LMUL siblings per altfmt
+   tuple = 24 entries.  Spec § 2657: `_lm{N}' applies uniformly to the
+   W=1 mmacc family; this closes the OFP8 corner that previously had
+   only the default LMUL=1 form.  */
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3_lm2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e4m3_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3_lm4, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e4m3_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3_lm8, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e4m3_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2_lm2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e4m3_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2_lm4, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e4m3_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2_lm8, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e4m3_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3_lm2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e5m2_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3_lm4, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e5m2_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3_lm8, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e5m2_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2_lm2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e5m2_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2_lm4, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e5m2_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2_lm8, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_vss_f8e5m2_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3_lm2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e4m3_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3_lm4, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e4m3_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3_lm8, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e4m3_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2_lm2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e4m3_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2_lm4, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e4m3_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2_lm8, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e4m3_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3_lm2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e5m2_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3_lm4, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e5m2_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3_lm8, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e5m2_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2_lm2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e5m2_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2_lm4, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e5m2_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2_lm8, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_vss_f8e5m2_f8e5m2_lm8_ops)
 /* W=1 vfmmacc OFP8 -> OFP8 with m16 accumulator.  Same 8-entry
    (acc, vs1, vs2) altfmt cube as the m1..m8 form above; the type set
    selects the EMUL_C=16 acc and the `_m16' tag on the internal base
@@ -219,6 +273,58 @@ DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16, ime_mmacc, none_tu_preds,
 		  f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_ops)
 DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16, ime_mmacc, none_tu_preds,
 		  f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_ops)
+/* W=1 OFP8 m16 acc `_lm{N}' source-LMUL siblings (B.2 + C.5).
+   24 entries (8 altfmt x 3 LMUL) close the OFP8 m16 corner with the
+   `_lm{N}' parametrisation, matching the m1..m8 OFP8 _lm{N} block
+   above.  */
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e4m3_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e4m3_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e4m3_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e4m3_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e4m3_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e4m3_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e5m2_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e5m2_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e5m2_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e5m2_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e5m2_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e5m2_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e4m3_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e4m3_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e4m3_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e4m3_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e4m3_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e4m3_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_lm8_ops)
 /* IME FP / OFP8 `pair' / `unpair' primitives at m16.  Mirror the
    integer i_/u_ entries above for each FP / OFP8 element type.
    Iterate over the per-format `f*_m16_ops' tables (one type per def).
