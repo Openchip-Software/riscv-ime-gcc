@@ -1809,6 +1809,13 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_lmul1_signed_vector:
       case RVV_BASE_lmul1_unsigned_vector:
 	return 1;
+      /* FP fixed-input base types at LMUL=N>1 -- _lm{N} variants of
+	 the FP widening mmaccs.  Spec §2614-2618 + §2657: _lm{N}
+	 applies uniformly to FP and integer widening.  */
+      case RVV_BASE_ime_fp16_lmul2_vector:
+      case RVV_BASE_ime_bf16_lmul2_vector:
+      case RVV_BASE_ime_fp32_lmul2_vector:
+	/* fall through to the integer-lmul2 case below.  */
       case RVV_BASE_lmul2_vector:
       case RVV_BASE_lmul2_signed_vector:
       case RVV_BASE_lmul2_unsigned_vector:
@@ -1822,6 +1829,10 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_oct_trunc_lmul2_signed_vector:
       case RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector:
 	return 2;
+      case RVV_BASE_ime_fp16_lmul4_vector:
+      case RVV_BASE_ime_bf16_lmul4_vector:
+      case RVV_BASE_ime_fp32_lmul4_vector:
+	/* fall through */
       case RVV_BASE_lmul4_vector:
       case RVV_BASE_lmul4_signed_vector:
       case RVV_BASE_lmul4_unsigned_vector:
@@ -1835,6 +1846,10 @@ struct ime_mmacc_def : public build_base
       case RVV_BASE_ime_oct_trunc_lmul4_signed_vector:
       case RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector:
 	return 4;
+      case RVV_BASE_ime_fp16_lmul8_vector:
+      case RVV_BASE_ime_bf16_lmul8_vector:
+      case RVV_BASE_ime_fp32_lmul8_vector:
+	/* fall through */
       case RVV_BASE_lmul8_vector:
       case RVV_BASE_lmul8_signed_vector:
       case RVV_BASE_lmul8_unsigned_vector:
@@ -1893,11 +1908,38 @@ struct ime_mmacc_def : public build_base
 	      case RVV_BASE_ime_fp16_lmul1_vector:
 		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m1_t].vector);
 		return true;
+	      case RVV_BASE_ime_fp16_lmul2_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m2_t].vector);
+		return true;
+	      case RVV_BASE_ime_fp16_lmul4_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m4_t].vector);
+		return true;
+	      case RVV_BASE_ime_fp16_lmul8_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m8_t].vector);
+		return true;
 	      case RVV_BASE_ime_bf16_lmul1_vector:
 		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m1_t].vector);
 		return true;
+	      case RVV_BASE_ime_bf16_lmul2_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m2_t].vector);
+		return true;
+	      case RVV_BASE_ime_bf16_lmul4_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m4_t].vector);
+		return true;
+	      case RVV_BASE_ime_bf16_lmul8_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m8_t].vector);
+		return true;
 	      case RVV_BASE_ime_fp32_lmul1_vector:
 		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m1_t].vector);
+		return true;
+	      case RVV_BASE_ime_fp32_lmul2_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m2_t].vector);
+		return true;
+	      case RVV_BASE_ime_fp32_lmul4_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m4_t].vector);
+		return true;
+	      case RVV_BASE_ime_fp32_lmul8_vector:
+		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m8_t].vector);
 		return true;
 	      case RVV_BASE_ime_f8e4m3_lmul1_vector:
 		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m1_t].vector);
@@ -1917,6 +1959,13 @@ struct ime_mmacc_def : public build_base
 	  };
 	rvv_base_type vs1_bt = instance.op_info->args[1].base_type;
 	rvv_base_type vs2_bt = instance.op_info->args[2].base_type;
+	/* Always include the input-format suffix when one is available.
+	   It disambiguates between FP widening variants that share an
+	   accumulator type (e.g. `vfwmmacc_vv_f32m1_f16m2_lm2' vs
+	   `..._f32m1_bf16m2_lm2' -- without the explicit `_f16m2' or
+	   `_bf16m2' token the two intrinsics would collide on the same
+	   canonical name).  The `_lm{N}' token is then appended below
+	   for LMUL>1.  */
 	bool emitted_vs1 = append_input_suffix (vs1_bt);
 	if (emitted_vs1 && vs1_bt != vs2_bt)
 	  append_input_suffix (vs2_bt);

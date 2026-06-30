@@ -987,6 +987,35 @@ DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul8_unsigned_vector,
 DEF_RVV_BASE_TYPE (untyped_ptr, ptr_type_node)
 DEF_RVV_BASE_TYPE (untyped_const_ptr, const_ptr_type_node)
 
+/* IME FP fixed-input base types at LMUL > 1: same SEW as the LMUL=1
+   sibling above, but with a wider input register group for the
+   _lm{N} variants of the FP widening mmaccs.  Spec § 2614-2618 +
+   § 2657: _lm{N} applies uniformly to FP and integer widening; the
+   integer side has `ime_{double,quad,oct}_trunc_lmul{2,4,8}_*' as
+   the wider-input counterparts of `_lmul1_*'.  These FP entries
+   close the symmetry.  Like other entries appended past the
+   DEF_RVV_TYPE_INDEX positional slot list, lookups for these types
+   use `get_tree_type's switch path directly; the standard
+   `function_types[].type_indexes[]' fallback is unused.  */
+DEF_RVV_BASE_TYPE (ime_fp16_lmul2_vector,
+		   builtin_types[VECTOR_TYPE_vfloat16m2_t].vector)
+DEF_RVV_BASE_TYPE (ime_fp16_lmul4_vector,
+		   builtin_types[VECTOR_TYPE_vfloat16m4_t].vector)
+DEF_RVV_BASE_TYPE (ime_fp16_lmul8_vector,
+		   builtin_types[VECTOR_TYPE_vfloat16m8_t].vector)
+DEF_RVV_BASE_TYPE (ime_bf16_lmul2_vector,
+		   builtin_types[VECTOR_TYPE_vbfloat16m2_t].vector)
+DEF_RVV_BASE_TYPE (ime_bf16_lmul4_vector,
+		   builtin_types[VECTOR_TYPE_vbfloat16m4_t].vector)
+DEF_RVV_BASE_TYPE (ime_bf16_lmul8_vector,
+		   builtin_types[VECTOR_TYPE_vbfloat16m8_t].vector)
+DEF_RVV_BASE_TYPE (ime_fp32_lmul2_vector,
+		   builtin_types[VECTOR_TYPE_vfloat32m2_t].vector)
+DEF_RVV_BASE_TYPE (ime_fp32_lmul4_vector,
+		   builtin_types[VECTOR_TYPE_vfloat32m4_t].vector)
+DEF_RVV_BASE_TYPE (ime_fp32_lmul8_vector,
+		   builtin_types[VECTOR_TYPE_vfloat32m8_t].vector)
+
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)
