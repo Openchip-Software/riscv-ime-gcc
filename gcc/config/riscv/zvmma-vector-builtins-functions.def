@@ -178,8 +178,26 @@ DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2, ime_mmacc, none_tu_preds,
 		  f8e5m2_ime_vss_f8e5m2_f8e5m2_ops)
 /* vfwmmacc.vv (W=2) */
 DEF_RVV_FUNCTION (vfwmmacc_f16, ime_mmacc, none_tu_preds, f32_ime_wvss_f16_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f16_lm2, ime_mmacc, none_tu_preds,
+		  f32_ime_wvss_f16_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f16_lm4, ime_mmacc, none_tu_preds,
+		  f32_ime_wvss_f16_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f16_lm8, ime_mmacc, none_tu_preds,
+		  f32_ime_wvss_f16_lm8_ops)
 DEF_RVV_FUNCTION (vfwmmacc_bf16, ime_mmacc, none_tu_preds, f32_ime_wvss_bf16_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_lm2, ime_mmacc, none_tu_preds,
+		  f32_ime_wvss_bf16_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_lm4, ime_mmacc, none_tu_preds,
+		  f32_ime_wvss_bf16_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_lm8, ime_mmacc, none_tu_preds,
+		  f32_ime_wvss_bf16_lm8_ops)
 DEF_RVV_FUNCTION (vfwmmacc_f32, ime_mmacc, none_tu_preds, f64_ime_wvss_f32_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f32_lm2, ime_mmacc, none_tu_preds,
+		  f64_ime_wvss_f32_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f32_lm4, ime_mmacc, none_tu_preds,
+		  f64_ime_wvss_f32_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f32_lm8, ime_mmacc, none_tu_preds,
+		  f64_ime_wvss_f32_lm8_ops)
 /* W=2 vfwmmacc OFP8 -> fp16 / bf16: 4 input combos x 2 acc formats =
    8 entries.  Acc altfmt is encoded by the type set; vs1 / vs2 altfmt
    by the (vs1, vs2) tuple in the function name.  */

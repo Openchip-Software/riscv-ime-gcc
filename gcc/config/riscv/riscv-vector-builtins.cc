@@ -1041,16 +1041,73 @@ static CONSTEXPR const rvv_arg_type_info ime_fwvss_f16_args[]
      rvv_arg_type_info (RVV_BASE_ime_fp16_lmul1_vector),
      rvv_arg_type_info_end};
 
+/* _lm{N} variants of the above: vs1/vs2 use LMUL=N at the same SEW
+   (FP16).  Spec §2614-2618 + §2657: `_lm{N}' applies uniformly to FP
+   and integer widening forms.  */
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_f16_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp16_lmul2_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp16_lmul2_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_f16_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp16_lmul4_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp16_lmul4_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_f16_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp16_lmul8_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp16_lmul8_vector),
+     rvv_arg_type_info_end};
+
 static CONSTEXPR const rvv_arg_type_info ime_fwvss_bf16_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_ime_bf16_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_ime_bf16_lmul1_vector),
      rvv_arg_type_info_end};
 
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_bf16_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_bf16_lmul2_vector),
+     rvv_arg_type_info (RVV_BASE_ime_bf16_lmul2_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_bf16_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_bf16_lmul4_vector),
+     rvv_arg_type_info (RVV_BASE_ime_bf16_lmul4_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_bf16_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_bf16_lmul8_vector),
+     rvv_arg_type_info (RVV_BASE_ime_bf16_lmul8_vector),
+     rvv_arg_type_info_end};
+
 static CONSTEXPR const rvv_arg_type_info ime_fwvss_f32_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_ime_fp32_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_ime_fp32_lmul1_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_f32_lm2_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp32_lmul2_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp32_lmul2_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_f32_lm4_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp32_lmul4_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp32_lmul4_vector),
+     rvv_arg_type_info_end};
+
+static CONSTEXPR const rvv_arg_type_info ime_fwvss_f32_lm8_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp32_lmul8_vector),
+     rvv_arg_type_info (RVV_BASE_ime_fp32_lmul8_vector),
      rvv_arg_type_info_end};
 
 static CONSTEXPR const rvv_arg_type_info ime_fwvss_f8e4m3_args[]
@@ -4300,15 +4357,46 @@ static CONSTEXPR const rvv_op_info f32_ime_wvss_f16_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f16_args};
 
+/* vfwmmacc_f16 _lm{N} variants.  */
+static CONSTEXPR const rvv_op_info f32_ime_wvss_f16_lm2_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f16_lm2_args};
+static CONSTEXPR const rvv_op_info f32_ime_wvss_f16_lm4_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f16_lm4_args};
+static CONSTEXPR const rvv_op_info f32_ime_wvss_f16_lm8_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f16_lm8_args};
+
 /* vfwmmacc_bf16: BF16 -> FP32 accumulator.  */
 static CONSTEXPR const rvv_op_info f32_ime_wvss_bf16_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_bf16_args};
 
+static CONSTEXPR const rvv_op_info f32_ime_wvss_bf16_lm2_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_bf16_lm2_args};
+static CONSTEXPR const rvv_op_info f32_ime_wvss_bf16_lm4_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_bf16_lm4_args};
+static CONSTEXPR const rvv_op_info f32_ime_wvss_bf16_lm8_ops
+  = {f32_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_bf16_lm8_args};
+
 /* vfwmmacc_f32: FP32 -> FP64 accumulator.  */
 static CONSTEXPR const rvv_op_info f64_ime_wvss_f32_ops
   = {f64_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f32_args};
+
+static CONSTEXPR const rvv_op_info f64_ime_wvss_f32_lm2_ops
+  = {f64_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f32_lm2_args};
+static CONSTEXPR const rvv_op_info f64_ime_wvss_f32_lm4_ops
+  = {f64_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f32_lm4_args};
+static CONSTEXPR const rvv_op_info f64_ime_wvss_f32_lm8_ops
+  = {f64_lmul_ge1_ops, OP_TYPE_vv,
+     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f32_lm8_args};
 
 /* vfqwmmacc_f16: FP16 -> FP64 accumulator.  */
 static CONSTEXPR const rvv_op_info f64_ime_qwvss_f16_ops

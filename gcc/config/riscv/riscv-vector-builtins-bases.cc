@@ -3422,6 +3422,44 @@ public:
 
 static CONSTEXPR const vfwmmacc_f16_ime_op vfwmmacc_f16_obj;
 
+/* _lm{N} variants of `vfwmmacc_f16': accumulator at LMUL >= 1 (FP32),
+   vs1/vs2 at LMUL=N (FP16).  Spec §2614-2618 + §2657: `_lm{N}'
+   applies uniformly to FP and integer widening.  The class is
+   templated on LMUL so a single dispatch picks the right RTL pattern
+   (`code_for_pred_vfwmmacc_f16_lm{N}').  */
+template<int LMUL>
+class vfwmmacc_f16_lm_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
+
+  rtx expand (function_expander &e) const override
+  {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
+    insn_code icode;
+    if (LMUL == 2)
+      icode = code_for_pred_vfwmmacc_f16_lm2 (e.vector_mode ());
+    else if (LMUL == 4)
+      icode = code_for_pred_vfwmmacc_f16_lm4 (e.vector_mode ());
+    else
+      {
+	gcc_assert (LMUL == 8);
+	icode = code_for_pred_vfwmmacc_f16_lm8 (e.vector_mode ());
+      }
+    rtx result = e.use_exact_insn (icode);
+    emit_ime_post_consumer_blockage ();
+    return result;
+  }
+};
+
+static CONSTEXPR const vfwmmacc_f16_lm_ime_op<2> vfwmmacc_f16_lm2_obj;
+static CONSTEXPR const vfwmmacc_f16_lm_ime_op<4> vfwmmacc_f16_lm4_obj;
+static CONSTEXPR const vfwmmacc_f16_lm_ime_op<8> vfwmmacc_f16_lm8_obj;
+
 class vfwmmacc_bf16_ime_op : public function_base
 {
 public:
@@ -3442,6 +3480,39 @@ public:
 
 static CONSTEXPR const vfwmmacc_bf16_ime_op vfwmmacc_bf16_obj;
 
+template<int LMUL>
+class vfwmmacc_bf16_lm_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
+
+  rtx expand (function_expander &e) const override
+  {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
+    insn_code icode;
+    if (LMUL == 2)
+      icode = code_for_pred_vfwmmacc_bf16_lm2 (e.vector_mode ());
+    else if (LMUL == 4)
+      icode = code_for_pred_vfwmmacc_bf16_lm4 (e.vector_mode ());
+    else
+      {
+	gcc_assert (LMUL == 8);
+	icode = code_for_pred_vfwmmacc_bf16_lm8 (e.vector_mode ());
+      }
+    rtx result = e.use_exact_insn (icode);
+    emit_ime_post_consumer_blockage ();
+    return result;
+  }
+};
+
+static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<2> vfwmmacc_bf16_lm2_obj;
+static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<4> vfwmmacc_bf16_lm4_obj;
+static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<8> vfwmmacc_bf16_lm8_obj;
+
 class vfwmmacc_f32_ime_op : public function_base
 {
 public:
@@ -3461,6 +3532,39 @@ public:
 };
 
 static CONSTEXPR const vfwmmacc_f32_ime_op vfwmmacc_f32_obj;
+
+template<int LMUL>
+class vfwmmacc_f32_lm_ime_op : public function_base
+{
+public:
+  bool apply_mask_policy_p () const override { return false; }
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_ime_vtype_op_p () const override { return true; }
+
+  rtx expand (function_expander &e) const override
+  {
+    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
+				  false, false, false, false, false);
+    insn_code icode;
+    if (LMUL == 2)
+      icode = code_for_pred_vfwmmacc_f32_lm2 (e.vector_mode ());
+    else if (LMUL == 4)
+      icode = code_for_pred_vfwmmacc_f32_lm4 (e.vector_mode ());
+    else
+      {
+	gcc_assert (LMUL == 8);
+	icode = code_for_pred_vfwmmacc_f32_lm8 (e.vector_mode ());
+      }
+    rtx result = e.use_exact_insn (icode);
+    emit_ime_post_consumer_blockage ();
+    return result;
+  }
+};
+
+static CONSTEXPR const vfwmmacc_f32_lm_ime_op<2> vfwmmacc_f32_lm2_obj;
+static CONSTEXPR const vfwmmacc_f32_lm_ime_op<4> vfwmmacc_f32_lm4_obj;
+static CONSTEXPR const vfwmmacc_f32_lm_ime_op<8> vfwmmacc_f32_lm8_obj;
 
 /* Zvvfmm FP matrix multiply-accumulate, W=4 (vfqwmmacc.vv).  */
 class vfqwmmacc_f16_ime_op : public function_base
@@ -5314,8 +5418,17 @@ BASE (vfmmacc_lm2)
 BASE (vfmmacc_lm4)
 BASE (vfmmacc_lm8)
 BASE (vfwmmacc_f16)
+BASE (vfwmmacc_f16_lm2)
+BASE (vfwmmacc_f16_lm4)
+BASE (vfwmmacc_f16_lm8)
 BASE (vfwmmacc_bf16)
+BASE (vfwmmacc_bf16_lm2)
+BASE (vfwmmacc_bf16_lm4)
+BASE (vfwmmacc_bf16_lm8)
 BASE (vfwmmacc_f32)
+BASE (vfwmmacc_f32_lm2)
+BASE (vfwmmacc_f32_lm4)
+BASE (vfwmmacc_f32_lm8)
 BASE (vfqwmmacc_f16)
 BASE (vfqwmmacc_bf16)
 BASE (vfwmmacc_fp16_f8e4m3)
