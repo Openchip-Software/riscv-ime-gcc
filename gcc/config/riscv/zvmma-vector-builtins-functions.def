@@ -157,6 +157,28 @@ DEF_RVV_FUNCTION (vfmmacc,     ime_mmacc, none_tu_preds, f_ime_vss_ops)
 DEF_RVV_FUNCTION (vfmmacc_lm2, ime_mmacc, none_tu_preds, f_ime_vss_lm2_ops)
 DEF_RVV_FUNCTION (vfmmacc_lm4, ime_mmacc, none_tu_preds, f_ime_vss_lm4_ops)
 DEF_RVV_FUNCTION (vfmmacc_lm8, ime_mmacc, none_tu_preds, f_ime_vss_lm8_ops)
+/* W=1 vfmmacc with m16 accumulator (EMUL_C=16).  Same FP-format axis
+   (f16, bf16, f32, f64) as the m1..m8 family, plus the source-LMUL
+   axis (default LMUL=1, _lm{2,4,8}).  Four iterating type sets so the
+   driver enumerates the four per-format m16 acc types separately --
+   the shape strips the trailing `_m16' tag and emits the accumulator
+   suffix (e.g. `_f32m16') from the iterating type.  */
+DEF_RVV_FUNCTION (vfmmacc_m16,     ime_mmacc, none_tu_preds, f16_ime_m16_vss_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16,     ime_mmacc, none_tu_preds, bf16_ime_m16_vss_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16,     ime_mmacc, none_tu_preds, f32_ime_m16_vss_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16,     ime_mmacc, none_tu_preds, f64_ime_m16_vss_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm2, ime_mmacc, none_tu_preds, f16_ime_m16_vss_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm2, ime_mmacc, none_tu_preds, bf16_ime_m16_vss_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm2, ime_mmacc, none_tu_preds, f32_ime_m16_vss_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm2, ime_mmacc, none_tu_preds, f64_ime_m16_vss_lm2_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm4, ime_mmacc, none_tu_preds, f16_ime_m16_vss_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm4, ime_mmacc, none_tu_preds, bf16_ime_m16_vss_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm4, ime_mmacc, none_tu_preds, f32_ime_m16_vss_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm4, ime_mmacc, none_tu_preds, f64_ime_m16_vss_lm4_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm8, ime_mmacc, none_tu_preds, f16_ime_m16_vss_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm8, ime_mmacc, none_tu_preds, bf16_ime_m16_vss_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm8, ime_mmacc, none_tu_preds, f32_ime_m16_vss_lm8_ops)
+DEF_RVV_FUNCTION (vfmmacc_m16_lm8, ime_mmacc, none_tu_preds, f64_ime_m16_vss_lm8_ops)
 /* W=1 vfmmacc OFP8 -> OFP8: 8 (acc, vs1, vs2) altfmt combinations.
    Stage 3a covers acc m1 only; m2/m4/m8 acc is a follow-up that
    requires registering more OFP8 vector types.  */
@@ -176,6 +198,51 @@ DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3, ime_mmacc, none_tu_preds,
 		  f8e5m2_ime_vss_f8e5m2_f8e4m3_ops)
 DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2, ime_mmacc, none_tu_preds,
 		  f8e5m2_ime_vss_f8e5m2_f8e5m2_ops)
+/* W=1 vfmmacc OFP8 -> OFP8 with m16 accumulator.  Same 8-entry
+   (acc, vs1, vs2) altfmt cube as the m1..m8 form above; the type set
+   selects the EMUL_C=16 acc and the `_m16' tag on the internal base
+   name routes the shape's name builder.  No _lm{N} variants -- per
+   spec § 2657 the W=1 OFP8 mmacc has no src_lmul>1 form.  */
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e4m3_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e4m3_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e5m2_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f8e4m3_ime_m16_vss_f8e5m2_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e4m3_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e4m3_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e5m2_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f8e5m2_ime_m16_vss_f8e5m2_f8e5m2_ops)
+/* IME FP / OFP8 `pair' / `unpair' primitives at m16.  Mirror the
+   integer i_/u_ entries above for each FP / OFP8 element type.
+   Iterate over the per-format `f*_m16_ops' tables (one type per def).
+   Reuses the existing `ime_vpair' / `ime_vunpair{lo,hi}' op classes:
+   they dispatch on `e.vector_mode()' which falls within the VM16
+   iterator already covering all m16 modes (int / FP / BF / OFP8).  */
+DEF_RVV_FUNCTION (ime_vpair,     ime_pair_unpair, none_preds, f16_ime_vpair_ops)
+DEF_RVV_FUNCTION (ime_vpair,     ime_pair_unpair, none_preds, bf16_ime_vpair_ops)
+DEF_RVV_FUNCTION (ime_vpair,     ime_pair_unpair, none_preds, f32_ime_vpair_ops)
+DEF_RVV_FUNCTION (ime_vpair,     ime_pair_unpair, none_preds, f64_ime_vpair_ops)
+DEF_RVV_FUNCTION (ime_vpair,     ime_pair_unpair, none_preds, f8e4m3_ime_vpair_ops)
+DEF_RVV_FUNCTION (ime_vpair,     ime_pair_unpair, none_preds, f8e5m2_ime_vpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, f16_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, bf16_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, f32_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, f64_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, f8e4m3_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, f8e5m2_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f16_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, bf16_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f32_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f64_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e4m3_ime_vunpair_ops)
+DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e5m2_ime_vunpair_ops)
 /* vfwmmacc.vv (W=2) */
 DEF_RVV_FUNCTION (vfwmmacc_f16, ime_mmacc, none_tu_preds, f32_ime_wvss_f16_ops)
 DEF_RVV_FUNCTION (vfwmmacc_f16_lm2, ime_mmacc, none_tu_preds,
