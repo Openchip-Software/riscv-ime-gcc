@@ -149,6 +149,62 @@ DEF_RVV_FUNCTION (v8wmmacc_su_lm8, ime_mmacc, none_tu_preds, i_su_ime_8wvss_lm8_
 DEF_RVV_FUNCTION (v8wmmacc_us_lm2, ime_mmacc, none_tu_preds, i_us_ime_8wvss_lm2_ops)
 DEF_RVV_FUNCTION (v8wmmacc_us_lm4, ime_mmacc, none_tu_preds, i_us_ime_8wvss_lm4_ops)
 DEF_RVV_FUNCTION (v8wmmacc_us_lm8, ime_mmacc, none_tu_preds, i_us_ime_8wvss_lm8_ops)
+/* Integer widening m16 acc mmacc (#489).  Same three axes as m1..m8
+   (sign x source-LMUL x widening-width), only the accumulator type
+   switches to the m16 row via the type-set.  The `_m16' tag on the
+   internal base name is stripped by the ime_mmacc shape and the m16
+   MUL_C is emitted from the iterating type suffix.  */
+/* W=2 (vwmmacc) m16.  */
+DEF_RVV_FUNCTION (vwmmacc_s_m16,      ime_mmacc, none_tu_preds, i_ime_m16_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_u_m16,      ime_mmacc, none_tu_preds, u_ime_m16_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_su_m16,     ime_mmacc, none_tu_preds, i_su_ime_m16_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_us_m16,     ime_mmacc, none_tu_preds, i_us_ime_m16_wvss_ops)
+DEF_RVV_FUNCTION (vwmmacc_s_m16_lm2,  ime_mmacc, none_tu_preds, i_ime_m16_wvss_lm2_ops)
+DEF_RVV_FUNCTION (vwmmacc_s_m16_lm4,  ime_mmacc, none_tu_preds, i_ime_m16_wvss_lm4_ops)
+DEF_RVV_FUNCTION (vwmmacc_s_m16_lm8,  ime_mmacc, none_tu_preds, i_ime_m16_wvss_lm8_ops)
+DEF_RVV_FUNCTION (vwmmacc_u_m16_lm2,  ime_mmacc, none_tu_preds, u_ime_m16_wvss_lm2_ops)
+DEF_RVV_FUNCTION (vwmmacc_u_m16_lm4,  ime_mmacc, none_tu_preds, u_ime_m16_wvss_lm4_ops)
+DEF_RVV_FUNCTION (vwmmacc_u_m16_lm8,  ime_mmacc, none_tu_preds, u_ime_m16_wvss_lm8_ops)
+DEF_RVV_FUNCTION (vwmmacc_su_m16_lm2, ime_mmacc, none_tu_preds, i_su_ime_m16_wvss_lm2_ops)
+DEF_RVV_FUNCTION (vwmmacc_su_m16_lm4, ime_mmacc, none_tu_preds, i_su_ime_m16_wvss_lm4_ops)
+DEF_RVV_FUNCTION (vwmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_wvss_lm8_ops)
+DEF_RVV_FUNCTION (vwmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_wvss_lm2_ops)
+DEF_RVV_FUNCTION (vwmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_wvss_lm4_ops)
+DEF_RVV_FUNCTION (vwmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_wvss_lm8_ops)
+/* W=4 (vqwmmacc) m16.  */
+DEF_RVV_FUNCTION (vqwmmacc_s_m16,      ime_mmacc, none_tu_preds, i_ime_m16_qwvss_ops)
+DEF_RVV_FUNCTION (vqwmmacc_u_m16,      ime_mmacc, none_tu_preds, u_ime_m16_qwvss_ops)
+DEF_RVV_FUNCTION (vqwmmacc_su_m16,     ime_mmacc, none_tu_preds, i_su_ime_m16_qwvss_ops)
+DEF_RVV_FUNCTION (vqwmmacc_us_m16,     ime_mmacc, none_tu_preds, i_us_ime_m16_qwvss_ops)
+DEF_RVV_FUNCTION (vqwmmacc_s_m16_lm2,  ime_mmacc, none_tu_preds, i_ime_m16_qwvss_lm2_ops)
+DEF_RVV_FUNCTION (vqwmmacc_s_m16_lm4,  ime_mmacc, none_tu_preds, i_ime_m16_qwvss_lm4_ops)
+DEF_RVV_FUNCTION (vqwmmacc_s_m16_lm8,  ime_mmacc, none_tu_preds, i_ime_m16_qwvss_lm8_ops)
+DEF_RVV_FUNCTION (vqwmmacc_u_m16_lm2,  ime_mmacc, none_tu_preds, u_ime_m16_qwvss_lm2_ops)
+DEF_RVV_FUNCTION (vqwmmacc_u_m16_lm4,  ime_mmacc, none_tu_preds, u_ime_m16_qwvss_lm4_ops)
+DEF_RVV_FUNCTION (vqwmmacc_u_m16_lm8,  ime_mmacc, none_tu_preds, u_ime_m16_qwvss_lm8_ops)
+DEF_RVV_FUNCTION (vqwmmacc_su_m16_lm2, ime_mmacc, none_tu_preds, i_su_ime_m16_qwvss_lm2_ops)
+DEF_RVV_FUNCTION (vqwmmacc_su_m16_lm4, ime_mmacc, none_tu_preds, i_su_ime_m16_qwvss_lm4_ops)
+DEF_RVV_FUNCTION (vqwmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_qwvss_lm8_ops)
+DEF_RVV_FUNCTION (vqwmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_qwvss_lm2_ops)
+DEF_RVV_FUNCTION (vqwmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_qwvss_lm4_ops)
+DEF_RVV_FUNCTION (vqwmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_qwvss_lm8_ops)
+/* W=8 (v8wmmacc) m16.  */
+DEF_RVV_FUNCTION (v8wmmacc_s_m16,      ime_mmacc, none_tu_preds, i_ime_m16_8wvss_ops)
+DEF_RVV_FUNCTION (v8wmmacc_u_m16,      ime_mmacc, none_tu_preds, u_ime_m16_8wvss_ops)
+DEF_RVV_FUNCTION (v8wmmacc_su_m16,     ime_mmacc, none_tu_preds, i_su_ime_m16_8wvss_ops)
+DEF_RVV_FUNCTION (v8wmmacc_us_m16,     ime_mmacc, none_tu_preds, i_us_ime_m16_8wvss_ops)
+DEF_RVV_FUNCTION (v8wmmacc_s_m16_lm2,  ime_mmacc, none_tu_preds, i_ime_m16_8wvss_lm2_ops)
+DEF_RVV_FUNCTION (v8wmmacc_s_m16_lm4,  ime_mmacc, none_tu_preds, i_ime_m16_8wvss_lm4_ops)
+DEF_RVV_FUNCTION (v8wmmacc_s_m16_lm8,  ime_mmacc, none_tu_preds, i_ime_m16_8wvss_lm8_ops)
+DEF_RVV_FUNCTION (v8wmmacc_u_m16_lm2,  ime_mmacc, none_tu_preds, u_ime_m16_8wvss_lm2_ops)
+DEF_RVV_FUNCTION (v8wmmacc_u_m16_lm4,  ime_mmacc, none_tu_preds, u_ime_m16_8wvss_lm4_ops)
+DEF_RVV_FUNCTION (v8wmmacc_u_m16_lm8,  ime_mmacc, none_tu_preds, u_ime_m16_8wvss_lm8_ops)
+DEF_RVV_FUNCTION (v8wmmacc_su_m16_lm2, ime_mmacc, none_tu_preds, i_su_ime_m16_8wvss_lm2_ops)
+DEF_RVV_FUNCTION (v8wmmacc_su_m16_lm4, ime_mmacc, none_tu_preds, i_su_ime_m16_8wvss_lm4_ops)
+DEF_RVV_FUNCTION (v8wmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_8wvss_lm8_ops)
+DEF_RVV_FUNCTION (v8wmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_8wvss_lm2_ops)
+DEF_RVV_FUNCTION (v8wmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_8wvss_lm4_ops)
+DEF_RVV_FUNCTION (v8wmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_8wvss_lm8_ops)
 #undef REQUIRED_EXTENSIONS
 
 /* Zvvfmm - FP matrix multiply-accumulate.  */
@@ -515,6 +571,164 @@ DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_f8e4m3_lm4, ime_mmacc, none_tu_preds,
 DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_f8e4m3_lm8, ime_mmacc, none_tu_preds,
 		  f64_ime_8wvss_f8e5m2_f8e4m3_lm8_ops)
 DEF_RVV_FUNCTION (vf8wmmacc_f4e2m1, ime_mmacc, none_tu_preds, f32_ime_8wvss_f4e2m1_ops)
+/* Zvvfmm widening m16 accumulator (#489).  Same shape as the m1..m8
+   widening entries above, only the internal base name carries a `_m16'
+   tag (stripped by the ime_mmacc shape) and the type-set switches to
+   the m16 acc row.  */
+/* W=2 non-OFP8.  */
+DEF_RVV_FUNCTION (vfwmmacc_f16_m16,      ime_mmacc, none_tu_preds, f32_ime_m16_wvss_f16_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f16_m16_lm2,  ime_mmacc, none_tu_preds, f32_ime_m16_wvss_f16_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f16_m16_lm4,  ime_mmacc, none_tu_preds, f32_ime_m16_wvss_f16_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f16_m16_lm8,  ime_mmacc, none_tu_preds, f32_ime_m16_wvss_f16_lm8_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_m16,     ime_mmacc, none_tu_preds, f32_ime_m16_wvss_bf16_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_m16_lm2, ime_mmacc, none_tu_preds, f32_ime_m16_wvss_bf16_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_m16_lm4, ime_mmacc, none_tu_preds, f32_ime_m16_wvss_bf16_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_m16_lm8, ime_mmacc, none_tu_preds, f32_ime_m16_wvss_bf16_lm8_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f32_m16,      ime_mmacc, none_tu_preds, f64_ime_m16_wvss_f32_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f32_m16_lm2,  ime_mmacc, none_tu_preds, f64_ime_m16_wvss_f32_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f32_m16_lm4,  ime_mmacc, none_tu_preds, f64_ime_m16_wvss_f32_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_f32_m16_lm8,  ime_mmacc, none_tu_preds, f64_ime_m16_wvss_f32_lm8_ops)
+/* W=2 OFP8 -> FP16.  */
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e4m3_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e4m3_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e4m3_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e4m3_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e5m2_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e5m2_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e5m2_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e5m2_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f16_ime_m16_wvss_f8e5m2_lm8_ops)
+/* W=2 OFP8 -> BF16.  */
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e4m3_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e4m3_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e4m3_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e4m3_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e5m2_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e5m2_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e5m2_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e5m2_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  bf16_ime_m16_wvss_f8e5m2_lm8_ops)
+/* W=4 non-OFP8.  */
+DEF_RVV_FUNCTION (vfqwmmacc_f16_m16,      ime_mmacc, none_tu_preds, f64_ime_m16_qwvss_f16_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f16_m16_lm2,  ime_mmacc, none_tu_preds, f64_ime_m16_qwvss_f16_lm2_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f16_m16_lm4,  ime_mmacc, none_tu_preds, f64_ime_m16_qwvss_f16_lm4_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f16_m16_lm8,  ime_mmacc, none_tu_preds, f64_ime_m16_qwvss_f16_lm8_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_bf16_m16,     ime_mmacc, none_tu_preds, f64_ime_m16_qwvss_bf16_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_bf16_m16_lm2, ime_mmacc, none_tu_preds, f64_ime_m16_qwvss_bf16_lm2_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_bf16_m16_lm4, ime_mmacc, none_tu_preds, f64_ime_m16_qwvss_bf16_lm4_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_bf16_m16_lm8, ime_mmacc, none_tu_preds, f64_ime_m16_qwvss_bf16_lm8_ops)
+/* W=4 OFP8 -> FP32.  */
+DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e4m3_f8e5m2_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e4m3_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e4m3_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e4m3_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e5m2_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e5m2_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e5m2_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f32_ime_m16_qwvss_f8e5m2_f8e4m3_lm8_ops)
+/* W=8 OFP8 -> FP64.  */
+DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e4m3_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e4m3_lm8_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e5m2_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_f8e5m2_m16, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e4m3_f8e5m2_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_f8e5m2_m16_lm2, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e4m3_f8e5m2_lm2_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_f8e5m2_m16_lm4, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e4m3_f8e5m2_lm4_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_f8e5m2_m16_lm8, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e4m3_f8e5m2_lm8_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_f8e4m3_m16, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e5m2_f8e4m3_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_f8e4m3_m16_lm2, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e5m2_f8e4m3_lm2_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_f8e4m3_m16_lm4, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e5m2_f8e4m3_lm4_ops)
+DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_f8e4m3_m16_lm8, ime_mmacc, none_tu_preds,
+		  f64_ime_m16_8wvss_f8e5m2_f8e4m3_lm8_ops)
 #undef REQUIRED_EXTENSIONS
 
 /* Microscaled (section 8) FP-input scaled variants.
