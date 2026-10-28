@@ -1,0 +1,112 @@
+/* The IME floating-point matrix multiply-accumulate intrinsics.
+   Copyright (C) 2026 Free Software Foundation, Inc.
+
+This file is part of GCC.
+
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
+
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING3. If not see
+<http://www.gnu.org/licenses/>. */
+
+/* One entry per row of the IME specification's floating-point
+   multiply-accumulate encoding map (tbl-fp-encoding-map) that GCC
+   implements.  Each entry generates the operand table, the function
+   group, the expander object and the function base of the row; the
+   ime_fp_mmacc shape adds the _lm{N} and m16-accumulator forms.
+
+     IME_FP_MMACC (NAME, INSN, C, A, B, PATTERN)
+     IME_OFP8_MMACC (NAME, INSN, C, A, B, UNSPEC, PATTERN)
+
+   NAME is the internal name of the function group and INSN the
+   instruction.  C, A and B are the formats of the accumulator and the
+   A and B inputs, named as in the encoding map: FP16, BF16, FP32, FP64,
+   E4M3 or E5M2.  PATTERN is the @pred_PATTERN insn pattern, indexed by
+   the input and accumulator modes and, for IME_OFP8_MMACC, by UNSPEC,
+   which selects the OFP8 formats.
+
+   The same-format FP16, BF16, FP32 and FP64 rows of vfmmacc are a
+   single function group, vfmmacc, outside this table.
+
+   gen-zvvm-intrinsics.py reads this file to generate the tests and to
+   compare it with the encoding map of the specification.  */
+
+#ifndef IME_FP_MMACC
+#define IME_FP_MMACC(NAME, INSN, C, A, B, PATTERN)
+#endif
+
+#ifndef IME_OFP8_MMACC
+#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC, PATTERN)
+#endif
+
+/* vfmmacc.vv (W=1).  */
+IME_OFP8_MMACC (vfmmacc_f8e4m3_f8e4m3_f8e4m3, vfmmacc, E4M3, E4M3, E4M3,
+		UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3, vfmmacc_ofp8)
+IME_OFP8_MMACC (vfmmacc_f8e4m3_f8e4m3_f8e5m2, vfmmacc, E4M3, E4M3, E5M2,
+		UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2, vfmmacc_ofp8)
+IME_OFP8_MMACC (vfmmacc_f8e4m3_f8e5m2_f8e4m3, vfmmacc, E4M3, E5M2, E4M3,
+		UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3, vfmmacc_ofp8)
+IME_OFP8_MMACC (vfmmacc_f8e4m3_f8e5m2_f8e5m2, vfmmacc, E4M3, E5M2, E5M2,
+		UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2, vfmmacc_ofp8)
+IME_OFP8_MMACC (vfmmacc_f8e5m2_f8e4m3_f8e4m3, vfmmacc, E5M2, E4M3, E4M3,
+		UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3, vfmmacc_ofp8)
+IME_OFP8_MMACC (vfmmacc_f8e5m2_f8e4m3_f8e5m2, vfmmacc, E5M2, E4M3, E5M2,
+		UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2, vfmmacc_ofp8)
+IME_OFP8_MMACC (vfmmacc_f8e5m2_f8e5m2_f8e4m3, vfmmacc, E5M2, E5M2, E4M3,
+		UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3, vfmmacc_ofp8)
+IME_OFP8_MMACC (vfmmacc_f8e5m2_f8e5m2_f8e5m2, vfmmacc, E5M2, E5M2, E5M2,
+		UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2, vfmmacc_ofp8)
+
+/* vfwmmacc.vv (W=2).  */
+IME_FP_MMACC (vfwmmacc_f16, vfwmmacc, FP32, FP16, FP16, vfwmmacc_f16)
+IME_FP_MMACC (vfwmmacc_bf16, vfwmmacc, FP32, BF16, BF16, vfwmmacc_bf16)
+IME_FP_MMACC (vfwmmacc_f32, vfwmmacc, FP64, FP32, FP32, vfwmmacc_f32)
+IME_OFP8_MMACC (vfwmmacc_fp16_f8e4m3, vfwmmacc, FP16, E4M3, E4M3,
+		UNSPEC_VFWMMACC_OFP8_FP16_E4M3, vfwmmacc_ofp8_fp16)
+IME_OFP8_MMACC (vfwmmacc_fp16_f8e4m3_f8e5m2, vfwmmacc, FP16, E4M3, E5M2,
+		UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2, vfwmmacc_ofp8_fp16)
+IME_OFP8_MMACC (vfwmmacc_fp16_f8e5m2_f8e4m3, vfwmmacc, FP16, E5M2, E4M3,
+		UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3, vfwmmacc_ofp8_fp16)
+IME_OFP8_MMACC (vfwmmacc_fp16_f8e5m2, vfwmmacc, FP16, E5M2, E5M2,
+		UNSPEC_VFWMMACC_OFP8_FP16_E5M2, vfwmmacc_ofp8_fp16)
+IME_OFP8_MMACC (vfwmmacc_bf16_f8e4m3, vfwmmacc, BF16, E4M3, E4M3,
+		UNSPEC_VFWMMACC_OFP8_BF16_E4M3, vfwmmacc_ofp8_bf16)
+IME_OFP8_MMACC (vfwmmacc_bf16_f8e4m3_f8e5m2, vfwmmacc, BF16, E4M3, E5M2,
+		UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2, vfwmmacc_ofp8_bf16)
+IME_OFP8_MMACC (vfwmmacc_bf16_f8e5m2_f8e4m3, vfwmmacc, BF16, E5M2, E4M3,
+		UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3, vfwmmacc_ofp8_bf16)
+IME_OFP8_MMACC (vfwmmacc_bf16_f8e5m2, vfwmmacc, BF16, E5M2, E5M2,
+		UNSPEC_VFWMMACC_OFP8_BF16_E5M2, vfwmmacc_ofp8_bf16)
+
+/* vfqwmmacc.vv (W=4).  */
+IME_FP_MMACC (vfqwmmacc_f16, vfqwmmacc, FP64, FP16, FP16, vfqwmmacc_f16)
+IME_FP_MMACC (vfqwmmacc_bf16, vfqwmmacc, FP64, BF16, BF16, vfqwmmacc_bf16)
+IME_OFP8_MMACC (vfqwmmacc_f8e4m3, vfqwmmacc, FP32, E4M3, E4M3,
+		UNSPEC_VFQWMMACC_F8E4M3, vfqwmmacc_ofp8)
+IME_OFP8_MMACC (vfqwmmacc_f8e5m2, vfqwmmacc, FP32, E5M2, E5M2,
+		UNSPEC_VFQWMMACC_F8E5M2, vfqwmmacc_ofp8)
+IME_OFP8_MMACC (vfqwmmacc_f8e4m3_f8e5m2, vfqwmmacc, FP32, E4M3, E5M2,
+		UNSPEC_VFQWMMACC_F8E4M3_E5M2, vfqwmmacc_ofp8)
+IME_OFP8_MMACC (vfqwmmacc_f8e5m2_f8e4m3, vfqwmmacc, FP32, E5M2, E4M3,
+		UNSPEC_VFQWMMACC_F8E5M2_E4M3, vfqwmmacc_ofp8)
+
+/* vf8wmmacc.vv (W=8).  */
+IME_OFP8_MMACC (vf8wmmacc_f8e4m3, vf8wmmacc, FP64, E4M3, E4M3,
+		UNSPEC_VF8WMMACC_F8E4M3, vf8wmmacc_ofp8)
+IME_OFP8_MMACC (vf8wmmacc_f8e5m2, vf8wmmacc, FP64, E5M2, E5M2,
+		UNSPEC_VF8WMMACC_F8E5M2, vf8wmmacc_ofp8)
+IME_OFP8_MMACC (vf8wmmacc_f8e4m3_f8e5m2, vf8wmmacc, FP64, E4M3, E5M2,
+		UNSPEC_VF8WMMACC_F8E4M3_E5M2, vf8wmmacc_ofp8)
+IME_OFP8_MMACC (vf8wmmacc_f8e5m2_f8e4m3, vf8wmmacc, FP64, E5M2, E4M3,
+		UNSPEC_VF8WMMACC_F8E5M2_E4M3, vf8wmmacc_ofp8)
+
+#undef IME_FP_MMACC
+#undef IME_OFP8_MMACC

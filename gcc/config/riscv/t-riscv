@@ -30,6 +30,8 @@ riscv-vector-builtins.o: $(srcdir)/config/riscv/riscv-vector-builtins.cc \
   $(srcdir)/config/riscv/andes-vector-builtins-bases.h \
   $(srcdir)/config/riscv/riscv-vector-builtins-types.def \
   $(srcdir)/config/riscv/sifive-vector-builtins-functions.def \
+  $(srcdir)/config/riscv/zvmma-vector-builtins-functions.def \
+  $(srcdir)/config/riscv/zvvm-mmacc.def \
   $(RISCV_BUILTINS_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
 		$(srcdir)/config/riscv/riscv-vector-builtins.cc
@@ -54,6 +56,7 @@ riscv-vector-builtins-bases.o: \
   rtx-vector-builder.h \
   $(srcdir)/config/riscv/riscv-vector-builtins-shapes.h \
   $(srcdir)/config/riscv/riscv-vector-builtins-bases.h \
+  $(srcdir)/config/riscv/zvvm-mmacc.def \
   $(RISCV_BUILTINS_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
 		$(srcdir)/config/riscv/riscv-vector-builtins-bases.cc

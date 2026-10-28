@@ -363,38 +363,14 @@ extern const function_base *const v8wmmacc;
 /* Zvvmm widening m16 accumulator (#489).  */
 /* Zvvfmm */
 extern const function_base *const vfmmacc;
-extern const function_base *const vfwmmacc_f16;
-extern const function_base *const vfwmmacc_bf16;
-extern const function_base *const vfwmmacc_f32;
-extern const function_base *const vfqwmmacc_f16;
-extern const function_base *const vfqwmmacc_bf16;
-extern const function_base *const vfwmmacc_fp16_f8e4m3;
-extern const function_base *const vfwmmacc_fp16_f8e4m3_f8e5m2;
-extern const function_base *const vfwmmacc_fp16_f8e5m2_f8e4m3;
-extern const function_base *const vfwmmacc_fp16_f8e5m2;
-extern const function_base *const vfwmmacc_bf16_f8e4m3;
-extern const function_base *const vfwmmacc_bf16_f8e4m3_f8e5m2;
-extern const function_base *const vfwmmacc_bf16_f8e5m2_f8e4m3;
-extern const function_base *const vfwmmacc_bf16_f8e5m2;
-extern const function_base *const vfmmacc_f8e4m3_f8e4m3_f8e4m3;
-extern const function_base *const vfmmacc_f8e4m3_f8e4m3_f8e5m2;
-extern const function_base *const vfmmacc_f8e4m3_f8e5m2_f8e4m3;
-extern const function_base *const vfmmacc_f8e4m3_f8e5m2_f8e5m2;
-extern const function_base *const vfmmacc_f8e5m2_f8e4m3_f8e4m3;
-extern const function_base *const vfmmacc_f8e5m2_f8e4m3_f8e5m2;
-extern const function_base *const vfmmacc_f8e5m2_f8e5m2_f8e4m3;
-extern const function_base *const vfmmacc_f8e5m2_f8e5m2_f8e5m2;
+#define IME_FP_MMACC(NAME, INSN, C, A, B, PATTERN)			\
+  extern const function_base *const NAME;
+#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC, PATTERN)		\
+  extern const function_base *const NAME;
+#include "zvvm-mmacc.def"
 /* W=1 OFP8 `_lm{N}' source-LMUL siblings (B.2).  */
 /* IME m16 acc (W=1 FP / OFP8).  */
 /* W=1 OFP8 m16 `_lm{N}' source-LMUL siblings.  */
-extern const function_base *const vfqwmmacc_f8e4m3;
-extern const function_base *const vfqwmmacc_f8e5m2;
-extern const function_base *const vfqwmmacc_f8e4m3_f8e5m2;
-extern const function_base *const vfqwmmacc_f8e5m2_f8e4m3;
-extern const function_base *const vf8wmmacc_f8e4m3;
-extern const function_base *const vf8wmmacc_f8e5m2;
-extern const function_base *const vf8wmmacc_f8e4m3_f8e5m2;
-extern const function_base *const vf8wmmacc_f8e5m2_f8e4m3;
 extern const function_base *const vf8wmmacc_f4e2m1;
 /* Zvvfmm widening m16 accumulator (#489).  */
 /* Microscaled (section 8) FP-input scaled variants */

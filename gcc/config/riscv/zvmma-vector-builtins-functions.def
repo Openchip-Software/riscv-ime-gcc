@@ -55,26 +55,15 @@ DEF_RVV_FUNCTION (v8wmmacc, ime_int_mmacc, none_tu_preds, i_ime_8wvss_ops)
 /* Zvvfmm - FP matrix multiply-accumulate.  Each ime_fp_mmacc entry is
    one combination of accumulator and input formats, given in its
    default form (LMUL=1 inputs, m1..m8 accumulator); the shape registers
-   its _lm{2,4,8} and m16-accumulator forms.  */
+   its _lm{2,4,8} and m16-accumulator forms.  Except for the same-format
+   FP16, BF16, FP32 and FP64 vfmmacc, they come from zvvm-mmacc.def.  */
 #define REQUIRED_EXTENSIONS ZVVFMM_EXT
 DEF_RVV_FUNCTION (vfmmacc,     ime_fp_mmacc, none_tu_preds, f_ime_vss_ops)
-/* W=1 vfmmacc OFP8 -> OFP8: 8 (acc, vs1, vs2) altfmt combinations.  */
-DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  f8e4m3_ime_vss_f8e4m3_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e4m3_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  f8e4m3_ime_vss_f8e4m3_f8e5m2_ops)
-DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  f8e4m3_ime_vss_f8e5m2_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfmmacc_f8e4m3_f8e5m2_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  f8e4m3_ime_vss_f8e5m2_f8e5m2_ops)
-DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  f8e5m2_ime_vss_f8e4m3_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e4m3_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  f8e5m2_ime_vss_f8e4m3_f8e5m2_ops)
-DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  f8e5m2_ime_vss_f8e5m2_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfmmacc_f8e5m2_f8e5m2_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  f8e5m2_ime_vss_f8e5m2_f8e5m2_ops)
+#define IME_FP_MMACC(NAME, INSN, C, A, B, PATTERN)			\
+  DEF_RVV_FUNCTION (NAME, ime_fp_mmacc, none_tu_preds, NAME##_ime_ops)
+#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC, PATTERN)		\
+  DEF_RVV_FUNCTION (NAME, ime_fp_mmacc, none_tu_preds, NAME##_ime_ops)
+#include "zvvm-mmacc.def"
 /* IME FP / OFP8 `pair' / `unpair' primitives at m16.  Mirror the
    integer i_/u_ entries above for each FP / OFP8 element type.
    Iterate over the per-format `f*_m16_ops' tables (one type per def).
@@ -99,45 +88,7 @@ DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f32_ime_vunpair_op
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f64_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e4m3_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e5m2_ime_vunpair_ops)
-/* vfwmmacc.vv (W=2) */
-DEF_RVV_FUNCTION (vfwmmacc_f16, ime_fp_mmacc, none_tu_preds, f32_ime_wvss_f16_ops)
-DEF_RVV_FUNCTION (vfwmmacc_bf16, ime_fp_mmacc, none_tu_preds, f32_ime_wvss_bf16_ops)
-DEF_RVV_FUNCTION (vfwmmacc_f32, ime_fp_mmacc, none_tu_preds, f64_ime_wvss_f32_ops)
-/* W=2 vfwmmacc OFP8 -> fp16 / bf16: 4 input combos x 2 acc formats =
-   8 entries.  Acc altfmt is encoded by the type set; vs1 / vs2 altfmt
-   by the (vs1, vs2) tuple in the function name.  */
-DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  f16_ime_wvss_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e4m3_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  f16_ime_wvss_f8e4m3_f8e5m2_ops)
-DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  f16_ime_wvss_f8e5m2_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfwmmacc_fp16_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  f16_ime_wvss_f8e5m2_ops)
-DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  bf16_ime_wvss_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e4m3_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  bf16_ime_wvss_f8e4m3_f8e5m2_ops)
-DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  bf16_ime_wvss_f8e5m2_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfwmmacc_bf16_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  bf16_ime_wvss_f8e5m2_ops)
-/* vfqwmmacc.vv (W=4) */
-DEF_RVV_FUNCTION (vfqwmmacc_f16, ime_fp_mmacc, none_tu_preds, f64_ime_qwvss_f16_ops)
-DEF_RVV_FUNCTION (vfqwmmacc_bf16, ime_fp_mmacc, none_tu_preds, f64_ime_qwvss_bf16_ops)
-DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3, ime_fp_mmacc, none_tu_preds, f32_ime_qwvss_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2, ime_fp_mmacc, none_tu_preds, f32_ime_qwvss_f8e5m2_ops)
-DEF_RVV_FUNCTION (vfqwmmacc_f8e4m3_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  f32_ime_qwvss_f8e4m3_f8e5m2_ops)
-DEF_RVV_FUNCTION (vfqwmmacc_f8e5m2_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  f32_ime_qwvss_f8e5m2_f8e4m3_ops)
 /* vf8wmmacc.vv (W=8) */
-DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3, ime_fp_mmacc, none_tu_preds, f64_ime_8wvss_f8e4m3_ops)
-DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2, ime_fp_mmacc, none_tu_preds, f64_ime_8wvss_f8e5m2_ops)
-DEF_RVV_FUNCTION (vf8wmmacc_f8e4m3_f8e5m2, ime_fp_mmacc, none_tu_preds,
-		  f64_ime_8wvss_f8e4m3_f8e5m2_ops)
-DEF_RVV_FUNCTION (vf8wmmacc_f8e5m2_f8e4m3, ime_fp_mmacc, none_tu_preds,
-		  f64_ime_8wvss_f8e5m2_f8e4m3_ops)
 DEF_RVV_FUNCTION (vf8wmmacc_f4e2m1, ime_mmacc, none_tu_preds, f32_ime_8wvss_f4e2m1_ops)
 #undef REQUIRED_EXTENSIONS
 
