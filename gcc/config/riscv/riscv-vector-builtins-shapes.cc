@@ -1458,22 +1458,6 @@ struct sf_vcix_def : public build_base
   }
 };
 
-/* IME integer matrix multiply-accumulate shape (Zvmma).
-
-   The spec mandates the user-visible base names "vmmacc" and
-   "vwmmacc" for the non-widening and W=2 widening forms.  The
-   signed/unsigned distinction comes from the C type of the
-   accumulator and input operands.  DEF_RVV_FUNCTION entries use
-   internal base names (vmmacc_s, vmmacc_u, vwmmacc_s, vwmmacc_u,
-   vwmmacc_su, vwmmacc_us) that map to distinct function_base
-   objects so the expander can route to different UNSPECs; this
-   shape maps the internal name back to the user-visible base and,
-   for mixed-sign cases, appends the "_su" / "_us" suffix.
-
-   Only default-LMUL variants are handled here; _lm{N}, _bs{16,32},
-   and _L{N} suffixes will be added as their corresponding intrinsic
-   families land.  */
-
 /* Shape for IME tile load/store intrinsics (vmtl.v, vmts.v, vmttl.v,
    vmtts.v).  Names follow:
 
@@ -1590,20 +1574,26 @@ struct ime_mmacc_def : public build_base
   void build (function_builder &b,
 	      const function_group_info &group) const override
   {
+    build_ops (b, group, group.ops_infos);
+  }
+
+  /* Register the functions of GROUP with the operands in OPS.  */
+  static void build_ops (function_builder &b, const function_group_info &group,
+			 const rvv_op_info &ops)
+  {
     for (unsigned int pred_idx = 0; group.preds[pred_idx] != NUM_PRED_TYPES;
 	 ++pred_idx)
       for (unsigned int vec_type_idx = 0;
-	   group.ops_infos.types[vec_type_idx].index != NUM_VECTOR_TYPES;
+	   ops.types[vec_type_idx].index != NUM_VECTOR_TYPES;
 	   ++vec_type_idx)
 	{
 	  auto_vec<tree, 8> argument_types;
 	  function_instance function_instance (group.base_name, *group.base,
 					       *group.shape,
-					       group.ops_infos.types[vec_type_idx],
-					       group.preds[pred_idx],
-					       &group.ops_infos);
-	  tree return_type = group.ops_infos.ret.get_tree_type (
-	    group.ops_infos.types[vec_type_idx].index);
+					       ops.types[vec_type_idx],
+					       group.preds[pred_idx], &ops);
+	  tree return_type
+	    = ops.ret.get_tree_type (ops.types[vec_type_idx].index);
 	  b.allocate_argument_types (function_instance, argument_types);
 	  b.apply_predication (function_instance, return_type, argument_types);
 	  if (!check_type (return_type, argument_types))
@@ -1620,14 +1610,9 @@ struct ime_mmacc_def : public build_base
      __riscv_{base}_{op}{type-suffix}[_{inputA}[_{inputB}]]
               [_su|_us][_lm{N}][_bs{16,32}][_L{N}]{pred}
 
-     The internal base_name always encodes the sign combination by a
-     trailing "_s", "_u", "_su" or "_us" token: e.g. "vwmmacc_su".
-     Strip that token to recover the user-visible base name ("vwmmacc")
-     and, if the sign tail was "_su" or "_us", keep the sign tail as the
-     trailing sign-suffix in canonical order.  This decode replaces the
-     earlier strcmp chain so adding new IME base families (vqwmmacc,
-     v8wmmacc, the FP and microscaled families in §7/§8, ...) does not
-     require touching this function.  */
+     The _su / _us suffix comes from the input types (see
+     ime_int_mmacc_input); the other suffixes are decoded from tokens
+     at the end of the internal base name.  */
   /* Known FP format tokens that appear as trailing suffixes in the
      internal base name for FP mmacc variants.  Ordered longest-first
      so that e.g. "_f8e4m3" is matched before a hypothetical shorter
@@ -1655,13 +1640,12 @@ struct ime_mmacc_def : public build_base
   };
 
   static void
-  decode_base_and_sign (const char *internal, char *base_buf,
-			size_t base_buf_sz, const char *&sign_suffix,
-			const char *&bs_suffix, const char *&lm_suffix)
+  decode_base_name (const char *internal, char *base_buf,
+		    size_t base_buf_sz, const char *&bs_suffix,
+		    const char *&lm_suffix)
   {
     size_t ilen = strlen (internal);
     size_t base_len = ilen;
-    sign_suffix = "";
     bs_suffix = "";
     lm_suffix = "";
 
@@ -1711,29 +1695,6 @@ struct ime_mmacc_def : public build_base
 	}
     }
 
-    /* Mixed-sign: "_su" or "_us".  Use string literals rather than a
-       pointer into INTERNAL because the lm/bs strip steps above only
-       decremented ILEN -- the original buffer still has the "_lm{N}"
-       (or "_bs{N}") suffix after the sign token, so a substring
-       pointer would emit those characters into the canonical name.  */
-    if (ilen >= 3 && internal[ilen - 3] == '_'
-	&& internal[ilen - 2] == 's' && internal[ilen - 1] == 'u')
-      {
-	sign_suffix = "_su";
-	base_len = ilen - 3;
-      }
-    else if (ilen >= 3 && internal[ilen - 3] == '_'
-	     && internal[ilen - 2] == 'u' && internal[ilen - 1] == 's')
-      {
-	sign_suffix = "_us";
-	base_len = ilen - 3;
-      }
-    /* Same-sign: "_s" or "_u" -- consumed into the base; no trailing
-       sign token is emitted in the canonical name.  */
-    else if (ilen >= 2 && internal[ilen - 2] == '_'
-	     && (internal[ilen - 1] == 's' || internal[ilen - 1] == 'u'))
-      base_len = ilen - 2;
-    else
       {
 	/* FP/integer format token: "_f16", "_bf16", "_f32", "_f8e4m3",
 	   "_i8", etc.  These are stripped from the user-visible base
@@ -1881,13 +1842,19 @@ struct ime_mmacc_def : public build_base
       return nullptr;
 
     char base_buf[32];
-    const char *sign_suffix;
     const char *bs_suffix;
     const char *lm_suffix;
-    decode_base_and_sign (instance.base_name, base_buf, sizeof (base_buf),
-			  sign_suffix, bs_suffix, lm_suffix);
+    decode_base_name (instance.base_name, base_buf, sizeof (base_buf),
+		      bs_suffix, lm_suffix);
     (void) lm_suffix;  /* Consumed via the args base type in
 			  ime_input_lmul ().  */
+
+    /* The _su / _us suffix of the integer multiply-accumulates.  */
+    const char *sign_suffix = "";
+    ime_int_input in;
+    if (ime_int_mmacc_input (instance, &in))
+      sign_suffix = (in.sign == IME_SIGN_SU ? "_su"
+		     : in.sign == IME_SIGN_US ? "_us" : "");
 
     /* "__riscv_" + <base>.  */
     b.append_base_name (base_buf);
@@ -2021,6 +1988,30 @@ struct ime_mmacc_def : public build_base
   }
 };
 
+/* ime_int_mmacc: the IME integer multiply-accumulates (vmmacc, vwmmacc,
+   vqwmmacc and v8wmmacc).  The function group gives the instruction's
+   default form (signed inputs at LMUL=1); this registers every variant
+   of it: signed, unsigned, _su and _us inputs, each at input LMUL 1, 2,
+   4 and 8, with m1..m8 and with m16 accumulators.  */
+struct ime_int_mmacc_def : public ime_mmacc_def
+{
+  void build (function_builder &b,
+	      const function_group_info &group) const override
+  {
+    function_instance def (group.base_name, *group.base, *group.shape,
+			   group.ops_infos.types[0], group.preds[0],
+			   &group.ops_infos);
+    ime_int_input in;
+    gcc_assert (ime_int_mmacc_input (def, &in));
+    for (unsigned m16 = 0; m16 < 2; m16++)
+      for (unsigned sign = IME_SIGN_SS; sign <= IME_SIGN_US; sign++)
+	for (unsigned lm_log2 = 0; lm_log2 < 4; lm_log2++)
+	  build_ops (b, group,
+		     *ime_int_mmacc_op_info (in.w_log2, (ime_int_sign) sign,
+					     lm_log2, m16));
+  }
+};
+
 
 SHAPE(vsetvl, vsetvl)
 SHAPE(vsetvl, vsetvlmax)
@@ -2062,6 +2053,7 @@ SHAPE (sf_vfnrclip, sf_vfnrclip)
 SHAPE(sf_vcix_se, sf_vcix_se)
 SHAPE(sf_vcix, sf_vcix)
 SHAPE (ime_mmacc, ime_mmacc)
+SHAPE (ime_int_mmacc, ime_int_mmacc)
 SHAPE (ime_tile, ime_tile)
 SHAPE (vsetlambda, vsetlambda)
 } // end namespace riscv_vector

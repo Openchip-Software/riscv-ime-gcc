@@ -3000,18 +3000,25 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 				avl);
 }
 
-/* IME vector integer matrix multiply-accumulate (W=1).  Expands to
-   @pred_vmmacc_s<mode> or @pred_vmmacc_u<mode>, templated on the
-   UNSPEC code.  The mode iterator is the accumulator mode (operand 0)
-   and the input operands are at LMUL=1 via V_LMUL1.  Signed and
-   unsigned emit the same vmmacc.vv instruction; they differ only in
-   which UNSPEC is on the RTL, so the vsetvl pass can read the
-   ime_altfmt attribute to populate altfmt_A/altfmt_B correctly.  No
-   mask/merge/policy operands.  */
-template<int UNSPEC, insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_vmmacc>
-class vmmacc_ime_op : public function_base
+/* IME integer matrix multiply-accumulate: vmmacc.vv, vwmmacc.vv,
+   vqwmmacc.vv and v8wmmacc.vv.  One object covers every variant of an
+   instruction.  The input signedness picks the UNSPEC, which the vsetvl
+   pass reads to set altfmt_A/altfmt_B; the input LMUL and an m16
+   accumulator pick the pattern.  No mask/merge/policy operands.  */
+class ime_int_mmacc_op : public function_base
 {
 public:
+  typedef insn_code (*code_for_fn) (int, machine_mode);
+
+  CONSTEXPR ime_int_mmacc_op (int ss, int uu, int su, int us,
+			      code_for_fn lm1, code_for_fn lm2,
+			      code_for_fn lm4, code_for_fn lm8,
+			      code_for_fn m16_lm1, code_for_fn m16_lm2,
+			      code_for_fn m16_lm4, code_for_fn m16_lm8)
+    : m_unspecs {ss, uu, su, us},
+      m_code_for {{lm1, lm2, lm4, lm8}, {m16_lm1, m16_lm2, m16_lm4, m16_lm8}}
+  {}
+
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
@@ -3019,94 +3026,56 @@ public:
 
   rtx expand (function_expander &e) const override
   {
+    ime_int_input in;
+    gcc_assert (ime_int_mmacc_input (e, &in));
+    int unspec = m_unspecs[in.sign];
+    bool m16 = get_vlmul (e.vector_mode ()) == LMUL_16;
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  /* is_tile_op = */ false,
-				  ime_unspec_altfmt_a (UNSPEC),
-				  ime_unspec_altfmt_b (UNSPEC),
+				  ime_unspec_altfmt_a (unspec),
+				  ime_unspec_altfmt_b (unspec),
 				  /* altfmt = */ false,
 				  /* bs = */ false);
-    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
+    rtx result
+      = e.use_exact_insn (m_code_for[m16][in.lm_log2] (unspec,
+							e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
   }
+
+private:
+  int m_unspecs[4];
+  code_for_fn m_code_for[2][4];
 };
 
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S> vmmacc_s_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U> vmmacc_u_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S, code_for_pred_vmmacc_lm2>
-  vmmacc_s_lm2_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S, code_for_pred_vmmacc_lm4>
-  vmmacc_s_lm4_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S, code_for_pred_vmmacc_lm8>
-  vmmacc_s_lm8_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_lm2>
-  vmmacc_u_lm2_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_lm4>
-  vmmacc_u_lm4_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_lm8>
-  vmmacc_u_lm8_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU> vmmacc_su_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US> vmmacc_us_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU, code_for_pred_vmmacc_lm2>
-  vmmacc_su_lm2_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU, code_for_pred_vmmacc_lm4>
-  vmmacc_su_lm4_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU, code_for_pred_vmmacc_lm8>
-  vmmacc_su_lm8_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm2>
-  vmmacc_us_lm2_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm4>
-  vmmacc_us_lm4_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_lm8>
-  vmmacc_us_lm8_obj;
-
-/* W=1 mmacc objects for the IME m16 accumulator family.  Each is the
-   same `vmmacc_ime_op' template with a CODE_FOR pointing at the
-   m16-acc RTL pattern variant.  */
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S, code_for_pred_vmmacc_m16>
-  vmmacc_s_m16_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U, code_for_pred_vmmacc_m16>
-  vmmacc_u_m16_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S,
-				     code_for_pred_vmmacc_m16_lm2>
-  vmmacc_s_m16_lm2_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S,
-				     code_for_pred_vmmacc_m16_lm4>
-  vmmacc_s_m16_lm4_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_S,
-				     code_for_pred_vmmacc_m16_lm8>
-  vmmacc_s_m16_lm8_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U,
-				     code_for_pred_vmmacc_m16_lm2>
-  vmmacc_u_m16_lm2_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U,
-				     code_for_pred_vmmacc_m16_lm4>
-  vmmacc_u_m16_lm4_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_U,
-				     code_for_pred_vmmacc_m16_lm8>
-  vmmacc_u_m16_lm8_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU, code_for_pred_vmmacc_m16>
-  vmmacc_su_m16_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US, code_for_pred_vmmacc_m16>
-  vmmacc_us_m16_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU,
-				     code_for_pred_vmmacc_m16_lm2>
-  vmmacc_su_m16_lm2_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU,
-				     code_for_pred_vmmacc_m16_lm4>
-  vmmacc_su_m16_lm4_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_SU,
-				     code_for_pred_vmmacc_m16_lm8>
-  vmmacc_su_m16_lm8_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US,
-				     code_for_pred_vmmacc_m16_lm2>
-  vmmacc_us_m16_lm2_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US,
-				     code_for_pred_vmmacc_m16_lm4>
-  vmmacc_us_m16_lm4_obj;
-static CONSTEXPR const vmmacc_ime_op<UNSPEC_VMMACC_US,
-				     code_for_pred_vmmacc_m16_lm8>
-  vmmacc_us_m16_lm8_obj;
+/* vmmacc has separate patterns for m16 accumulators; the widening
+   instructions' patterns include the m16 modes.  */
+static CONSTEXPR const ime_int_mmacc_op vmmacc_obj
+  (UNSPEC_VMMACC_S, UNSPEC_VMMACC_U, UNSPEC_VMMACC_SU, UNSPEC_VMMACC_US,
+   code_for_pred_vmmacc, code_for_pred_vmmacc_lm2,
+   code_for_pred_vmmacc_lm4, code_for_pred_vmmacc_lm8,
+   code_for_pred_vmmacc_m16, code_for_pred_vmmacc_m16_lm2,
+   code_for_pred_vmmacc_m16_lm4, code_for_pred_vmmacc_m16_lm8);
+static CONSTEXPR const ime_int_mmacc_op vwmmacc_obj
+  (UNSPEC_VWMMACC_S, UNSPEC_VWMMACC_U, UNSPEC_VWMMACC_SU, UNSPEC_VWMMACC_US,
+   code_for_pred_vwmmacc, code_for_pred_vwmmacc_lm2,
+   code_for_pred_vwmmacc_lm4, code_for_pred_vwmmacc_lm8,
+   code_for_pred_vwmmacc, code_for_pred_vwmmacc_lm2,
+   code_for_pred_vwmmacc_lm4, code_for_pred_vwmmacc_lm8);
+static CONSTEXPR const ime_int_mmacc_op vqwmmacc_obj
+  (UNSPEC_VQWMMACC_S, UNSPEC_VQWMMACC_U, UNSPEC_VQWMMACC_SU,
+   UNSPEC_VQWMMACC_US,
+   code_for_pred_vqwmmacc, code_for_pred_vqwmmacc_lm2,
+   code_for_pred_vqwmmacc_lm4, code_for_pred_vqwmmacc_lm8,
+   code_for_pred_vqwmmacc, code_for_pred_vqwmmacc_lm2,
+   code_for_pred_vqwmmacc_lm4, code_for_pred_vqwmmacc_lm8);
+static CONSTEXPR const ime_int_mmacc_op v8wmmacc_obj
+  (UNSPEC_V8WMMACC_S, UNSPEC_V8WMMACC_U, UNSPEC_V8WMMACC_SU,
+   UNSPEC_V8WMMACC_US,
+   code_for_pred_v8wmmacc, code_for_pred_v8wmmacc_lm2,
+   code_for_pred_v8wmmacc_lm4, code_for_pred_v8wmmacc_lm8,
+   code_for_pred_v8wmmacc, code_for_pred_v8wmmacc_lm2,
+   code_for_pred_v8wmmacc_lm4, code_for_pred_v8wmmacc_lm8);
 
 /* IME pair / unpair primitive bases.
 
@@ -3171,264 +3140,6 @@ static CONSTEXPR const ime_vunpairlo ime_vunpairlo_obj;
 static CONSTEXPR const ime_vunpairhi ime_vunpairhi_obj;
 static CONSTEXPR const ime_vpair     ime_vpair_obj;
 
-/* IME vector widening integer matrix multiply-accumulate (W=2).  Same
-   structure as vmmacc_ime_op but dispatches to @pred_vwmmacc*<mode>.
-   Four instances cover ss, uu, su, us.  The optional CODE_FOR template
-   parameter selects between the default LMUL=1 pattern and the
-   _lm{2,4,8} source-LMUL siblings.  */
-template<int UNSPEC,
-	 insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_vwmmacc>
-class vwmmacc_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  ime_unspec_altfmt_a (UNSPEC),
-				  ime_unspec_altfmt_b (UNSPEC),
-				  /* altfmt = */ false,
-				  /* bs = */ false);
-    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_S>  vwmmacc_s_obj;
-static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_U>  vwmmacc_u_obj;
-static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_SU> vwmmacc_su_obj;
-static CONSTEXPR const vwmmacc_ime_op<UNSPEC_VWMMACC_US> vwmmacc_us_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_S, code_for_pred_vwmmacc_lm2> vwmmacc_s_lm2_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_S, code_for_pred_vwmmacc_lm4> vwmmacc_s_lm4_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_S, code_for_pred_vwmmacc_lm8> vwmmacc_s_lm8_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_U, code_for_pred_vwmmacc_lm2> vwmmacc_u_lm2_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_U, code_for_pred_vwmmacc_lm4> vwmmacc_u_lm4_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_U, code_for_pred_vwmmacc_lm8> vwmmacc_u_lm8_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_SU, code_for_pred_vwmmacc_lm2>
-    vwmmacc_su_lm2_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_SU, code_for_pred_vwmmacc_lm4>
-    vwmmacc_su_lm4_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_SU, code_for_pred_vwmmacc_lm8>
-    vwmmacc_su_lm8_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_US, code_for_pred_vwmmacc_lm2>
-    vwmmacc_us_lm2_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_US, code_for_pred_vwmmacc_lm4>
-    vwmmacc_us_lm4_obj;
-static CONSTEXPR const
-  vwmmacc_ime_op<UNSPEC_VWMMACC_US, code_for_pred_vwmmacc_lm8>
-    vwmmacc_us_lm8_obj;
-
-/* IME vector widening integer matrix multiply-accumulate (W=4).  */
-template<int UNSPEC,
-	 insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_vqwmmacc>
-class vqwmmacc_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  ime_unspec_altfmt_a (UNSPEC),
-				  ime_unspec_altfmt_b (UNSPEC),
-				  /* altfmt = */ false,
-				  /* bs = */ false);
-    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_S>  vqwmmacc_s_obj;
-static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_U>  vqwmmacc_u_obj;
-static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU> vqwmmacc_su_obj;
-static CONSTEXPR const vqwmmacc_ime_op<UNSPEC_VQWMMACC_US> vqwmmacc_us_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_S, code_for_pred_vqwmmacc_lm2>
-    vqwmmacc_s_lm2_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_S, code_for_pred_vqwmmacc_lm4>
-    vqwmmacc_s_lm4_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_S, code_for_pred_vqwmmacc_lm8>
-    vqwmmacc_s_lm8_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_U, code_for_pred_vqwmmacc_lm2>
-    vqwmmacc_u_lm2_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_U, code_for_pred_vqwmmacc_lm4>
-    vqwmmacc_u_lm4_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_U, code_for_pred_vqwmmacc_lm8>
-    vqwmmacc_u_lm8_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU, code_for_pred_vqwmmacc_lm2>
-    vqwmmacc_su_lm2_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU, code_for_pred_vqwmmacc_lm4>
-    vqwmmacc_su_lm4_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_SU, code_for_pred_vqwmmacc_lm8>
-    vqwmmacc_su_lm8_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_US, code_for_pred_vqwmmacc_lm2>
-    vqwmmacc_us_lm2_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_US, code_for_pred_vqwmmacc_lm4>
-    vqwmmacc_us_lm4_obj;
-static CONSTEXPR const
-  vqwmmacc_ime_op<UNSPEC_VQWMMACC_US, code_for_pred_vqwmmacc_lm8>
-    vqwmmacc_us_lm8_obj;
-
-/* IME vector widening integer matrix multiply-accumulate (W=8).  */
-template<int UNSPEC,
-	 insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_v8wmmacc>
-class v8wmmacc_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  ime_unspec_altfmt_a (UNSPEC),
-				  ime_unspec_altfmt_b (UNSPEC),
-				  /* altfmt = */ false,
-				  /* bs = */ false);
-    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_S>  v8wmmacc_s_obj;
-static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_U>  v8wmmacc_u_obj;
-static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU> v8wmmacc_su_obj;
-static CONSTEXPR const v8wmmacc_ime_op<UNSPEC_V8WMMACC_US> v8wmmacc_us_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_S, code_for_pred_v8wmmacc_lm2>
-    v8wmmacc_s_lm2_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_S, code_for_pred_v8wmmacc_lm4>
-    v8wmmacc_s_lm4_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_S, code_for_pred_v8wmmacc_lm8>
-    v8wmmacc_s_lm8_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_U, code_for_pred_v8wmmacc_lm2>
-    v8wmmacc_u_lm2_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_U, code_for_pred_v8wmmacc_lm4>
-    v8wmmacc_u_lm4_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_U, code_for_pred_v8wmmacc_lm8>
-    v8wmmacc_u_lm8_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU, code_for_pred_v8wmmacc_lm2>
-    v8wmmacc_su_lm2_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU, code_for_pred_v8wmmacc_lm4>
-    v8wmmacc_su_lm4_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_SU, code_for_pred_v8wmmacc_lm8>
-    v8wmmacc_su_lm8_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_US, code_for_pred_v8wmmacc_lm2>
-    v8wmmacc_us_lm2_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_US, code_for_pred_v8wmmacc_lm4>
-    v8wmmacc_us_lm4_obj;
-static CONSTEXPR const
-  v8wmmacc_ime_op<UNSPEC_V8WMMACC_US, code_for_pred_v8wmmacc_lm8>
-    v8wmmacc_us_lm8_obj;
-
-/* Integer widening m16 op-class instances (#489).  The op classes
-   above (vwmmacc_ime_op / vqwmmacc_ime_op / v8wmmacc_ime_op) dispatch
-   on `e.vector_mode ()' which comes from the iterating type set.
-   The MD iterators VWMMACC_ACC / VQWMMACC_ACC / V8WMMACC_ACC already
-   include the RVVM16{HI,SI,DI} modes, so the same class definitions
-   handle m16 accumulators without any RTL change; only distinct
-   BASE() / bases:: names are required, which necessitates separate
-   `_m16*_obj' static instances.  */
-#define IME_M16_INT_WIDEN_OBJS(WIDTH, PREFIX, UNSPEC_PREFIX)		\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_S>				        \
-      PREFIX##_s_m16_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_U>				        \
-      PREFIX##_u_m16_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_SU>				        \
-      PREFIX##_su_m16_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_US>				        \
-      PREFIX##_us_m16_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_S, code_for_pred_##PREFIX##_lm2>	\
-      PREFIX##_s_m16_lm2_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_S, code_for_pred_##PREFIX##_lm4>	\
-      PREFIX##_s_m16_lm4_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_S, code_for_pred_##PREFIX##_lm8>	\
-      PREFIX##_s_m16_lm8_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_U, code_for_pred_##PREFIX##_lm2>	\
-      PREFIX##_u_m16_lm2_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_U, code_for_pred_##PREFIX##_lm4>	\
-      PREFIX##_u_m16_lm4_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_U, code_for_pred_##PREFIX##_lm8>	\
-      PREFIX##_u_m16_lm8_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_SU, code_for_pred_##PREFIX##_lm2>	\
-      PREFIX##_su_m16_lm2_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_SU, code_for_pred_##PREFIX##_lm4>	\
-      PREFIX##_su_m16_lm4_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_SU, code_for_pred_##PREFIX##_lm8>	\
-      PREFIX##_su_m16_lm8_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_US, code_for_pred_##PREFIX##_lm2>	\
-      PREFIX##_us_m16_lm2_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_US, code_for_pred_##PREFIX##_lm4>	\
-      PREFIX##_us_m16_lm4_obj;						\
-  static CONSTEXPR const					        \
-    PREFIX##_ime_op<UNSPEC_PREFIX##_US, code_for_pred_##PREFIX##_lm8>	\
-      PREFIX##_us_m16_lm8_obj
-
-IME_M16_INT_WIDEN_OBJS (2, vwmmacc,  UNSPEC_VWMMACC);
-IME_M16_INT_WIDEN_OBJS (4, vqwmmacc, UNSPEC_VQWMMACC);
-IME_M16_INT_WIDEN_OBJS (8, v8wmmacc, UNSPEC_V8WMMACC);
-#undef IME_M16_INT_WIDEN_OBJS
 
 /* Zvvfmm FP matrix multiply-accumulate, W=1 (vfmmacc.vv).  Parametrised
    on the icode-getter so the same class drives the default LMUL=1
@@ -5996,138 +5707,14 @@ BASE (vfwcvtbf16_f)
 BASE (vfwmaccbf16)
 BASE (vfwmaccbf16_frm)
 /* Zvvmm */
-BASE (vmmacc_s)
-BASE (vmmacc_u)
-BASE (vmmacc_s_lm2)
-BASE (vmmacc_s_lm4)
-BASE (vmmacc_s_lm8)
-BASE (vmmacc_u_lm2)
-BASE (vmmacc_u_lm4)
-BASE (vmmacc_u_lm8)
-BASE (vmmacc_su)
-BASE (vmmacc_us)
-BASE (vmmacc_su_lm2)
-BASE (vmmacc_su_lm4)
-BASE (vmmacc_su_lm8)
-BASE (vmmacc_s_m16)
-BASE (vmmacc_u_m16)
-BASE (vmmacc_s_m16_lm2)
-BASE (vmmacc_s_m16_lm4)
-BASE (vmmacc_s_m16_lm8)
-BASE (vmmacc_u_m16_lm2)
-BASE (vmmacc_u_m16_lm4)
-BASE (vmmacc_u_m16_lm8)
-BASE (vmmacc_su_m16)
-BASE (vmmacc_us_m16)
-BASE (vmmacc_su_m16_lm2)
-BASE (vmmacc_su_m16_lm4)
-BASE (vmmacc_su_m16_lm8)
-BASE (vmmacc_us_m16_lm2)
-BASE (vmmacc_us_m16_lm4)
-BASE (vmmacc_us_m16_lm8)
+BASE (vmmacc)
 BASE (ime_vunpairlo)
 BASE (ime_vunpairhi)
 BASE (ime_vpair)
-BASE (vmmacc_us_lm2)
-BASE (vmmacc_us_lm4)
-BASE (vmmacc_us_lm8)
-BASE (vwmmacc_s)
-BASE (vwmmacc_u)
-BASE (vwmmacc_su)
-BASE (vwmmacc_us)
-BASE (vwmmacc_s_lm2)
-BASE (vwmmacc_s_lm4)
-BASE (vwmmacc_s_lm8)
-BASE (vwmmacc_u_lm2)
-BASE (vwmmacc_u_lm4)
-BASE (vwmmacc_u_lm8)
-BASE (vwmmacc_su_lm2)
-BASE (vwmmacc_su_lm4)
-BASE (vwmmacc_su_lm8)
-BASE (vwmmacc_us_lm2)
-BASE (vwmmacc_us_lm4)
-BASE (vwmmacc_us_lm8)
-BASE (vqwmmacc_s)
-BASE (vqwmmacc_u)
-BASE (vqwmmacc_su)
-BASE (vqwmmacc_us)
-BASE (vqwmmacc_s_lm2)
-BASE (vqwmmacc_s_lm4)
-BASE (vqwmmacc_s_lm8)
-BASE (vqwmmacc_u_lm2)
-BASE (vqwmmacc_u_lm4)
-BASE (vqwmmacc_u_lm8)
-BASE (vqwmmacc_su_lm2)
-BASE (vqwmmacc_su_lm4)
-BASE (vqwmmacc_su_lm8)
-BASE (vqwmmacc_us_lm2)
-BASE (vqwmmacc_us_lm4)
-BASE (vqwmmacc_us_lm8)
-BASE (v8wmmacc_s)
-BASE (v8wmmacc_u)
-BASE (v8wmmacc_su)
-BASE (v8wmmacc_us)
-BASE (v8wmmacc_s_lm2)
-BASE (v8wmmacc_s_lm4)
-BASE (v8wmmacc_s_lm8)
-BASE (v8wmmacc_u_lm2)
-BASE (v8wmmacc_u_lm4)
-BASE (v8wmmacc_u_lm8)
-BASE (v8wmmacc_su_lm2)
-BASE (v8wmmacc_su_lm4)
-BASE (v8wmmacc_su_lm8)
-BASE (v8wmmacc_us_lm2)
-BASE (v8wmmacc_us_lm4)
-BASE (v8wmmacc_us_lm8)
+BASE (vwmmacc)
+BASE (vqwmmacc)
+BASE (v8wmmacc)
 /* Zvvmm widening m16 accumulator (#489).  */
-BASE (vwmmacc_s_m16)
-BASE (vwmmacc_u_m16)
-BASE (vwmmacc_su_m16)
-BASE (vwmmacc_us_m16)
-BASE (vwmmacc_s_m16_lm2)
-BASE (vwmmacc_s_m16_lm4)
-BASE (vwmmacc_s_m16_lm8)
-BASE (vwmmacc_u_m16_lm2)
-BASE (vwmmacc_u_m16_lm4)
-BASE (vwmmacc_u_m16_lm8)
-BASE (vwmmacc_su_m16_lm2)
-BASE (vwmmacc_su_m16_lm4)
-BASE (vwmmacc_su_m16_lm8)
-BASE (vwmmacc_us_m16_lm2)
-BASE (vwmmacc_us_m16_lm4)
-BASE (vwmmacc_us_m16_lm8)
-BASE (vqwmmacc_s_m16)
-BASE (vqwmmacc_u_m16)
-BASE (vqwmmacc_su_m16)
-BASE (vqwmmacc_us_m16)
-BASE (vqwmmacc_s_m16_lm2)
-BASE (vqwmmacc_s_m16_lm4)
-BASE (vqwmmacc_s_m16_lm8)
-BASE (vqwmmacc_u_m16_lm2)
-BASE (vqwmmacc_u_m16_lm4)
-BASE (vqwmmacc_u_m16_lm8)
-BASE (vqwmmacc_su_m16_lm2)
-BASE (vqwmmacc_su_m16_lm4)
-BASE (vqwmmacc_su_m16_lm8)
-BASE (vqwmmacc_us_m16_lm2)
-BASE (vqwmmacc_us_m16_lm4)
-BASE (vqwmmacc_us_m16_lm8)
-BASE (v8wmmacc_s_m16)
-BASE (v8wmmacc_u_m16)
-BASE (v8wmmacc_su_m16)
-BASE (v8wmmacc_us_m16)
-BASE (v8wmmacc_s_m16_lm2)
-BASE (v8wmmacc_s_m16_lm4)
-BASE (v8wmmacc_s_m16_lm8)
-BASE (v8wmmacc_u_m16_lm2)
-BASE (v8wmmacc_u_m16_lm4)
-BASE (v8wmmacc_u_m16_lm8)
-BASE (v8wmmacc_su_m16_lm2)
-BASE (v8wmmacc_su_m16_lm4)
-BASE (v8wmmacc_su_m16_lm8)
-BASE (v8wmmacc_us_m16_lm2)
-BASE (v8wmmacc_us_m16_lm4)
-BASE (v8wmmacc_us_m16_lm8)
 /* Zvvfmm */
 BASE (vfmmacc)
 BASE (vfmmacc_lm2)

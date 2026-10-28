@@ -21,60 +21,13 @@ along with GCC; see the file COPYING3. If not see
 #define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)
 #endif
 
-/* Zvvmm - Vector integer matrix multiply-accumulate, W=1 (no widening),
-   default LMUL=1 variant.  The accumulator type suffix on the generated
-   name encodes both SEW and MUL_C, e.g. __riscv_vmmacc_vv_i32m2 is the
-   signed variant with a 2-register accumulator.  vs1/vs2 always use the
-   LMUL=1 form of the same SEW.
-
-   Signed and unsigned share the user-visible base name "vmmacc"; the
-   ime_mmacc shape class generates "__riscv_vmmacc_vv_i*" from the
-   signed internal base (vmmacc_s) and "__riscv_vmmacc_vv_u*" from the
-   unsigned one (vmmacc_u).  The two internal bases route to different
-   UNSPECs at RTL level so the vsetvl pass can set altfmt_A/altfmt_B
-   correctly in vtype.  The _lm{N} variants below give vs1/vs2 LMUL=N
-   at the same SEW as the accumulator (independent of MUL_C); the
-   _su/_us mixed-sign variants (and their _lm{N} siblings) share the
-   signed accumulator (i_ops) per the spec, with vs1/vs2 forced to
-   opposite signedness via the lmul{N}_signed_vector /
-   lmul{N}_unsigned_vector base types.  */
+/* Zvvmm - Vector integer matrix multiply-accumulate.  Each entry names
+   the instruction's default form (signed inputs at LMUL=1); the
+   ime_int_mmacc shape registers its unsigned, _su and _us forms, the
+   _lm{2,4,8} forms and the m16-accumulator forms.  The accumulator type
+   suffix encodes SEW and MUL_C, e.g. __riscv_vmmacc_vv_i32m2.  */
 #define REQUIRED_EXTENSIONS ZVVMM_EXT
-DEF_RVV_FUNCTION (vmmacc_s,     ime_mmacc, none_tu_preds, i_ime_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_u,     ime_mmacc, none_tu_preds, u_ime_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_s_lm2, ime_mmacc, none_tu_preds, i_ime_vss_lm2_ops)
-DEF_RVV_FUNCTION (vmmacc_s_lm4, ime_mmacc, none_tu_preds, i_ime_vss_lm4_ops)
-DEF_RVV_FUNCTION (vmmacc_s_lm8, ime_mmacc, none_tu_preds, i_ime_vss_lm8_ops)
-DEF_RVV_FUNCTION (vmmacc_u_lm2, ime_mmacc, none_tu_preds, u_ime_vss_lm2_ops)
-DEF_RVV_FUNCTION (vmmacc_u_lm4, ime_mmacc, none_tu_preds, u_ime_vss_lm4_ops)
-DEF_RVV_FUNCTION (vmmacc_u_lm8, ime_mmacc, none_tu_preds, u_ime_vss_lm8_ops)
-DEF_RVV_FUNCTION (vmmacc_su,     ime_mmacc, none_tu_preds, i_su_ime_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_us,     ime_mmacc, none_tu_preds, i_us_ime_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_su_lm2, ime_mmacc, none_tu_preds, i_su_ime_vss_lm2_ops)
-DEF_RVV_FUNCTION (vmmacc_su_lm4, ime_mmacc, none_tu_preds, i_su_ime_vss_lm4_ops)
-DEF_RVV_FUNCTION (vmmacc_su_lm8, ime_mmacc, none_tu_preds, i_su_ime_vss_lm8_ops)
-DEF_RVV_FUNCTION (vmmacc_us_lm2, ime_mmacc, none_tu_preds, i_us_ime_vss_lm2_ops)
-DEF_RVV_FUNCTION (vmmacc_us_lm4, ime_mmacc, none_tu_preds, i_us_ime_vss_lm4_ops)
-DEF_RVV_FUNCTION (vmmacc_us_lm8, ime_mmacc, none_tu_preds, i_us_ime_vss_lm8_ops)
-/* W=1 vmmacc with m16 accumulator (EMUL_C=16).  Same sign axes (s, u,
-   su, us) and source-LMUL axes (default LMUL=1, _lm{2,4,8}) as the
-   m1..m8 family, dispatched to the dedicated `*_m16<mode>' RTL
-   patterns by the shape's name-mangling.  */
-DEF_RVV_FUNCTION (vmmacc_s_m16,     ime_mmacc, none_tu_preds, i_ime_m16_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_u_m16,     ime_mmacc, none_tu_preds, u_ime_m16_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_s_m16_lm2, ime_mmacc, none_tu_preds, i_ime_m16_vss_lm2_ops)
-DEF_RVV_FUNCTION (vmmacc_s_m16_lm4, ime_mmacc, none_tu_preds, i_ime_m16_vss_lm4_ops)
-DEF_RVV_FUNCTION (vmmacc_s_m16_lm8, ime_mmacc, none_tu_preds, i_ime_m16_vss_lm8_ops)
-DEF_RVV_FUNCTION (vmmacc_u_m16_lm2, ime_mmacc, none_tu_preds, u_ime_m16_vss_lm2_ops)
-DEF_RVV_FUNCTION (vmmacc_u_m16_lm4, ime_mmacc, none_tu_preds, u_ime_m16_vss_lm4_ops)
-DEF_RVV_FUNCTION (vmmacc_u_m16_lm8, ime_mmacc, none_tu_preds, u_ime_m16_vss_lm8_ops)
-DEF_RVV_FUNCTION (vmmacc_su_m16,     ime_mmacc, none_tu_preds, i_su_ime_m16_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_us_m16,     ime_mmacc, none_tu_preds, i_us_ime_m16_vss_ops)
-DEF_RVV_FUNCTION (vmmacc_su_m16_lm2, ime_mmacc, none_tu_preds, i_su_ime_m16_vss_lm2_ops)
-DEF_RVV_FUNCTION (vmmacc_su_m16_lm4, ime_mmacc, none_tu_preds, i_su_ime_m16_vss_lm4_ops)
-DEF_RVV_FUNCTION (vmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_vss_lm8_ops)
-DEF_RVV_FUNCTION (vmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm2_ops)
-DEF_RVV_FUNCTION (vmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm4_ops)
-DEF_RVV_FUNCTION (vmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_vss_lm8_ops)
+DEF_RVV_FUNCTION (vmmacc, ime_int_mmacc, none_tu_preds, i_ime_vss_ops)
 /* IME `pair' / `unpair' primitives.  Iterate over the m16 type list
    to produce one variant per (signedness, element size) pair:
        __riscv_ime_vpair_<i,u>{8,16,32,64}m16
@@ -90,121 +43,13 @@ DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, i_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairlo, ime_pair_unpair, none_preds, u_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, i_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, u_ime_vunpair_ops)
-/* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2.  Four sign
-   combinations and four input-LMUL forms (default LMUL=1, plus _lm2,
-   _lm4, _lm8 source-LMUL siblings, mirroring the W=1 mmacc family).
-   Mixed-sign variants share the signed accumulator ops (i_ops) since
-   the spec mandates a signed accumulator; the _su / _us suffixes on
-   the generated name come from the ime_mmacc shape class decoding the
-   internal base name.  */
-DEF_RVV_FUNCTION (vwmmacc_s,      ime_mmacc, none_tu_preds, i_ime_wvss_ops)
-DEF_RVV_FUNCTION (vwmmacc_u,      ime_mmacc, none_tu_preds, u_ime_wvss_ops)
-DEF_RVV_FUNCTION (vwmmacc_su,     ime_mmacc, none_tu_preds, i_su_ime_wvss_ops)
-DEF_RVV_FUNCTION (vwmmacc_us,     ime_mmacc, none_tu_preds, i_us_ime_wvss_ops)
-DEF_RVV_FUNCTION (vwmmacc_s_lm2,  ime_mmacc, none_tu_preds, i_ime_wvss_lm2_ops)
-DEF_RVV_FUNCTION (vwmmacc_s_lm4,  ime_mmacc, none_tu_preds, i_ime_wvss_lm4_ops)
-DEF_RVV_FUNCTION (vwmmacc_s_lm8,  ime_mmacc, none_tu_preds, i_ime_wvss_lm8_ops)
-DEF_RVV_FUNCTION (vwmmacc_u_lm2,  ime_mmacc, none_tu_preds, u_ime_wvss_lm2_ops)
-DEF_RVV_FUNCTION (vwmmacc_u_lm4,  ime_mmacc, none_tu_preds, u_ime_wvss_lm4_ops)
-DEF_RVV_FUNCTION (vwmmacc_u_lm8,  ime_mmacc, none_tu_preds, u_ime_wvss_lm8_ops)
-DEF_RVV_FUNCTION (vwmmacc_su_lm2, ime_mmacc, none_tu_preds, i_su_ime_wvss_lm2_ops)
-DEF_RVV_FUNCTION (vwmmacc_su_lm4, ime_mmacc, none_tu_preds, i_su_ime_wvss_lm4_ops)
-DEF_RVV_FUNCTION (vwmmacc_su_lm8, ime_mmacc, none_tu_preds, i_su_ime_wvss_lm8_ops)
-DEF_RVV_FUNCTION (vwmmacc_us_lm2, ime_mmacc, none_tu_preds, i_us_ime_wvss_lm2_ops)
-DEF_RVV_FUNCTION (vwmmacc_us_lm4, ime_mmacc, none_tu_preds, i_us_ime_wvss_lm4_ops)
-DEF_RVV_FUNCTION (vwmmacc_us_lm8, ime_mmacc, none_tu_preds, i_us_ime_wvss_lm8_ops)
+/* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2.  */
+DEF_RVV_FUNCTION (vwmmacc, ime_int_mmacc, none_tu_preds, i_ime_wvss_ops)
 /* vqwmmacc.vv (W=4): accumulator SEW, inputs SEW/4.  Only SI and DI
-   accumulators have a valid quad-truncated integer input type.  Same
-   four sign combinations and four input-LMUL forms as W=2.  */
-DEF_RVV_FUNCTION (vqwmmacc_s,      ime_mmacc, none_tu_preds, i_ime_qwvss_ops)
-DEF_RVV_FUNCTION (vqwmmacc_u,      ime_mmacc, none_tu_preds, u_ime_qwvss_ops)
-DEF_RVV_FUNCTION (vqwmmacc_su,     ime_mmacc, none_tu_preds, i_su_ime_qwvss_ops)
-DEF_RVV_FUNCTION (vqwmmacc_us,     ime_mmacc, none_tu_preds, i_us_ime_qwvss_ops)
-DEF_RVV_FUNCTION (vqwmmacc_s_lm2,  ime_mmacc, none_tu_preds, i_ime_qwvss_lm2_ops)
-DEF_RVV_FUNCTION (vqwmmacc_s_lm4,  ime_mmacc, none_tu_preds, i_ime_qwvss_lm4_ops)
-DEF_RVV_FUNCTION (vqwmmacc_s_lm8,  ime_mmacc, none_tu_preds, i_ime_qwvss_lm8_ops)
-DEF_RVV_FUNCTION (vqwmmacc_u_lm2,  ime_mmacc, none_tu_preds, u_ime_qwvss_lm2_ops)
-DEF_RVV_FUNCTION (vqwmmacc_u_lm4,  ime_mmacc, none_tu_preds, u_ime_qwvss_lm4_ops)
-DEF_RVV_FUNCTION (vqwmmacc_u_lm8,  ime_mmacc, none_tu_preds, u_ime_qwvss_lm8_ops)
-DEF_RVV_FUNCTION (vqwmmacc_su_lm2, ime_mmacc, none_tu_preds, i_su_ime_qwvss_lm2_ops)
-DEF_RVV_FUNCTION (vqwmmacc_su_lm4, ime_mmacc, none_tu_preds, i_su_ime_qwvss_lm4_ops)
-DEF_RVV_FUNCTION (vqwmmacc_su_lm8, ime_mmacc, none_tu_preds, i_su_ime_qwvss_lm8_ops)
-DEF_RVV_FUNCTION (vqwmmacc_us_lm2, ime_mmacc, none_tu_preds, i_us_ime_qwvss_lm2_ops)
-DEF_RVV_FUNCTION (vqwmmacc_us_lm4, ime_mmacc, none_tu_preds, i_us_ime_qwvss_lm4_ops)
-DEF_RVV_FUNCTION (vqwmmacc_us_lm8, ime_mmacc, none_tu_preds, i_us_ime_qwvss_lm8_ops)
+   accumulators have a valid quad-truncated integer input type.  */
+DEF_RVV_FUNCTION (vqwmmacc, ime_int_mmacc, none_tu_preds, i_ime_qwvss_ops)
 /* v8wmmacc.vv (W=8): accumulator SEW (DI only), inputs SEW/8.  */
-DEF_RVV_FUNCTION (v8wmmacc_s,      ime_mmacc, none_tu_preds, i_ime_8wvss_ops)
-DEF_RVV_FUNCTION (v8wmmacc_u,      ime_mmacc, none_tu_preds, u_ime_8wvss_ops)
-DEF_RVV_FUNCTION (v8wmmacc_su,     ime_mmacc, none_tu_preds, i_su_ime_8wvss_ops)
-DEF_RVV_FUNCTION (v8wmmacc_us,     ime_mmacc, none_tu_preds, i_us_ime_8wvss_ops)
-DEF_RVV_FUNCTION (v8wmmacc_s_lm2,  ime_mmacc, none_tu_preds, i_ime_8wvss_lm2_ops)
-DEF_RVV_FUNCTION (v8wmmacc_s_lm4,  ime_mmacc, none_tu_preds, i_ime_8wvss_lm4_ops)
-DEF_RVV_FUNCTION (v8wmmacc_s_lm8,  ime_mmacc, none_tu_preds, i_ime_8wvss_lm8_ops)
-DEF_RVV_FUNCTION (v8wmmacc_u_lm2,  ime_mmacc, none_tu_preds, u_ime_8wvss_lm2_ops)
-DEF_RVV_FUNCTION (v8wmmacc_u_lm4,  ime_mmacc, none_tu_preds, u_ime_8wvss_lm4_ops)
-DEF_RVV_FUNCTION (v8wmmacc_u_lm8,  ime_mmacc, none_tu_preds, u_ime_8wvss_lm8_ops)
-DEF_RVV_FUNCTION (v8wmmacc_su_lm2, ime_mmacc, none_tu_preds, i_su_ime_8wvss_lm2_ops)
-DEF_RVV_FUNCTION (v8wmmacc_su_lm4, ime_mmacc, none_tu_preds, i_su_ime_8wvss_lm4_ops)
-DEF_RVV_FUNCTION (v8wmmacc_su_lm8, ime_mmacc, none_tu_preds, i_su_ime_8wvss_lm8_ops)
-DEF_RVV_FUNCTION (v8wmmacc_us_lm2, ime_mmacc, none_tu_preds, i_us_ime_8wvss_lm2_ops)
-DEF_RVV_FUNCTION (v8wmmacc_us_lm4, ime_mmacc, none_tu_preds, i_us_ime_8wvss_lm4_ops)
-DEF_RVV_FUNCTION (v8wmmacc_us_lm8, ime_mmacc, none_tu_preds, i_us_ime_8wvss_lm8_ops)
-/* Integer widening m16 acc mmacc (#489).  Same three axes as m1..m8
-   (sign x source-LMUL x widening-width), only the accumulator type
-   switches to the m16 row via the type-set.  The `_m16' tag on the
-   internal base name is stripped by the ime_mmacc shape and the m16
-   MUL_C is emitted from the iterating type suffix.  */
-/* W=2 (vwmmacc) m16.  */
-DEF_RVV_FUNCTION (vwmmacc_s_m16,      ime_mmacc, none_tu_preds, i_ime_m16_wvss_ops)
-DEF_RVV_FUNCTION (vwmmacc_u_m16,      ime_mmacc, none_tu_preds, u_ime_m16_wvss_ops)
-DEF_RVV_FUNCTION (vwmmacc_su_m16,     ime_mmacc, none_tu_preds, i_su_ime_m16_wvss_ops)
-DEF_RVV_FUNCTION (vwmmacc_us_m16,     ime_mmacc, none_tu_preds, i_us_ime_m16_wvss_ops)
-DEF_RVV_FUNCTION (vwmmacc_s_m16_lm2,  ime_mmacc, none_tu_preds, i_ime_m16_wvss_lm2_ops)
-DEF_RVV_FUNCTION (vwmmacc_s_m16_lm4,  ime_mmacc, none_tu_preds, i_ime_m16_wvss_lm4_ops)
-DEF_RVV_FUNCTION (vwmmacc_s_m16_lm8,  ime_mmacc, none_tu_preds, i_ime_m16_wvss_lm8_ops)
-DEF_RVV_FUNCTION (vwmmacc_u_m16_lm2,  ime_mmacc, none_tu_preds, u_ime_m16_wvss_lm2_ops)
-DEF_RVV_FUNCTION (vwmmacc_u_m16_lm4,  ime_mmacc, none_tu_preds, u_ime_m16_wvss_lm4_ops)
-DEF_RVV_FUNCTION (vwmmacc_u_m16_lm8,  ime_mmacc, none_tu_preds, u_ime_m16_wvss_lm8_ops)
-DEF_RVV_FUNCTION (vwmmacc_su_m16_lm2, ime_mmacc, none_tu_preds, i_su_ime_m16_wvss_lm2_ops)
-DEF_RVV_FUNCTION (vwmmacc_su_m16_lm4, ime_mmacc, none_tu_preds, i_su_ime_m16_wvss_lm4_ops)
-DEF_RVV_FUNCTION (vwmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_wvss_lm8_ops)
-DEF_RVV_FUNCTION (vwmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_wvss_lm2_ops)
-DEF_RVV_FUNCTION (vwmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_wvss_lm4_ops)
-DEF_RVV_FUNCTION (vwmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_wvss_lm8_ops)
-/* W=4 (vqwmmacc) m16.  */
-DEF_RVV_FUNCTION (vqwmmacc_s_m16,      ime_mmacc, none_tu_preds, i_ime_m16_qwvss_ops)
-DEF_RVV_FUNCTION (vqwmmacc_u_m16,      ime_mmacc, none_tu_preds, u_ime_m16_qwvss_ops)
-DEF_RVV_FUNCTION (vqwmmacc_su_m16,     ime_mmacc, none_tu_preds, i_su_ime_m16_qwvss_ops)
-DEF_RVV_FUNCTION (vqwmmacc_us_m16,     ime_mmacc, none_tu_preds, i_us_ime_m16_qwvss_ops)
-DEF_RVV_FUNCTION (vqwmmacc_s_m16_lm2,  ime_mmacc, none_tu_preds, i_ime_m16_qwvss_lm2_ops)
-DEF_RVV_FUNCTION (vqwmmacc_s_m16_lm4,  ime_mmacc, none_tu_preds, i_ime_m16_qwvss_lm4_ops)
-DEF_RVV_FUNCTION (vqwmmacc_s_m16_lm8,  ime_mmacc, none_tu_preds, i_ime_m16_qwvss_lm8_ops)
-DEF_RVV_FUNCTION (vqwmmacc_u_m16_lm2,  ime_mmacc, none_tu_preds, u_ime_m16_qwvss_lm2_ops)
-DEF_RVV_FUNCTION (vqwmmacc_u_m16_lm4,  ime_mmacc, none_tu_preds, u_ime_m16_qwvss_lm4_ops)
-DEF_RVV_FUNCTION (vqwmmacc_u_m16_lm8,  ime_mmacc, none_tu_preds, u_ime_m16_qwvss_lm8_ops)
-DEF_RVV_FUNCTION (vqwmmacc_su_m16_lm2, ime_mmacc, none_tu_preds, i_su_ime_m16_qwvss_lm2_ops)
-DEF_RVV_FUNCTION (vqwmmacc_su_m16_lm4, ime_mmacc, none_tu_preds, i_su_ime_m16_qwvss_lm4_ops)
-DEF_RVV_FUNCTION (vqwmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_qwvss_lm8_ops)
-DEF_RVV_FUNCTION (vqwmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_qwvss_lm2_ops)
-DEF_RVV_FUNCTION (vqwmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_qwvss_lm4_ops)
-DEF_RVV_FUNCTION (vqwmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_qwvss_lm8_ops)
-/* W=8 (v8wmmacc) m16.  */
-DEF_RVV_FUNCTION (v8wmmacc_s_m16,      ime_mmacc, none_tu_preds, i_ime_m16_8wvss_ops)
-DEF_RVV_FUNCTION (v8wmmacc_u_m16,      ime_mmacc, none_tu_preds, u_ime_m16_8wvss_ops)
-DEF_RVV_FUNCTION (v8wmmacc_su_m16,     ime_mmacc, none_tu_preds, i_su_ime_m16_8wvss_ops)
-DEF_RVV_FUNCTION (v8wmmacc_us_m16,     ime_mmacc, none_tu_preds, i_us_ime_m16_8wvss_ops)
-DEF_RVV_FUNCTION (v8wmmacc_s_m16_lm2,  ime_mmacc, none_tu_preds, i_ime_m16_8wvss_lm2_ops)
-DEF_RVV_FUNCTION (v8wmmacc_s_m16_lm4,  ime_mmacc, none_tu_preds, i_ime_m16_8wvss_lm4_ops)
-DEF_RVV_FUNCTION (v8wmmacc_s_m16_lm8,  ime_mmacc, none_tu_preds, i_ime_m16_8wvss_lm8_ops)
-DEF_RVV_FUNCTION (v8wmmacc_u_m16_lm2,  ime_mmacc, none_tu_preds, u_ime_m16_8wvss_lm2_ops)
-DEF_RVV_FUNCTION (v8wmmacc_u_m16_lm4,  ime_mmacc, none_tu_preds, u_ime_m16_8wvss_lm4_ops)
-DEF_RVV_FUNCTION (v8wmmacc_u_m16_lm8,  ime_mmacc, none_tu_preds, u_ime_m16_8wvss_lm8_ops)
-DEF_RVV_FUNCTION (v8wmmacc_su_m16_lm2, ime_mmacc, none_tu_preds, i_su_ime_m16_8wvss_lm2_ops)
-DEF_RVV_FUNCTION (v8wmmacc_su_m16_lm4, ime_mmacc, none_tu_preds, i_su_ime_m16_8wvss_lm4_ops)
-DEF_RVV_FUNCTION (v8wmmacc_su_m16_lm8, ime_mmacc, none_tu_preds, i_su_ime_m16_8wvss_lm8_ops)
-DEF_RVV_FUNCTION (v8wmmacc_us_m16_lm2, ime_mmacc, none_tu_preds, i_us_ime_m16_8wvss_lm2_ops)
-DEF_RVV_FUNCTION (v8wmmacc_us_m16_lm4, ime_mmacc, none_tu_preds, i_us_ime_m16_8wvss_lm4_ops)
-DEF_RVV_FUNCTION (v8wmmacc_us_m16_lm8, ime_mmacc, none_tu_preds, i_us_ime_m16_8wvss_lm8_ops)
+DEF_RVV_FUNCTION (v8wmmacc, ime_int_mmacc, none_tu_preds, i_ime_8wvss_ops)
 #undef REQUIRED_EXTENSIONS
 
 /* Zvvfmm - FP matrix multiply-accumulate.  */

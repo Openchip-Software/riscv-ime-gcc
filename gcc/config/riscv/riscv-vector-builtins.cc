@@ -777,58 +777,6 @@ static CONSTEXPR const rvv_arg_type_info ime_vss_lm8_args[]
      rvv_arg_type_info (RVV_BASE_lmul8_vector),
      rvv_arg_type_info (RVV_BASE_lmul8_vector), rvv_arg_type_info_end};
 
-/* Args for the W=1 mixed-sign vmmacc (_su / _us) variants.  The
-   accumulator sits at SEW with MUL_C; vs1 and vs2 share the SEW and
-   LMUL but use opposite signedness.  Spec mandates a signed
-   accumulator for all four sign combinations.  */
-static CONSTEXPR const rvv_arg_type_info ime_vss_su_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_lmul1_signed_vector),
-     rvv_arg_type_info (RVV_BASE_lmul1_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_vss_us_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_lmul1_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_lmul1_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_vss_su_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_lmul2_signed_vector),
-     rvv_arg_type_info (RVV_BASE_lmul2_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_vss_us_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_lmul2_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_lmul2_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_vss_su_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_lmul4_signed_vector),
-     rvv_arg_type_info (RVV_BASE_lmul4_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_vss_us_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_lmul4_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_lmul4_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_vss_su_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_lmul8_signed_vector),
-     rvv_arg_type_info (RVV_BASE_lmul8_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_vss_us_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_lmul8_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_lmul8_signed_vector),
-     rvv_arg_type_info_end};
-
 /* Args for the W=2 widening IME multiply-accumulate (vwmmacc.vv).  The
    accumulator sits at SEW with MUL_C; the two inputs are SEW/2 and
    LMUL=1 via ime_double_trunc_lmul1_vector.  Four variants cover the
@@ -841,18 +789,6 @@ static CONSTEXPR const rvv_arg_type_info ime_wvss_args[]
      rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_vector),
      rvv_arg_type_info_end};
 
-static CONSTEXPR const rvv_arg_type_info ime_wvss_su_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_us_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul1_signed_vector),
-     rvv_arg_type_info_end};
-
 /* Args for the W=4 widening IME multiply-accumulate (vqwmmacc.vv).
    The accumulator is at SEW with MUL_C; inputs are SEW/4 and LMUL=1
    (ime_quad_trunc_lmul1_*_vector).  */
@@ -862,18 +798,6 @@ static CONSTEXPR const rvv_arg_type_info ime_qwvss_args[]
      rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_vector),
      rvv_arg_type_info_end};
 
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_su_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_us_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul1_signed_vector),
-     rvv_arg_type_info_end};
-
 /* Args for the W=8 widening IME multiply-accumulate (v8wmmacc.vv).
    The accumulator is at SEW with MUL_C; inputs are SEW/8 and LMUL=1
    (ime_oct_trunc_lmul1_*_vector).  */
@@ -881,187 +805,6 @@ static CONSTEXPR const rvv_arg_type_info ime_8wvss_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_su_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul1_signed_vector),
-     rvv_arg_type_info_end};
-
-/* Args for the W=2 widening IME multiply-accumulate _lm{N} variants.
-   The accumulator sits at SEW with MUL_C; the two inputs are SEW/2 and
-   LMUL=N (independent of MUL_C) via ime_double_trunc_lmul{N}_*_vector.
-   Three input LMULs (2, 4, 8) crossed with three sign combinations
-   (default / _su / _us) gives 9 args arrays per width.  */
-static CONSTEXPR const rvv_arg_type_info ime_wvss_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_su_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_us_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul2_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_su_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_us_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul4_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_su_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_wvss_us_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_double_trunc_lmul8_signed_vector),
-     rvv_arg_type_info_end};
-
-/* W=4 (vqwmmacc.vv) widening _lm{N} args.  */
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_su_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_us_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul2_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_su_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_us_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul4_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_su_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_us_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_quad_trunc_lmul8_signed_vector),
-     rvv_arg_type_info_end};
-
-/* W=8 (v8wmmacc.vv) widening _lm{N} args.  */
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_su_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_lm2_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul2_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_su_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_lm4_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul4_signed_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_su_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_signed_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector),
-     rvv_arg_type_info_end};
-
-static CONSTEXPR const rvv_arg_type_info ime_8wvss_us_lm8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector),
-     rvv_arg_type_info (RVV_BASE_ime_oct_trunc_lmul8_signed_vector),
      rvv_arg_type_info_end};
 
 /* Args for FP IME vfmmacc (W=1): acc, lmul1 same-type, lmul1 same-type.
@@ -3839,143 +3582,116 @@ static CONSTEXPR const rvv_op_info i_ime_vss_ops
      rvv_arg_type_info (RVV_BASE_vector),
      ime_vss_args};
 
-static CONSTEXPR const rvv_op_info u_ime_vss_ops
-  = {u_ops,
-     OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector),
-     ime_vss_args};
+/* The A/B input types of the IME integer multiply-accumulates, indexed
+   by log2 (W), log2 (input LMUL) and signedness: plain (the signedness
+   of the accumulator), signed, unsigned.  */
+static const rvv_base_type ime_int_input_types[4][4][3] = {
+  {{RVV_BASE_lmul1_vector, RVV_BASE_lmul1_signed_vector,
+    RVV_BASE_lmul1_unsigned_vector},
+   {RVV_BASE_lmul2_vector, RVV_BASE_lmul2_signed_vector,
+    RVV_BASE_lmul2_unsigned_vector},
+   {RVV_BASE_lmul4_vector, RVV_BASE_lmul4_signed_vector,
+    RVV_BASE_lmul4_unsigned_vector},
+   {RVV_BASE_lmul8_vector, RVV_BASE_lmul8_signed_vector,
+    RVV_BASE_lmul8_unsigned_vector}},
+  {{RVV_BASE_ime_double_trunc_lmul1_vector,
+    RVV_BASE_ime_double_trunc_lmul1_signed_vector,
+    RVV_BASE_ime_double_trunc_lmul1_unsigned_vector},
+   {RVV_BASE_ime_double_trunc_lmul2_vector,
+    RVV_BASE_ime_double_trunc_lmul2_signed_vector,
+    RVV_BASE_ime_double_trunc_lmul2_unsigned_vector},
+   {RVV_BASE_ime_double_trunc_lmul4_vector,
+    RVV_BASE_ime_double_trunc_lmul4_signed_vector,
+    RVV_BASE_ime_double_trunc_lmul4_unsigned_vector},
+   {RVV_BASE_ime_double_trunc_lmul8_vector,
+    RVV_BASE_ime_double_trunc_lmul8_signed_vector,
+    RVV_BASE_ime_double_trunc_lmul8_unsigned_vector}},
+  {{RVV_BASE_ime_quad_trunc_lmul1_vector,
+    RVV_BASE_ime_quad_trunc_lmul1_signed_vector,
+    RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector},
+   {RVV_BASE_ime_quad_trunc_lmul2_vector,
+    RVV_BASE_ime_quad_trunc_lmul2_signed_vector,
+    RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector},
+   {RVV_BASE_ime_quad_trunc_lmul4_vector,
+    RVV_BASE_ime_quad_trunc_lmul4_signed_vector,
+    RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector},
+   {RVV_BASE_ime_quad_trunc_lmul8_vector,
+    RVV_BASE_ime_quad_trunc_lmul8_signed_vector,
+    RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector}},
+  {{RVV_BASE_ime_oct_trunc_lmul1_vector,
+    RVV_BASE_ime_oct_trunc_lmul1_signed_vector,
+    RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector},
+   {RVV_BASE_ime_oct_trunc_lmul2_vector,
+    RVV_BASE_ime_oct_trunc_lmul2_signed_vector,
+    RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector},
+   {RVV_BASE_ime_oct_trunc_lmul4_vector,
+    RVV_BASE_ime_oct_trunc_lmul4_signed_vector,
+    RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector},
+   {RVV_BASE_ime_oct_trunc_lmul8_vector,
+    RVV_BASE_ime_oct_trunc_lmul8_signed_vector,
+    RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector}}};
 
-/* Op-info structs for the W=1 mmacc _lm{N} variants: same accumulator
-   type sets as the default LMUL=1 ops, but vs1/vs2 are at LMUL=N.  */
-static CONSTEXPR const rvv_op_info i_ime_vss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
+/* If INSTANCE is an IME integer multiply-accumulate, describe its
+   inputs in *IN and return true.  */
+bool
+ime_int_mmacc_input (const function_instance &instance, ime_int_input *in)
+{
+  rvv_base_type a = instance.op_info->args[1].base_type;
+  for (unsigned w = 0; w < 4; w++)
+    for (unsigned lm = 0; lm < 4; lm++)
+      for (unsigned kind = 0; kind < 3; kind++)
+	if (ime_int_input_types[w][lm][kind] == a)
+	  {
+	    in->w_log2 = w;
+	    in->lm_log2 = lm;
+	    if (kind == 1)
+	      in->sign = IME_SIGN_SU;
+	    else if (kind == 2)
+	      in->sign = IME_SIGN_US;
+	    else if (TYPE_UNSIGNED (TREE_TYPE (instance.get_return_type ())))
+	      in->sign = IME_SIGN_UU;
+	    else
+	      in->sign = IME_SIGN_SS;
+	    return true;
+	  }
+  return false;
+}
 
-static CONSTEXPR const rvv_op_info i_ime_vss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
+/* Return the operand information for the IME integer multiply-accumulate
+   variant with widening factor 1 << W_LOG2, input signedness SIGN, input
+   LMUL 1 << LM_LOG2 and, if M16, an m16 accumulator.  The accumulator is
+   unsigned only when both inputs are.  */
+const rvv_op_info *
+ime_int_mmacc_op_info (unsigned w_log2, ime_int_sign sign, unsigned lm_log2,
+		       bool m16)
+{
+  struct variant
+  {
+    rvv_op_info info;
+    rvv_arg_type_info args[4];
+  };
+  static variant *variants[4][4][4][2];
 
-static CONSTEXPR const rvv_op_info i_ime_vss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
-
-static CONSTEXPR const rvv_op_info u_ime_vss_lm2_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
-
-static CONSTEXPR const rvv_op_info u_ime_vss_lm4_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
-
-static CONSTEXPR const rvv_op_info u_ime_vss_lm8_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
-
-/* Op-info structs for the W=1 mmacc mixed-sign (_su / _us) variants.
-   The spec mandates a signed accumulator for both, so all four use
-   i_ops; only the operand args arrays differ.  */
-static CONSTEXPR const rvv_op_info i_su_ime_vss_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_vss_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_vss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_vss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_vss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_vss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_vss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm8_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_vss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm8_args};
-
-/* IME `m16' W=1 mmacc op-info structs.  The accumulator type lives in
-   the `i_m16_ops' / `u_m16_ops' tables; vs1/vs2 args reuse the
-   existing `ime_vss_args' arrays, which look up `lmul{N}_vector' /
-   `lmul{N}_{signed,unsigned}_vector' relative to the accumulator type
-   via `ime_lmul_input_idx' (extended above to handle m16 acc).  */
-static CONSTEXPR const rvv_op_info i_ime_m16_vss_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
-
-static CONSTEXPR const rvv_op_info u_ime_m16_vss_ops
-  = {u_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
-
-static CONSTEXPR const rvv_op_info i_ime_m16_vss_lm2_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_ime_m16_vss_lm4_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_ime_m16_vss_lm8_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
-
-static CONSTEXPR const rvv_op_info u_ime_m16_vss_lm2_ops
-  = {u_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm2_args};
-
-static CONSTEXPR const rvv_op_info u_ime_m16_vss_lm4_ops
-  = {u_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm4_args};
-
-static CONSTEXPR const rvv_op_info u_ime_m16_vss_lm8_ops
-  = {u_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
+  variant *&v = variants[w_log2][sign][lm_log2][m16];
+  if (!v)
+    {
+      const rvv_base_type *types = ime_int_input_types[w_log2][lm_log2];
+      rvv_base_type a = types[sign == IME_SIGN_SU ? 1
+			      : sign == IME_SIGN_US ? 2 : 0];
+      rvv_base_type b = types[sign == IME_SIGN_SU ? 2
+			      : sign == IME_SIGN_US ? 1 : 0];
+      const rvv_type_info *acc
+	= (sign == IME_SIGN_UU ? (m16 ? u_m16_ops : u_ops)
+	   : (m16 ? i_m16_ops : i_ops));
+      v = new variant {{acc, OP_TYPE_vv, rvv_arg_type_info (RVV_BASE_vector),
+			nullptr},
+		       {RVV_BASE_vector, a, b, NUM_BASE_TYPES}};
+      v->info.args = v->args;
+    }
+  return &v->info;
+}
 
 /* Mixed-sign `_su' / `_us' variants with m16 acc.  */
-static CONSTEXPR const rvv_op_info i_su_ime_m16_vss_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_m16_vss_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_m16_vss_lm2_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_m16_vss_lm2_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_m16_vss_lm4_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_m16_vss_lm4_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_m16_vss_lm8_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_su_lm8_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_m16_vss_lm8_ops
-  = {i_m16_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_vss_us_lm8_args};
-
 /* IME `vunpairlo' / `vunpairhi' / `vpair' arg/op tables.
 
    These primitives compose or decompose an m16 accumulator across
@@ -4074,142 +3790,11 @@ static CONSTEXPR const rvv_op_info i_ime_wvss_ops
      rvv_arg_type_info (RVV_BASE_vector),
      ime_wvss_args};
 
-static CONSTEXPR const rvv_op_info u_ime_wvss_ops
-  = {u_ops,
-     OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector),
-     ime_wvss_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_wvss_ops
-  = {i_ops,
-     OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector),
-     ime_wvss_su_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_wvss_ops
-  = {i_ops,
-     OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector),
-     ime_wvss_us_args};
-
-/* Op-info structs for the W=2 widening mmacc _lm{N} variants.  Same
-   accumulator type sets as the LMUL=1 ops, but vs1/vs2 are at LMUL=N
-   (and at SEW/2 narrower than the accumulator).  Mixed-sign uses
-   i_ops per the spec.  */
-static CONSTEXPR const rvv_op_info i_ime_wvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm2_args};
-
-static CONSTEXPR const rvv_op_info u_ime_wvss_lm2_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_wvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_su_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_wvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_us_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_ime_wvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm4_args};
-
-static CONSTEXPR const rvv_op_info u_ime_wvss_lm4_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_wvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_su_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_wvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_us_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_ime_wvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm8_args};
-
-static CONSTEXPR const rvv_op_info u_ime_wvss_lm8_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_lm8_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_wvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_su_lm8_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_wvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_wvss_us_lm8_args};
-
 /* Op-info structs for vqwmmacc.vv (W=4).  */
 
 static CONSTEXPR const rvv_op_info i_ime_qwvss_ops
   = {i_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_args};
-
-static CONSTEXPR const rvv_op_info u_ime_qwvss_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_qwvss_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_su_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_qwvss_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_args};
-
-/* W=4 widening mmacc _lm{N} op-info.  */
-static CONSTEXPR const rvv_op_info i_ime_qwvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm2_args};
-
-static CONSTEXPR const rvv_op_info u_ime_qwvss_lm2_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_qwvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_su_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_qwvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_ime_qwvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm4_args};
-
-static CONSTEXPR const rvv_op_info u_ime_qwvss_lm4_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_qwvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_su_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_qwvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_ime_qwvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm8_args};
-
-static CONSTEXPR const rvv_op_info u_ime_qwvss_lm8_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_lm8_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_qwvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_su_lm8_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_qwvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_us_lm8_args};
 
 /* Type set used by the IME tile load/store: all signed and unsigned
    integer vector types at LMUL in {1, 2, 4, 8}.  Fractional LMULs
@@ -4391,135 +3976,6 @@ static CONSTEXPR const rvv_op_info i_ime_8wvss_ops
   = {i_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_args};
 
-static CONSTEXPR const rvv_op_info u_ime_8wvss_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_8wvss_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_su_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_8wvss_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_args};
-
-/* W=8 widening mmacc _lm{N} op-info.  */
-static CONSTEXPR const rvv_op_info i_ime_8wvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm2_args};
-
-static CONSTEXPR const rvv_op_info u_ime_8wvss_lm2_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_8wvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_su_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_8wvss_lm2_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_lm2_args};
-
-static CONSTEXPR const rvv_op_info i_ime_8wvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm4_args};
-
-static CONSTEXPR const rvv_op_info u_ime_8wvss_lm4_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_8wvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_su_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_8wvss_lm4_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_lm4_args};
-
-static CONSTEXPR const rvv_op_info i_ime_8wvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm8_args};
-
-static CONSTEXPR const rvv_op_info u_ime_8wvss_lm8_ops
-  = {u_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_lm8_args};
-
-static CONSTEXPR const rvv_op_info i_su_ime_8wvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_su_lm8_args};
-
-static CONSTEXPR const rvv_op_info i_us_ime_8wvss_lm8_ops
-  = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_8wvss_us_lm8_args};
-
-/* Integer widening m16 accumulator op_infos (#489).  Same shape as the
-   m1..m8 widening op_infos above, only the type set switches to the
-   m16 acc tables (`i_m16_ops' / `u_m16_ops').  Mixed-sign (_su/_us)
-   variants share the signed acc type set per spec (same rule as the
-   m1..m8 rows).  Args lists are reused verbatim; the widening_input
-   chain resolves via the DOUBLE_TRUNC / QUAD_TRUNC / OCT_TRUNC slots
-   filled in on the m16 int type-index rows.  */
-#define IME_M16_WVSS_OP(NAME, TYPESET, ARGS)				\
-  static CONSTEXPR const rvv_op_info NAME				\
-    = {TYPESET, OP_TYPE_vv,						\
-       rvv_arg_type_info (RVV_BASE_vector), ARGS}
-
-/* W=2 (vwmmacc) m16 op_infos.  */
-IME_M16_WVSS_OP (i_ime_m16_wvss_ops,     i_m16_ops, ime_wvss_args);
-IME_M16_WVSS_OP (u_ime_m16_wvss_ops,     u_m16_ops, ime_wvss_args);
-IME_M16_WVSS_OP (i_su_ime_m16_wvss_ops,  i_m16_ops, ime_wvss_su_args);
-IME_M16_WVSS_OP (i_us_ime_m16_wvss_ops,  i_m16_ops, ime_wvss_us_args);
-IME_M16_WVSS_OP (i_ime_m16_wvss_lm2_ops, i_m16_ops, ime_wvss_lm2_args);
-IME_M16_WVSS_OP (u_ime_m16_wvss_lm2_ops, u_m16_ops, ime_wvss_lm2_args);
-IME_M16_WVSS_OP (i_su_ime_m16_wvss_lm2_ops, i_m16_ops, ime_wvss_su_lm2_args);
-IME_M16_WVSS_OP (i_us_ime_m16_wvss_lm2_ops, i_m16_ops, ime_wvss_us_lm2_args);
-IME_M16_WVSS_OP (i_ime_m16_wvss_lm4_ops, i_m16_ops, ime_wvss_lm4_args);
-IME_M16_WVSS_OP (u_ime_m16_wvss_lm4_ops, u_m16_ops, ime_wvss_lm4_args);
-IME_M16_WVSS_OP (i_su_ime_m16_wvss_lm4_ops, i_m16_ops, ime_wvss_su_lm4_args);
-IME_M16_WVSS_OP (i_us_ime_m16_wvss_lm4_ops, i_m16_ops, ime_wvss_us_lm4_args);
-IME_M16_WVSS_OP (i_ime_m16_wvss_lm8_ops, i_m16_ops, ime_wvss_lm8_args);
-IME_M16_WVSS_OP (u_ime_m16_wvss_lm8_ops, u_m16_ops, ime_wvss_lm8_args);
-IME_M16_WVSS_OP (i_su_ime_m16_wvss_lm8_ops, i_m16_ops, ime_wvss_su_lm8_args);
-IME_M16_WVSS_OP (i_us_ime_m16_wvss_lm8_ops, i_m16_ops, ime_wvss_us_lm8_args);
-
-/* W=4 (vqwmmacc) m16 op_infos.  */
-IME_M16_WVSS_OP (i_ime_m16_qwvss_ops,     i_m16_ops, ime_qwvss_args);
-IME_M16_WVSS_OP (u_ime_m16_qwvss_ops,     u_m16_ops, ime_qwvss_args);
-IME_M16_WVSS_OP (i_su_ime_m16_qwvss_ops,  i_m16_ops, ime_qwvss_su_args);
-IME_M16_WVSS_OP (i_us_ime_m16_qwvss_ops,  i_m16_ops, ime_qwvss_us_args);
-IME_M16_WVSS_OP (i_ime_m16_qwvss_lm2_ops, i_m16_ops, ime_qwvss_lm2_args);
-IME_M16_WVSS_OP (u_ime_m16_qwvss_lm2_ops, u_m16_ops, ime_qwvss_lm2_args);
-IME_M16_WVSS_OP (i_su_ime_m16_qwvss_lm2_ops, i_m16_ops, ime_qwvss_su_lm2_args);
-IME_M16_WVSS_OP (i_us_ime_m16_qwvss_lm2_ops, i_m16_ops, ime_qwvss_us_lm2_args);
-IME_M16_WVSS_OP (i_ime_m16_qwvss_lm4_ops, i_m16_ops, ime_qwvss_lm4_args);
-IME_M16_WVSS_OP (u_ime_m16_qwvss_lm4_ops, u_m16_ops, ime_qwvss_lm4_args);
-IME_M16_WVSS_OP (i_su_ime_m16_qwvss_lm4_ops, i_m16_ops, ime_qwvss_su_lm4_args);
-IME_M16_WVSS_OP (i_us_ime_m16_qwvss_lm4_ops, i_m16_ops, ime_qwvss_us_lm4_args);
-IME_M16_WVSS_OP (i_ime_m16_qwvss_lm8_ops, i_m16_ops, ime_qwvss_lm8_args);
-IME_M16_WVSS_OP (u_ime_m16_qwvss_lm8_ops, u_m16_ops, ime_qwvss_lm8_args);
-IME_M16_WVSS_OP (i_su_ime_m16_qwvss_lm8_ops, i_m16_ops, ime_qwvss_su_lm8_args);
-IME_M16_WVSS_OP (i_us_ime_m16_qwvss_lm8_ops, i_m16_ops, ime_qwvss_us_lm8_args);
-
-/* W=8 (v8wmmacc) m16 op_infos.  */
-IME_M16_WVSS_OP (i_ime_m16_8wvss_ops,     i_m16_ops, ime_8wvss_args);
-IME_M16_WVSS_OP (u_ime_m16_8wvss_ops,     u_m16_ops, ime_8wvss_args);
-IME_M16_WVSS_OP (i_su_ime_m16_8wvss_ops,  i_m16_ops, ime_8wvss_su_args);
-IME_M16_WVSS_OP (i_us_ime_m16_8wvss_ops,  i_m16_ops, ime_8wvss_us_args);
-IME_M16_WVSS_OP (i_ime_m16_8wvss_lm2_ops, i_m16_ops, ime_8wvss_lm2_args);
-IME_M16_WVSS_OP (u_ime_m16_8wvss_lm2_ops, u_m16_ops, ime_8wvss_lm2_args);
-IME_M16_WVSS_OP (i_su_ime_m16_8wvss_lm2_ops, i_m16_ops, ime_8wvss_su_lm2_args);
-IME_M16_WVSS_OP (i_us_ime_m16_8wvss_lm2_ops, i_m16_ops, ime_8wvss_us_lm2_args);
-IME_M16_WVSS_OP (i_ime_m16_8wvss_lm4_ops, i_m16_ops, ime_8wvss_lm4_args);
-IME_M16_WVSS_OP (u_ime_m16_8wvss_lm4_ops, u_m16_ops, ime_8wvss_lm4_args);
-IME_M16_WVSS_OP (i_su_ime_m16_8wvss_lm4_ops, i_m16_ops, ime_8wvss_su_lm4_args);
-IME_M16_WVSS_OP (i_us_ime_m16_8wvss_lm4_ops, i_m16_ops, ime_8wvss_us_lm4_args);
-IME_M16_WVSS_OP (i_ime_m16_8wvss_lm8_ops, i_m16_ops, ime_8wvss_lm8_args);
-IME_M16_WVSS_OP (u_ime_m16_8wvss_lm8_ops, u_m16_ops, ime_8wvss_lm8_args);
-IME_M16_WVSS_OP (i_su_ime_m16_8wvss_lm8_ops, i_m16_ops, ime_8wvss_su_lm8_args);
-IME_M16_WVSS_OP (i_us_ime_m16_8wvss_lm8_ops, i_m16_ops, ime_8wvss_us_lm8_args);
-
-#undef IME_M16_WVSS_OP
-
 /* FP IME matrix multiply-accumulate op_info structs.  */
 
 /* vfmmacc (W=1): all FP types at LMUL >= 1, inputs same as acc.  */
@@ -4541,8 +3997,7 @@ static CONSTEXPR const rvv_op_info f_ime_vss_lm8_ops
      rvv_arg_type_info (RVV_BASE_vector), ime_vss_lm8_args};
 
 /* IME `m16' W=1 FP/OFP8 mmacc op_info structs.  Same shape as the
-   m1..m8 FP W=1 op_infos above (and as the integer m16 op_infos
-   `i_ime_m16_vss_ops' / `u_ime_m16_vss_ops'); the type set is one of
+   m1..m8 FP W=1 op_infos above; the type set is one of
    the per-format `f*_m16_ops' tables and the input args reuse
    `ime_vss_args' / `ime_vss_lm{N}_args' (LMUL=N at the m16
    accumulator's SEW).  */

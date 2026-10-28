@@ -857,6 +857,24 @@ public:
   const rvv_op_info *op_info;
 };
 
+/* The input signedness of an IME integer multiply-accumulate: both
+   inputs signed, both unsigned, or the mixed-sign _su and _us forms.  */
+enum ime_int_sign { IME_SIGN_SS, IME_SIGN_UU, IME_SIGN_SU, IME_SIGN_US };
+
+/* How an IME integer multiply-accumulate reads its A and B inputs.  */
+struct ime_int_input
+{
+  /* log2 of the widening factor W (accumulator SEW / input SEW).  */
+  unsigned w_log2;
+  /* log2 of the input LMUL.  */
+  unsigned lm_log2;
+  ime_int_sign sign;
+};
+
+bool ime_int_mmacc_input (const function_instance &, ime_int_input *);
+const rvv_op_info *ime_int_mmacc_op_info (unsigned, ime_int_sign, unsigned,
+					  bool);
+
 /* A class for building and registering function decls.  */
 class function_builder
 {
