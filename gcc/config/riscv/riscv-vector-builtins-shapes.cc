@@ -1483,8 +1483,17 @@ struct ime_tile_def : public build_base
 	    for (unsigned vec_type_idx = 0;
 		 ops->types[vec_type_idx].index != NUM_VECTOR_TYPES;
 		 ++vec_type_idx)
-	      build_one (b, group, pred_idx, vec_type_idx, ops,
-			 ime_tile_variant (lambda, as_e));
+	      {
+		/* The storage width S of _as_e{S} is at least the element
+		   width.  */
+		tree type = rvv_arg_type_info (RVV_BASE_vector)
+			      .get_tree_type (ops->types[vec_type_idx].index);
+		if (as_e && type
+		    && GET_MODE_UNIT_BITSIZE (TYPE_MODE (type)) > 4u << as_e)
+		  continue;
+		build_one (b, group, pred_idx, vec_type_idx, ops,
+			   ime_tile_variant (lambda, as_e));
+	      }
 	}
   }
 
