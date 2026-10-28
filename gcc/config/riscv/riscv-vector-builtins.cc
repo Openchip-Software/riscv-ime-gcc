@@ -3984,6 +3984,17 @@ static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops
      rvv_arg_type_info (RVV_BASE_void),
      untyped_ptr_ptrdiff_args};
 
+/* Return the operands of the _as_e{S} forms of the IME tile load or
+   store with operands OPS: the same, but with an untyped base pointer.  */
+const rvv_op_info *
+ime_tile_as_e_op_info (const rvv_op_info &ops)
+{
+  if (ops.args == iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops.args)
+    return &iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops;
+  gcc_assert (ops.args == iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops.args);
+  return &iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops;
+}
+
 /* Op-info structs for v8wmmacc.vv (W=8).  */
 
 static CONSTEXPR const rvv_op_info i_ime_8wvss_ops
@@ -5861,9 +5872,10 @@ function_instance::function_instance (const char *base_name_in,
 				      const function_shape *shape_in,
 				      rvv_type_info type_in,
 				      predication_type_index pred_in,
-				      const rvv_op_info *op_info_in)
+				      const rvv_op_info *op_info_in,
+				      unsigned variant_in)
   : base_name (base_name_in), base (base_in), shape (shape_in), type (type_in),
-    pred (pred_in), op_info (op_info_in)
+    pred (pred_in), op_info (op_info_in), variant (variant_in)
 {
 }
 
@@ -5876,7 +5888,8 @@ function_instance::operator== (const function_instance &other) const
   return (base == other.base && shape == other.shape
 	  && type.index == other.type.index && op_info->op == other.op_info->op
 	  && pred == other.pred
-	  && op_info->ret.base_type == other.op_info->ret.base_type);
+	  && op_info->ret.base_type == other.op_info->ret.base_type
+	  && variant == other.variant);
 }
 
 bool
@@ -5924,6 +5937,7 @@ function_instance::hash () const
   h.add_int (op_info->ret.base_type);
   for (unsigned int i = 0; op_info->args[i].base_type != NUM_BASE_TYPES; ++i)
     h.add_int (op_info->args[i].base_type);
+  h.add_int (variant);
   return h.end ();
 }
 

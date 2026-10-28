@@ -829,7 +829,8 @@ class GTY ((user)) function_instance
 public:
   function_instance (const char *, const function_base *,
 		     const function_shape *, rvv_type_info,
-		     predication_type_index, const rvv_op_info *);
+		     predication_type_index, const rvv_op_info *,
+		     unsigned = 0);
 
   bool operator== (const function_instance &) const;
   bool operator!= (const function_instance &) const;
@@ -855,6 +856,10 @@ public:
   rvv_type_info type;
   enum predication_type_index pred;
   const rvv_op_info *op_info;
+  /* Distinguishes functions that a shape registers with the same base,
+     type, predication and operands, such as the _L{N} and _as_e{S}
+     forms of the IME tile loads and stores.  */
+  unsigned variant;
 };
 
 /* The input signedness of an IME integer multiply-accumulate: both
@@ -876,6 +881,29 @@ const rvv_op_info *ime_int_mmacc_op_info (unsigned, ime_int_sign, unsigned,
 					  bool);
 const rvv_op_info *ime_fp_mmacc_op_info (const rvv_op_info &, unsigned,
 					 unsigned);
+
+/* The function_instance::variant of an IME tile load or store encodes
+   its _L{N} suffix as 1 + log2 (N), or 0 without one, and its _as_e{S}
+   suffix as 1 + log2 (S / 8), or 0 without one.  */
+inline unsigned
+ime_tile_variant (unsigned lambda, unsigned as_e)
+{
+  return lambda * 5 + as_e;
+}
+
+inline unsigned
+ime_tile_lambda (unsigned variant)
+{
+  return variant / 5;
+}
+
+inline unsigned
+ime_tile_as_e (unsigned variant)
+{
+  return variant % 5;
+}
+
+const rvv_op_info *ime_tile_as_e_op_info (const rvv_op_info &);
 
 /* A class for building and registering function decls.  */
 class function_builder
