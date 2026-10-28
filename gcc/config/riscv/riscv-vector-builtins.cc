@@ -6412,9 +6412,11 @@ function_expander::prepare_contiguous_load_insn ()
   return arg_offset;
 }
 
-/* Use contiguous load INSN.  */
+/* Use contiguous load INSN.  EXTRA1 and EXTRA2, if nonnull, are
+   trailing constant operands of INSN.  */
 rtx
-function_expander::use_contiguous_load_insn (insn_code icode)
+function_expander::use_contiguous_load_insn (insn_code icode, rtx extra1,
+					     rtx extra2)
 {
   int arg_offset = prepare_contiguous_load_insn ();
 
@@ -6430,6 +6432,11 @@ function_expander::use_contiguous_load_insn (insn_code icode)
 
   if (opno != insn_data[icode].n_generator_args)
     add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
+
+  if (extra1)
+    add_input_operand (Pmode, extra1);
+  if (extra2)
+    add_input_operand (Pmode, extra2);
 
   /* IME tile-load consumer patterns carry a hidden Pmode `vtype source'
      operand (see `use_exact_insn' for the full rationale).  */
@@ -6492,9 +6499,11 @@ function_expander::use_fof_load_insn ()
   return res;
 }
 
-/* Use contiguous store INSN.  */
+/* Use contiguous store INSN.  EXTRA1 and EXTRA2, if nonnull, are
+   trailing constant operands of INSN.  */
 rtx
-function_expander::use_contiguous_store_insn (insn_code icode)
+function_expander::use_contiguous_store_insn (insn_code icode, rtx extra1,
+					      rtx extra2)
 {
   gcc_assert (call_expr_nargs (exp) > 0);
   machine_mode mode = TYPE_MODE (builtin_types[type.index].vector);
@@ -6514,6 +6523,11 @@ function_expander::use_contiguous_store_insn (insn_code icode)
     add_input_operand (argno);
 
   add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
+
+  if (extra1)
+    add_input_operand (Pmode, extra1);
+  if (extra2)
+    add_input_operand (Pmode, extra2);
 
   /* IME tile-store consumer patterns carry a hidden Pmode `vtype source'
      operand (see `use_exact_insn' for the full rationale).  */

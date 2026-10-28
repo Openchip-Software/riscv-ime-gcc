@@ -3666,29 +3666,14 @@ static CONSTEXPR const vsetlambda vsetlambda_obj;
 
 /* IME tile load or store (vmtl.v, vmts.v, vmttl.v, vmtts.v).  One object
    covers every _L{N} lambda immediate and _as_e{S} storage width of an
-   instruction (see ime_tile_variant).  Each combination has its own
-   pattern or UNSPEC; the UNSPECs of the _L{N} forms are consecutive from
-   L1, and those of the _L{N}_as_e{S} forms from L1_AS_E8, for N in the
-   inner and S in the outer order.  Loads are never overloaded: their
-   arguments do not determine the data type.  */
+   instruction (see ime_tile_variant), which the pattern takes as its two
+   last operands.  Loads are never overloaded: their arguments do not
+   determine the data type.  */
 class ime_tile_op : public function_base
 {
 public:
-  typedef insn_code (*code_for_fn) (machine_mode);
-  typedef insn_code (*code_for_unspec_fn) (int, machine_mode);
-
-  CONSTEXPR ime_tile_op (bool store_p, int unspec_l1, int unspec_l1_as_e8,
-			 code_for_fn code_for, code_for_unspec_fn code_for_l,
-			 code_for_fn as_e8, code_for_fn as_e16,
-			 code_for_fn as_e32, code_for_fn as_e64,
-			 code_for_unspec_fn as_e8_l,
-			 code_for_unspec_fn as_e16_l,
-			 code_for_unspec_fn as_e32_l,
-			 code_for_unspec_fn as_e64_l)
-    : m_store_p (store_p), m_unspec_l1 (unspec_l1),
-      m_unspec_l1_as_e8 (unspec_l1_as_e8),
-      m_code_for {code_for, as_e8, as_e16, as_e32, as_e64},
-      m_code_for_l {code_for_l, as_e8_l, as_e16_l, as_e32_l, as_e64_l}
+  CONSTEXPR ime_tile_op (bool store_p, int unspec)
+    : m_store_p (store_p), m_unspec (unspec)
   {}
 
   bool apply_tail_policy_p () const override { return false; }
@@ -3709,50 +3694,23 @@ public:
   {
     unsigned lambda = ime_tile_lambda (e.variant);
     unsigned as_e = ime_tile_as_e (e.variant);
-    insn_code icode;
-    if (!lambda)
-      icode = m_code_for[as_e] (e.vector_mode ());
-    else if (!as_e)
-      icode = m_code_for_l[0] (m_unspec_l1 + lambda - 1, e.vector_mode ());
-    else
-      icode = m_code_for_l[as_e] (m_unspec_l1_as_e8 + (as_e - 1) * 7
-				  + lambda - 1, e.vector_mode ());
-    return (m_store_p ? e.use_contiguous_store_insn (icode)
-	    : e.use_contiguous_load_insn (icode));
+    rtx lambda_op = GEN_INT (lambda ? 1 << (lambda - 1) : 0);
+    rtx width_op = GEN_INT (as_e ? 4 << as_e : 0);
+    insn_code icode = code_for_pred_ime (m_unspec, e.vector_mode ());
+    return (m_store_p
+	    ? e.use_contiguous_store_insn (icode, lambda_op, width_op)
+	    : e.use_contiguous_load_insn (icode, lambda_op, width_op));
   }
 
 private:
   bool m_store_p;
-  int m_unspec_l1;
-  int m_unspec_l1_as_e8;
-  code_for_fn m_code_for[5];
-  code_for_unspec_fn m_code_for_l[5];
+  int m_unspec;
 };
 
-#define IME_TILE_UNSPECS(X)						\
-  static_assert (UNSPEC_##X##_L64 == UNSPEC_##X##_L1 + 6, "");		\
-  static_assert (UNSPEC_##X##_L64_AS_E8 == UNSPEC_##X##_L1_AS_E8 + 6, "");	\
-  static_assert (UNSPEC_##X##_L1_AS_E16 == UNSPEC_##X##_L1_AS_E8 + 7, "");	\
-  static_assert (UNSPEC_##X##_L64_AS_E64 == UNSPEC_##X##_L1_AS_E8 + 27, "")
-IME_TILE_UNSPECS (VMTL);
-IME_TILE_UNSPECS (VMTS);
-IME_TILE_UNSPECS (VMTTL);
-IME_TILE_UNSPECS (VMTTS);
-#undef IME_TILE_UNSPECS
-
-#define IME_TILE_OBJ(NAME, X, STORE_P)					\
-  static CONSTEXPR const ime_tile_op NAME##_obj				\
-    (STORE_P, UNSPEC_##X##_L1, UNSPEC_##X##_L1_AS_E8,			\
-     code_for_pred_##NAME, code_for_pred_##NAME,				\
-     code_for_pred_##NAME##_as_e8, code_for_pred_##NAME##_as_e16,	\
-     code_for_pred_##NAME##_as_e32, code_for_pred_##NAME##_as_e64,	\
-     code_for_pred_##NAME##_as_e8, code_for_pred_##NAME##_as_e16,	\
-     code_for_pred_##NAME##_as_e32, code_for_pred_##NAME##_as_e64)
-IME_TILE_OBJ (vmtl, VMTL, false);
-IME_TILE_OBJ (vmts, VMTS, true);
-IME_TILE_OBJ (vmttl, VMTTL, false);
-IME_TILE_OBJ (vmtts, VMTTS, true);
-#undef IME_TILE_OBJ
+static CONSTEXPR const ime_tile_op vmtl_obj (false, UNSPEC_VMTL);
+static CONSTEXPR const ime_tile_op vmts_obj (true, UNSPEC_VMTS);
+static CONSTEXPR const ime_tile_op vmttl_obj (false, UNSPEC_VMTTL);
+static CONSTEXPR const ime_tile_op vmtts_obj (true, UNSPEC_VMTTS);
 
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */

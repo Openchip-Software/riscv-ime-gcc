@@ -1001,9 +1001,9 @@ public:
   rtx use_microscaled_insn (insn_code, int scales_argno);
   void add_microscaled_tail_and_avl ();
   int prepare_contiguous_load_insn ();
-  rtx use_contiguous_load_insn (insn_code);
+  rtx use_contiguous_load_insn (insn_code, rtx = NULL_RTX, rtx = NULL_RTX);
   rtx use_fof_load_insn ();
-  rtx use_contiguous_store_insn (insn_code);
+  rtx use_contiguous_store_insn (insn_code, rtx = NULL_RTX, rtx = NULL_RTX);
   rtx use_compare_insn (rtx_code, insn_code);
   rtx use_ternop_insn (bool, insn_code);
   rtx use_widen_ternop_insn (insn_code);
