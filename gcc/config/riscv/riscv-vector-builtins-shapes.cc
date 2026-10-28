@@ -1555,6 +1555,11 @@ struct ime_mmacc_def : public build_base
 	  b.apply_predication (function_instance, return_type, argument_types);
 	  if (!check_type (return_type, argument_types))
 	    continue;
+	  /* The accumulator register group is never fractional:
+	     EMUL_C is 1, 2, 4, 8 or 16.  */
+	  enum vlmul_type lmul = get_vlmul (TYPE_MODE (return_type));
+	  if (lmul == LMUL_F8 || lmul == LMUL_F4 || lmul == LMUL_F2)
+	    continue;
 	  b.add_overloaded_function (function_instance, *group.shape,
 				     group.required_extensions);
 	  b.add_unique_function (function_instance, (*group.shape), return_type,
