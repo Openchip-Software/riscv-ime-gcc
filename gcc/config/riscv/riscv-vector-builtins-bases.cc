@@ -3141,1060 +3141,181 @@ static CONSTEXPR const ime_vunpairhi ime_vunpairhi_obj;
 static CONSTEXPR const ime_vpair     ime_vpair_obj;
 
 
-/* Zvvfmm FP matrix multiply-accumulate, W=1 (vfmmacc.vv).  Parametrised
-   on the icode-getter so the same class drives the default LMUL=1
-   variant (vfmmacc) and the source-LMUL _lm{N} variants.  */
-template<insn_code (*CODE_FOR)(machine_mode) = code_for_pred_vfmmacc>
-class vfmmacc_ime_op : public function_base
+/* IME FP matrix multiply-accumulate (vfmmacc.vv, vfwmmacc.vv,
+   vfqwmmacc.vv and vf8wmmacc.vv) for one combination of accumulator
+   and input formats.  One object covers the forms with input LMUL 1, 2,
+   4 and 8 and with m1..m8 and m16 accumulators; the input LMUL picks the
+   pattern, whose mode iterator covers the m16 accumulators.  The OFP8
+   formats share QImode, so their patterns and the altfmt bits are
+   selected by an UNSPEC and they have no overloaded forms.  */
+class ime_fp_mmacc_op : public function_base
 {
 public:
+  typedef insn_code (*code_for_fn) (machine_mode);
+  typedef insn_code (*code_for_unspec_fn) (int, machine_mode);
+
+  CONSTEXPR ime_fp_mmacc_op (code_for_fn lm1, code_for_fn lm2,
+			     code_for_fn lm4, code_for_fn lm8)
+    : m_unspec (-1), m_code_for {lm1, lm2, lm4, lm8},
+      m_code_for_unspec {nullptr, nullptr, nullptr, nullptr}
+  {}
+
+  CONSTEXPR ime_fp_mmacc_op (int unspec, code_for_unspec_fn lm1,
+			     code_for_unspec_fn lm2, code_for_unspec_fn lm4,
+			     code_for_unspec_fn lm8)
+    : m_unspec (unspec), m_code_for {nullptr, nullptr, nullptr, nullptr},
+      m_code_for_unspec {lm1, lm2, lm4, lm8}
+  {}
+
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
   bool apply_ime_vtype_op_p () const override { return true; }
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return m_unspec < 0;
+  }
 
   rtx expand (function_expander &e) const override
   {
+    ime_ofp8_altfmt af = {false, false, false};
+    if (m_unspec >= 0)
+      af = ime_unspec_ofp8_altfmt (m_unspec);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  /* is_tile_op = */ false,
-				  /* altfmt_a = */ false,
-				  /* altfmt_b = */ false,
-				  /* altfmt = */ false,
+				  af.a, af.b, af.val,
 				  /* bs = */ false);
-    rtx result = e.use_exact_insn (CODE_FOR (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfmmacc_ime_op<> vfmmacc_obj;
-static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm2>
-  vfmmacc_lm2_obj;
-static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm4>
-  vfmmacc_lm4_obj;
-static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm8>
-  vfmmacc_lm8_obj;
-
-/* W=1 vfmmacc with m16 accumulator (EMUL_C=16).  Unlike the integer
-   side -- where `vmmacc<su>_m16<mode>' is a separate RTL pattern --
-   the FP `@pred_vfmmacc<mode>' pattern already covers m16 via the
-   VFMMACC_ACC iterator and the V_LMUL{1,2,4,8} mode_attrs, so these
-   instances reuse the same `code_for_pred_vfmmacc{,_lm{N}}'
-   icode-getters as the m1..m8 family above.  Separate `_m16_obj'
-   names are required by BASE() / DEF_RVV_FUNCTION naming.  */
-static CONSTEXPR const vfmmacc_ime_op<> vfmmacc_m16_obj;
-static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm2>
-  vfmmacc_m16_lm2_obj;
-static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm4>
-  vfmmacc_m16_lm4_obj;
-static CONSTEXPR const vfmmacc_ime_op<code_for_pred_vfmmacc_lm8>
-  vfmmacc_m16_lm8_obj;
-
-/* Zvvfmm FP matrix multiply-accumulate, W=2 (vfwmmacc.vv).  */
-class vfwmmacc_f16_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_f16 (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfwmmacc_f16_ime_op vfwmmacc_f16_obj;
-
-/* _lm{N} variants of `vfwmmacc_f16': accumulator at LMUL >= 1 (FP32),
-   vs1/vs2 at LMUL=N (FP16).  Spec §2614-2618 + §2657: `_lm{N}'
-   applies uniformly to FP and integer widening.  The class is
-   templated on LMUL so a single dispatch picks the right RTL pattern
-   (`code_for_pred_vfwmmacc_f16_lm{N}').  */
-template<int LMUL>
-class vfwmmacc_f16_lm_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    insn_code icode;
-    if (LMUL == 2)
-      icode = code_for_pred_vfwmmacc_f16_lm2 (e.vector_mode ());
-    else if (LMUL == 4)
-      icode = code_for_pred_vfwmmacc_f16_lm4 (e.vector_mode ());
-    else
-      {
-	gcc_assert (LMUL == 8);
-	icode = code_for_pred_vfwmmacc_f16_lm8 (e.vector_mode ());
-      }
+    unsigned lm_log2 = get_vlmul (e.arg_mode (1));
+    gcc_assert (lm_log2 <= LMUL_8);
+    insn_code icode
+      = (m_unspec >= 0
+	 ? m_code_for_unspec[lm_log2] (m_unspec, e.vector_mode ())
+	 : m_code_for[lm_log2] (e.vector_mode ()));
     rtx result = e.use_exact_insn (icode);
     emit_ime_post_consumer_blockage ();
     return result;
   }
+
+private:
+  int m_unspec;
+  code_for_fn m_code_for[4];
+  code_for_unspec_fn m_code_for_unspec[4];
 };
 
-static CONSTEXPR const vfwmmacc_f16_lm_ime_op<2> vfwmmacc_f16_lm2_obj;
-static CONSTEXPR const vfwmmacc_f16_lm_ime_op<4> vfwmmacc_f16_lm4_obj;
-static CONSTEXPR const vfwmmacc_f16_lm_ime_op<8> vfwmmacc_f16_lm8_obj;
-
-class vfwmmacc_bf16_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_bf16 (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfwmmacc_bf16_ime_op vfwmmacc_bf16_obj;
-
-template<int LMUL>
-class vfwmmacc_bf16_lm_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    insn_code icode;
-    if (LMUL == 2)
-      icode = code_for_pred_vfwmmacc_bf16_lm2 (e.vector_mode ());
-    else if (LMUL == 4)
-      icode = code_for_pred_vfwmmacc_bf16_lm4 (e.vector_mode ());
-    else
-      {
-	gcc_assert (LMUL == 8);
-	icode = code_for_pred_vfwmmacc_bf16_lm8 (e.vector_mode ());
-      }
-    rtx result = e.use_exact_insn (icode);
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<2> vfwmmacc_bf16_lm2_obj;
-static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<4> vfwmmacc_bf16_lm4_obj;
-static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<8> vfwmmacc_bf16_lm8_obj;
-
-class vfwmmacc_f32_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    rtx result = e.use_exact_insn (code_for_pred_vfwmmacc_f32 (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfwmmacc_f32_ime_op vfwmmacc_f32_obj;
-
-template<int LMUL>
-class vfwmmacc_f32_lm_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    insn_code icode;
-    if (LMUL == 2)
-      icode = code_for_pred_vfwmmacc_f32_lm2 (e.vector_mode ());
-    else if (LMUL == 4)
-      icode = code_for_pred_vfwmmacc_f32_lm4 (e.vector_mode ());
-    else
-      {
-	gcc_assert (LMUL == 8);
-	icode = code_for_pred_vfwmmacc_f32_lm8 (e.vector_mode ());
-      }
-    rtx result = e.use_exact_insn (icode);
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfwmmacc_f32_lm_ime_op<2> vfwmmacc_f32_lm2_obj;
-static CONSTEXPR const vfwmmacc_f32_lm_ime_op<4> vfwmmacc_f32_lm4_obj;
-static CONSTEXPR const vfwmmacc_f32_lm_ime_op<8> vfwmmacc_f32_lm8_obj;
-
-/* Zvvfmm FP matrix multiply-accumulate, W=4 (vfqwmmacc.vv).  */
-class vfqwmmacc_f16_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    rtx result = e.use_exact_insn (code_for_pred_vfqwmmacc_f16 (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfqwmmacc_f16_ime_op vfqwmmacc_f16_obj;
-
-class vfqwmmacc_bf16_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    rtx result = e.use_exact_insn (code_for_pred_vfqwmmacc_bf16 (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfqwmmacc_bf16_ime_op vfqwmmacc_bf16_obj;
-
-/* W=2 vfwmmacc OFP8 -> fp16.  Acc mode is HF (altfmt = 0); inputs are
-   OFP8 (E4M3 / E5M2) at LMUL=1 and the per-instance UNSPEC selects
-   the (vs1, vs2) altfmt combination.  */
-template<int UNSPEC>
-class vfwmmacc_ofp8_fp16_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-  bool can_be_overloaded_p (enum predication_type_index) const override
-  { return false; }
-
-  rtx expand (function_expander &e) const override
-  {
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  af.a, af.b, af.val,
-				  /* bs = */ false);
-    rtx result = e.use_exact_insn (
-      code_for_pred_vfwmmacc_ofp8_fp16 (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const
-  vfwmmacc_ofp8_fp16_ime_op<UNSPEC_VFWMMACC_OFP8_FP16_E4M3>
-  vfwmmacc_fp16_f8e4m3_obj;
-static CONSTEXPR const
-  vfwmmacc_ofp8_fp16_ime_op<UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2>
-  vfwmmacc_fp16_f8e4m3_f8e5m2_obj;
-static CONSTEXPR const
-  vfwmmacc_ofp8_fp16_ime_op<UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3>
-  vfwmmacc_fp16_f8e5m2_f8e4m3_obj;
-static CONSTEXPR const
-  vfwmmacc_ofp8_fp16_ime_op<UNSPEC_VFWMMACC_OFP8_FP16_E5M2>
-  vfwmmacc_fp16_f8e5m2_obj;
-
-/* W=2 vfwmmacc OFP8 -> bf16.  Mirror of the fp16 class above with
-   acc altfmt = 1 and acc mode = BF.  */
-template<int UNSPEC>
-class vfwmmacc_ofp8_bf16_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-  bool can_be_overloaded_p (enum predication_type_index) const override
-  { return false; }
-
-  rtx expand (function_expander &e) const override
-  {
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  af.a, af.b, af.val,
-				  /* bs = */ false);
-    rtx result = e.use_exact_insn (
-      code_for_pred_vfwmmacc_ofp8_bf16 (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const
-  vfwmmacc_ofp8_bf16_ime_op<UNSPEC_VFWMMACC_OFP8_BF16_E4M3>
-  vfwmmacc_bf16_f8e4m3_obj;
-static CONSTEXPR const
-  vfwmmacc_ofp8_bf16_ime_op<UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2>
-  vfwmmacc_bf16_f8e4m3_f8e5m2_obj;
-static CONSTEXPR const
-  vfwmmacc_ofp8_bf16_ime_op<UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3>
-  vfwmmacc_bf16_f8e5m2_f8e4m3_obj;
-static CONSTEXPR const
-  vfwmmacc_ofp8_bf16_ime_op<UNSPEC_VFWMMACC_OFP8_BF16_E5M2>
-  vfwmmacc_bf16_f8e5m2_obj;
-
-/* W=1 vfmmacc OFP8 -> OFP8.  Both E4M3 and E5M2 acc share RVVM*QI
-   at the GCC level; the per-instance UNSPEC selects the
-   (acc, vs1, vs2) altfmt combination.  The optional CODE_FOR
-   template parameter selects between the default LMUL=1 pattern
-   (`code_for_pred_vfmmacc_ofp8') and the `_lm{2,4,8}' source-LMUL
-   siblings, mirroring the same parametrisation used by
-   `vfmmacc_ime_op' and the integer mmacc op classes.  */
-template<int UNSPEC,
-	 insn_code (*CODE_FOR)(int, machine_mode) = code_for_pred_vfmmacc_ofp8>
-class vfmmacc_ofp8_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-  /* The acc, vs1 and vs2 OFP8 formats are all on QImode; overloaded
-     dispatch cannot tell the variants apart.  */
-  bool can_be_overloaded_p (enum predication_type_index) const override
-  { return false; }
-
-  /* W=1 OFP8 mmacc is the only IME FP variant whose accumulator AND
-     both inputs are all packed in QImode -- there is no FP-mode
-     operand for `function_instance::any_type_float_p' to detect.
-     Without an explicit override, `call_properties' would return 0,
-     `modifies_global_state_p' would say false, the builtin would be
-     marked `const' and gimple `sink1' would sink the call past a
-     user-side `asm volatile' that clobbers FRM.  Surface the
-     FPCR-read / FP-exception side-effects directly so the call is
-     pinned in dataflow exactly the same way native FP mmaccs are.  */
-  unsigned int call_properties (const function_instance &) const override
-  { return CP_READ_FPCR | CP_RAISE_FP_EXCEPTIONS; }
-
-  rtx expand (function_expander &e) const override
-  {
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  af.a, af.b, af.val,
-				  /* bs = */ false);
-    rtx result = e.use_exact_insn (CODE_FOR (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3>
-  vfmmacc_f8e4m3_f8e4m3_f8e4m3_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2>
-  vfmmacc_f8e4m3_f8e4m3_f8e5m2_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3>
-  vfmmacc_f8e4m3_f8e5m2_f8e4m3_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2>
-  vfmmacc_f8e4m3_f8e5m2_f8e5m2_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3>
-  vfmmacc_f8e5m2_f8e4m3_f8e4m3_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2>
-  vfmmacc_f8e5m2_f8e4m3_f8e5m2_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3>
-  vfmmacc_f8e5m2_f8e5m2_f8e4m3_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2>
-  vfmmacc_f8e5m2_f8e5m2_f8e5m2_obj;
-
-/* W=1 vfmmacc OFP8 with m16 accumulator.  Reuses the same template
-   above: `VFMMACC_OFP8_ACC' already includes RVVM16QI and the inputs
-   are always hard-coded to RVVM1QI for the default LMUL=1 form.
-   Eight instances cover the same (acc, vs1, vs2) altfmt cube as
-   m1..m8.  */
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3>
-  vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2>
-  vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3>
-  vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2>
-  vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3>
-  vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2>
-  vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3>
-  vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16_obj;
-static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2>
-  vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16_obj;
-
-/* W=1 vfmmacc OFP8 `_lm{N}' source-LMUL siblings.  Acc and inputs
-   share the (acc, vs1, vs2) altfmt cube as the LMUL=1 form above;
-   the CODE_FOR template parameter routes the expand() to the
-   `_lm{N}' RTL pattern.  24 instances (8 altfmt x 3 LMUL) cover the
-   m1..m8 path; another 24 cover the m16 path below.  */
-#define VFMMACC_OFP8_LM_INST(NAME, UNSPEC, N)				\
-  static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC,			\
-					     code_for_pred_vfmmacc_ofp8_lm##N> \
-    NAME##_lm##N##_obj
-
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3, 2);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3, 4);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3, 8);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2, 2);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2, 4);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2, 8);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3, 2);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3, 4);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3, 8);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2, 2);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2, 4);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2, 8);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3, 2);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3, 4);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3, 8);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2, 2);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2, 4);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2, 8);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3, 2);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3, 4);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e4m3,
-		      UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3, 8);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2, 2);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2, 4);
-VFMMACC_OFP8_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e5m2,
-		      UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2, 8);
-
-/* And the same 24 instances with m16 acc.  Reuses the same RTL
-   pattern series (VFMMACC_OFP8_ACC iterator already covers RVVM16QI);
-   only the BASE() name differs from the m1..m8 set above so that
-   `bases::vfmmacc_..._m16_lm{N}' resolves correctly from the
-   DEF_RVV_FUNCTION entries.  */
-#define VFMMACC_OFP8_M16_LM_INST(NAME, UNSPEC, N)			\
-  static CONSTEXPR const vfmmacc_ofp8_ime_op<UNSPEC,			\
-					     code_for_pred_vfmmacc_ofp8_lm##N> \
-    NAME##_m16_lm##N##_obj
-
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3, 2);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3, 4);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3, 8);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2, 2);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2, 4);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e4m3_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2, 8);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3, 2);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3, 4);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3, 8);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2, 2);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2, 4);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e4m3_f8e5m2_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2, 8);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3, 2);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3, 4);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3, 8);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2, 2);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2, 4);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e4m3_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2, 8);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3, 2);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3, 4);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e4m3,
-			  UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3, 8);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2, 2);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2, 4);
-VFMMACC_OFP8_M16_LM_INST (vfmmacc_f8e5m2_f8e5m2_f8e5m2,
-			  UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2, 8);
-
-#undef VFMMACC_OFP8_LM_INST
-#undef VFMMACC_OFP8_M16_LM_INST
-
-template<int UNSPEC>
-class vfqwmmacc_ofp8_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-  /* OFP8 E4M3 and E5M2 share RVVM1QI mode; the overloaded-dispatch
-     hash cannot distinguish them, so disable overloading.  */
-  bool can_be_overloaded_p (enum predication_type_index) const override
-  { return false; }
-
-  rtx expand (function_expander &e) const override
-  {
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  af.a, af.b, af.val,
-				  /* bs = */ false);
-    rtx result = e.use_exact_insn (
-      code_for_pred_vfqwmmacc_ofp8 (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E4M3>
-  vfqwmmacc_f8e4m3_obj;
-static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E5M2>
-  vfqwmmacc_f8e5m2_obj;
-static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E4M3_E5M2>
-  vfqwmmacc_f8e4m3_f8e5m2_obj;
-static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC_VFQWMMACC_F8E5M2_E4M3>
-  vfqwmmacc_f8e5m2_f8e4m3_obj;
-
-/* Zvvfmm FP matrix multiply-accumulate, W=8 (vf8wmmacc.vv).  */
-template<int UNSPEC>
-class vf8wmmacc_ofp8_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-  bool can_be_overloaded_p (enum predication_type_index) const override
-  { return false; }
-
-  rtx expand (function_expander &e) const override
-  {
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  af.a, af.b, af.val,
-				  /* bs = */ false);
-    rtx result = e.use_exact_insn (
-      code_for_pred_vf8wmmacc_ofp8 (UNSPEC, e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E4M3>
-  vf8wmmacc_f8e4m3_obj;
-static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E5M2>
-  vf8wmmacc_f8e5m2_obj;
-static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E4M3_E5M2>
-  vf8wmmacc_f8e4m3_f8e5m2_obj;
-static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC_VF8WMMACC_F8E5M2_E4M3>
-  vf8wmmacc_f8e5m2_f8e4m3_obj;
-
-/* _lm{N} variants of all FP widening mmaccs with OFP8 / W=4 / W=8
-   forms.  Each is templated on the input LMUL (2/4/8) and dispatches
-   to the matching `code_for_pred_*_lm{N}' from the MD generator.
-   Same-shape classes (`expand' identical except for the
-   `code_for_pred' name) -- factored via a macro to keep the table
-   compact.  */
-#define IME_OFP8_LM_OP_CLASS_W2_FP16(LMUL)                              \
-template<int UNSPEC>                                                    \
-class vfwmmacc_ofp8_fp16_lm##LMUL##_ime_op : public function_base       \
-{                                                                       \
-public:                                                                 \
-  bool apply_mask_policy_p () const override { return false; }          \
-  bool use_mask_predication_p () const override { return false; }       \
-  bool has_merge_operand_p () const override { return false; }          \
-  bool apply_ime_vtype_op_p () const override { return true; }          \
-  bool can_be_overloaded_p (enum predication_type_index) const override \
-  { return false; }                                                     \
-  rtx expand (function_expander &e) const override                      \
-  {                                                                     \
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);                \
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (), false,           \
-				  af.a, af.b, af.val, false);           \
-    rtx result = e.use_exact_insn (                                     \
-      code_for_pred_vfwmmacc_ofp8_fp16_lm##LMUL (UNSPEC, e.vector_mode ())); \
-    emit_ime_post_consumer_blockage ();                                 \
-    return result;                                                      \
-  }                                                                     \
-}
-IME_OFP8_LM_OP_CLASS_W2_FP16 (2);
-IME_OFP8_LM_OP_CLASS_W2_FP16 (4);
-IME_OFP8_LM_OP_CLASS_W2_FP16 (8);
-#undef IME_OFP8_LM_OP_CLASS_W2_FP16
-
-#define IME_OFP8_LM_OP_CLASS_W2_BF16(LMUL)                              \
-template<int UNSPEC>                                                    \
-class vfwmmacc_ofp8_bf16_lm##LMUL##_ime_op : public function_base       \
-{                                                                       \
-public:                                                                 \
-  bool apply_mask_policy_p () const override { return false; }          \
-  bool use_mask_predication_p () const override { return false; }       \
-  bool has_merge_operand_p () const override { return false; }          \
-  bool apply_ime_vtype_op_p () const override { return true; }          \
-  bool can_be_overloaded_p (enum predication_type_index) const override \
-  { return false; }                                                     \
-  rtx expand (function_expander &e) const override                      \
-  {                                                                     \
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);                \
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (), false,           \
-				  af.a, af.b, af.val, false);           \
-    rtx result = e.use_exact_insn (                                     \
-      code_for_pred_vfwmmacc_ofp8_bf16_lm##LMUL (UNSPEC, e.vector_mode ())); \
-    emit_ime_post_consumer_blockage ();                                 \
-    return result;                                                      \
-  }                                                                     \
-}
-IME_OFP8_LM_OP_CLASS_W2_BF16 (2);
-IME_OFP8_LM_OP_CLASS_W2_BF16 (4);
-IME_OFP8_LM_OP_CLASS_W2_BF16 (8);
-#undef IME_OFP8_LM_OP_CLASS_W2_BF16
-
-#define IME_VFQWMMACC_FP_LM_OP_CLASS(FMT, LMUL)                         \
-class vfqwmmacc_##FMT##_lm##LMUL##_ime_op : public function_base        \
-{                                                                       \
-public:                                                                 \
-  bool apply_mask_policy_p () const override { return false; }          \
-  bool use_mask_predication_p () const override { return false; }       \
-  bool has_merge_operand_p () const override { return false; }          \
-  bool apply_ime_vtype_op_p () const override { return true; }          \
-  rtx expand (function_expander &e) const override                      \
-  {                                                                     \
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),                  \
-				  false, false, false, false, false);   \
-    rtx result = e.use_exact_insn (                                     \
-      code_for_pred_vfqwmmacc_##FMT##_lm##LMUL (e.vector_mode ()));     \
-    emit_ime_post_consumer_blockage ();                                 \
-    return result;                                                      \
-  }                                                                     \
-}
-IME_VFQWMMACC_FP_LM_OP_CLASS (f16, 2);
-IME_VFQWMMACC_FP_LM_OP_CLASS (f16, 4);
-IME_VFQWMMACC_FP_LM_OP_CLASS (f16, 8);
-IME_VFQWMMACC_FP_LM_OP_CLASS (bf16, 2);
-IME_VFQWMMACC_FP_LM_OP_CLASS (bf16, 4);
-IME_VFQWMMACC_FP_LM_OP_CLASS (bf16, 8);
-#undef IME_VFQWMMACC_FP_LM_OP_CLASS
-
-#define IME_VFQWMMACC_OFP8_LM_OP_CLASS(LMUL)                            \
-template<int UNSPEC>                                                    \
-class vfqwmmacc_ofp8_lm##LMUL##_ime_op : public function_base           \
-{                                                                       \
-public:                                                                 \
-  bool apply_mask_policy_p () const override { return false; }          \
-  bool use_mask_predication_p () const override { return false; }       \
-  bool has_merge_operand_p () const override { return false; }          \
-  bool apply_ime_vtype_op_p () const override { return true; }          \
-  bool can_be_overloaded_p (enum predication_type_index) const override \
-  { return false; }                                                     \
-  rtx expand (function_expander &e) const override                      \
-  {                                                                     \
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);                \
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (), false,           \
-				  af.a, af.b, af.val, false);           \
-    rtx result = e.use_exact_insn (                                     \
-      code_for_pred_vfqwmmacc_ofp8_lm##LMUL (UNSPEC, e.vector_mode ())); \
-    emit_ime_post_consumer_blockage ();                                 \
-    return result;                                                      \
-  }                                                                     \
-}
-IME_VFQWMMACC_OFP8_LM_OP_CLASS (2);
-IME_VFQWMMACC_OFP8_LM_OP_CLASS (4);
-IME_VFQWMMACC_OFP8_LM_OP_CLASS (8);
-#undef IME_VFQWMMACC_OFP8_LM_OP_CLASS
-
-#define IME_VF8WMMACC_OFP8_LM_OP_CLASS(LMUL)                            \
-template<int UNSPEC>                                                    \
-class vf8wmmacc_ofp8_lm##LMUL##_ime_op : public function_base           \
-{                                                                       \
-public:                                                                 \
-  bool apply_mask_policy_p () const override { return false; }          \
-  bool use_mask_predication_p () const override { return false; }       \
-  bool has_merge_operand_p () const override { return false; }          \
-  bool apply_ime_vtype_op_p () const override { return true; }          \
-  bool can_be_overloaded_p (enum predication_type_index) const override \
-  { return false; }                                                     \
-  rtx expand (function_expander &e) const override                      \
-  {                                                                     \
-    ime_ofp8_altfmt af = ime_unspec_ofp8_altfmt (UNSPEC);                \
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (), false,           \
-				  af.a, af.b, af.val, false);           \
-    rtx result = e.use_exact_insn (                                     \
-      code_for_pred_vf8wmmacc_ofp8_lm##LMUL (UNSPEC, e.vector_mode ())); \
-    emit_ime_post_consumer_blockage ();                                 \
-    return result;                                                      \
-  }                                                                     \
-}
-IME_VF8WMMACC_OFP8_LM_OP_CLASS (2);
-IME_VF8WMMACC_OFP8_LM_OP_CLASS (4);
-IME_VF8WMMACC_OFP8_LM_OP_CLASS (8);
-#undef IME_VF8WMMACC_OFP8_LM_OP_CLASS
-
-/* Static instances for all _lm{N} OFP8 / W=4 / W=8 op classes.  */
-#define IME_FP_LM_OBJ(CLASS, NAME, UNSPEC) \
-static CONSTEXPR const CLASS<UNSPEC> NAME##_obj
-/* W=2 OFP8 -> FP16 _lm{N}.  */
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm2_ime_op,
-	       vfwmmacc_fp16_f8e4m3_lm2, UNSPEC_VFWMMACC_OFP8_FP16_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm2_ime_op,
-	       vfwmmacc_fp16_f8e4m3_f8e5m2_lm2, UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm2_ime_op,
-	       vfwmmacc_fp16_f8e5m2_f8e4m3_lm2, UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm2_ime_op,
-	       vfwmmacc_fp16_f8e5m2_lm2, UNSPEC_VFWMMACC_OFP8_FP16_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm4_ime_op,
-	       vfwmmacc_fp16_f8e4m3_lm4, UNSPEC_VFWMMACC_OFP8_FP16_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm4_ime_op,
-	       vfwmmacc_fp16_f8e4m3_f8e5m2_lm4, UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm4_ime_op,
-	       vfwmmacc_fp16_f8e5m2_f8e4m3_lm4, UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm4_ime_op,
-	       vfwmmacc_fp16_f8e5m2_lm4, UNSPEC_VFWMMACC_OFP8_FP16_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm8_ime_op,
-	       vfwmmacc_fp16_f8e4m3_lm8, UNSPEC_VFWMMACC_OFP8_FP16_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm8_ime_op,
-	       vfwmmacc_fp16_f8e4m3_f8e5m2_lm8, UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm8_ime_op,
-	       vfwmmacc_fp16_f8e5m2_f8e4m3_lm8, UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_fp16_lm8_ime_op,
-	       vfwmmacc_fp16_f8e5m2_lm8, UNSPEC_VFWMMACC_OFP8_FP16_E5M2);
-/* W=2 OFP8 -> BF16 _lm{N}.  */
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm2_ime_op,
-	       vfwmmacc_bf16_f8e4m3_lm2, UNSPEC_VFWMMACC_OFP8_BF16_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm2_ime_op,
-	       vfwmmacc_bf16_f8e4m3_f8e5m2_lm2, UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm2_ime_op,
-	       vfwmmacc_bf16_f8e5m2_f8e4m3_lm2, UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm2_ime_op,
-	       vfwmmacc_bf16_f8e5m2_lm2, UNSPEC_VFWMMACC_OFP8_BF16_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm4_ime_op,
-	       vfwmmacc_bf16_f8e4m3_lm4, UNSPEC_VFWMMACC_OFP8_BF16_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm4_ime_op,
-	       vfwmmacc_bf16_f8e4m3_f8e5m2_lm4, UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm4_ime_op,
-	       vfwmmacc_bf16_f8e5m2_f8e4m3_lm4, UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm4_ime_op,
-	       vfwmmacc_bf16_f8e5m2_lm4, UNSPEC_VFWMMACC_OFP8_BF16_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm8_ime_op,
-	       vfwmmacc_bf16_f8e4m3_lm8, UNSPEC_VFWMMACC_OFP8_BF16_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm8_ime_op,
-	       vfwmmacc_bf16_f8e4m3_f8e5m2_lm8, UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm8_ime_op,
-	       vfwmmacc_bf16_f8e5m2_f8e4m3_lm8, UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3);
-IME_FP_LM_OBJ (vfwmmacc_ofp8_bf16_lm8_ime_op,
-	       vfwmmacc_bf16_f8e5m2_lm8, UNSPEC_VFWMMACC_OFP8_BF16_E5M2);
-/* W=4 vfqwmmacc OFP8 _lm{N}.  */
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm2_ime_op,
-	       vfqwmmacc_f8e4m3_lm2, UNSPEC_VFQWMMACC_F8E4M3);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm2_ime_op,
-	       vfqwmmacc_f8e5m2_lm2, UNSPEC_VFQWMMACC_F8E5M2);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm2_ime_op,
-	       vfqwmmacc_f8e4m3_f8e5m2_lm2, UNSPEC_VFQWMMACC_F8E4M3_E5M2);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm2_ime_op,
-	       vfqwmmacc_f8e5m2_f8e4m3_lm2, UNSPEC_VFQWMMACC_F8E5M2_E4M3);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm4_ime_op,
-	       vfqwmmacc_f8e4m3_lm4, UNSPEC_VFQWMMACC_F8E4M3);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm4_ime_op,
-	       vfqwmmacc_f8e5m2_lm4, UNSPEC_VFQWMMACC_F8E5M2);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm4_ime_op,
-	       vfqwmmacc_f8e4m3_f8e5m2_lm4, UNSPEC_VFQWMMACC_F8E4M3_E5M2);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm4_ime_op,
-	       vfqwmmacc_f8e5m2_f8e4m3_lm4, UNSPEC_VFQWMMACC_F8E5M2_E4M3);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm8_ime_op,
-	       vfqwmmacc_f8e4m3_lm8, UNSPEC_VFQWMMACC_F8E4M3);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm8_ime_op,
-	       vfqwmmacc_f8e5m2_lm8, UNSPEC_VFQWMMACC_F8E5M2);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm8_ime_op,
-	       vfqwmmacc_f8e4m3_f8e5m2_lm8, UNSPEC_VFQWMMACC_F8E4M3_E5M2);
-IME_FP_LM_OBJ (vfqwmmacc_ofp8_lm8_ime_op,
-	       vfqwmmacc_f8e5m2_f8e4m3_lm8, UNSPEC_VFQWMMACC_F8E5M2_E4M3);
-/* W=8 vf8wmmacc OFP8 _lm{N}.  */
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm2_ime_op,
-	       vf8wmmacc_f8e4m3_lm2, UNSPEC_VF8WMMACC_F8E4M3);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm2_ime_op,
-	       vf8wmmacc_f8e5m2_lm2, UNSPEC_VF8WMMACC_F8E5M2);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm2_ime_op,
-	       vf8wmmacc_f8e4m3_f8e5m2_lm2, UNSPEC_VF8WMMACC_F8E4M3_E5M2);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm2_ime_op,
-	       vf8wmmacc_f8e5m2_f8e4m3_lm2, UNSPEC_VF8WMMACC_F8E5M2_E4M3);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm4_ime_op,
-	       vf8wmmacc_f8e4m3_lm4, UNSPEC_VF8WMMACC_F8E4M3);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm4_ime_op,
-	       vf8wmmacc_f8e5m2_lm4, UNSPEC_VF8WMMACC_F8E5M2);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm4_ime_op,
-	       vf8wmmacc_f8e4m3_f8e5m2_lm4, UNSPEC_VF8WMMACC_F8E4M3_E5M2);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm4_ime_op,
-	       vf8wmmacc_f8e5m2_f8e4m3_lm4, UNSPEC_VF8WMMACC_F8E5M2_E4M3);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm8_ime_op,
-	       vf8wmmacc_f8e4m3_lm8, UNSPEC_VF8WMMACC_F8E4M3);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm8_ime_op,
-	       vf8wmmacc_f8e5m2_lm8, UNSPEC_VF8WMMACC_F8E5M2);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm8_ime_op,
-	       vf8wmmacc_f8e4m3_f8e5m2_lm8, UNSPEC_VF8WMMACC_F8E4M3_E5M2);
-IME_FP_LM_OBJ (vf8wmmacc_ofp8_lm8_ime_op,
-	       vf8wmmacc_f8e5m2_f8e4m3_lm8, UNSPEC_VF8WMMACC_F8E5M2_E4M3);
-#undef IME_FP_LM_OBJ
-
-/* vfqwmmacc f16/bf16 _lm{N} static objects (no UNSPEC; the class has
-   no template parameter).  */
-static CONSTEXPR const vfqwmmacc_f16_lm2_ime_op vfqwmmacc_f16_lm2_obj;
-static CONSTEXPR const vfqwmmacc_f16_lm4_ime_op vfqwmmacc_f16_lm4_obj;
-static CONSTEXPR const vfqwmmacc_f16_lm8_ime_op vfqwmmacc_f16_lm8_obj;
-static CONSTEXPR const vfqwmmacc_bf16_lm2_ime_op vfqwmmacc_bf16_lm2_obj;
-static CONSTEXPR const vfqwmmacc_bf16_lm4_ime_op vfqwmmacc_bf16_lm4_obj;
-static CONSTEXPR const vfqwmmacc_bf16_lm8_ime_op vfqwmmacc_bf16_lm8_obj;
-
-/* FP widening m16 accumulator op-class instances (#489).  All
-   widening FP op classes above dispatch on `e.vector_mode ()' which
-   comes from the iterating type set; the MD iterators VF{16,32,64}_ACC
-   and VFWMMACC_OFP8_ACC already cover the m16 accumulator modes, so
-   the m16 variants reuse the same class definitions without touching
-   the RTL.  Only distinct BASE() / bases:: names are required, which
-   necessitates separate `_m16*_obj' static instances.  */
-static CONSTEXPR const vfwmmacc_f16_ime_op       vfwmmacc_f16_m16_obj;
-static CONSTEXPR const vfwmmacc_f16_lm_ime_op<2> vfwmmacc_f16_m16_lm2_obj;
-static CONSTEXPR const vfwmmacc_f16_lm_ime_op<4> vfwmmacc_f16_m16_lm4_obj;
-static CONSTEXPR const vfwmmacc_f16_lm_ime_op<8> vfwmmacc_f16_m16_lm8_obj;
-static CONSTEXPR const vfwmmacc_bf16_ime_op       vfwmmacc_bf16_m16_obj;
-static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<2> vfwmmacc_bf16_m16_lm2_obj;
-static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<4> vfwmmacc_bf16_m16_lm4_obj;
-static CONSTEXPR const vfwmmacc_bf16_lm_ime_op<8> vfwmmacc_bf16_m16_lm8_obj;
-static CONSTEXPR const vfwmmacc_f32_ime_op       vfwmmacc_f32_m16_obj;
-static CONSTEXPR const vfwmmacc_f32_lm_ime_op<2> vfwmmacc_f32_m16_lm2_obj;
-static CONSTEXPR const vfwmmacc_f32_lm_ime_op<4> vfwmmacc_f32_m16_lm4_obj;
-static CONSTEXPR const vfwmmacc_f32_lm_ime_op<8> vfwmmacc_f32_m16_lm8_obj;
-
-/* W=4 non-OFP8 m16.  */
-static CONSTEXPR const vfqwmmacc_f16_ime_op      vfqwmmacc_f16_m16_obj;
-static CONSTEXPR const vfqwmmacc_f16_lm2_ime_op  vfqwmmacc_f16_m16_lm2_obj;
-static CONSTEXPR const vfqwmmacc_f16_lm4_ime_op  vfqwmmacc_f16_m16_lm4_obj;
-static CONSTEXPR const vfqwmmacc_f16_lm8_ime_op  vfqwmmacc_f16_m16_lm8_obj;
-static CONSTEXPR const vfqwmmacc_bf16_ime_op     vfqwmmacc_bf16_m16_obj;
-static CONSTEXPR const vfqwmmacc_bf16_lm2_ime_op vfqwmmacc_bf16_m16_lm2_obj;
-static CONSTEXPR const vfqwmmacc_bf16_lm4_ime_op vfqwmmacc_bf16_m16_lm4_obj;
-static CONSTEXPR const vfqwmmacc_bf16_lm8_ime_op vfqwmmacc_bf16_m16_lm8_obj;
-
-/* W=2 OFP8 -> FP16/BF16 m16.  Reuse `vfwmmacc_ofp8_{fp16,bf16}_ime_op'
-   and its LMUL-templated siblings; the class expand() dispatches on
-   e.vector_mode() so RVVM16HF / RVVM16BF are handled naturally.  */
-#define IME_M16_W2_OFP8_OBJ(BASE_CLASS, NAME, UNSPEC)                    \
-  static CONSTEXPR const BASE_CLASS<UNSPEC> NAME##_obj
-IME_M16_W2_OFP8_OBJ (vfwmmacc_ofp8_fp16_ime_op,
-		     vfwmmacc_fp16_f8e4m3_m16, UNSPEC_VFWMMACC_OFP8_FP16_E4M3);
-IME_M16_W2_OFP8_OBJ (vfwmmacc_ofp8_fp16_ime_op,
-		     vfwmmacc_fp16_f8e4m3_f8e5m2_m16,
-		     UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2);
-IME_M16_W2_OFP8_OBJ (vfwmmacc_ofp8_fp16_ime_op,
-		     vfwmmacc_fp16_f8e5m2_f8e4m3_m16,
-		     UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3);
-IME_M16_W2_OFP8_OBJ (vfwmmacc_ofp8_fp16_ime_op,
-		     vfwmmacc_fp16_f8e5m2_m16, UNSPEC_VFWMMACC_OFP8_FP16_E5M2);
-IME_M16_W2_OFP8_OBJ (vfwmmacc_ofp8_bf16_ime_op,
-		     vfwmmacc_bf16_f8e4m3_m16, UNSPEC_VFWMMACC_OFP8_BF16_E4M3);
-IME_M16_W2_OFP8_OBJ (vfwmmacc_ofp8_bf16_ime_op,
-		     vfwmmacc_bf16_f8e4m3_f8e5m2_m16,
-		     UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2);
-IME_M16_W2_OFP8_OBJ (vfwmmacc_ofp8_bf16_ime_op,
-		     vfwmmacc_bf16_f8e5m2_f8e4m3_m16,
-		     UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3);
-IME_M16_W2_OFP8_OBJ (vfwmmacc_ofp8_bf16_ime_op,
-		     vfwmmacc_bf16_f8e5m2_m16, UNSPEC_VFWMMACC_OFP8_BF16_E5M2);
-#define IME_M16_W2_OFP8_LM_OBJ(BASE_CLASS, NAME, UNSPEC, N)              \
-  static CONSTEXPR const BASE_CLASS<UNSPEC> NAME##_m16_lm##N##_obj
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm2_ime_op,
-			vfwmmacc_fp16_f8e4m3, UNSPEC_VFWMMACC_OFP8_FP16_E4M3, 2);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm4_ime_op,
-			vfwmmacc_fp16_f8e4m3, UNSPEC_VFWMMACC_OFP8_FP16_E4M3, 4);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm8_ime_op,
-			vfwmmacc_fp16_f8e4m3, UNSPEC_VFWMMACC_OFP8_FP16_E4M3, 8);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm2_ime_op,
-			vfwmmacc_fp16_f8e4m3_f8e5m2,
-			UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2, 2);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm4_ime_op,
-			vfwmmacc_fp16_f8e4m3_f8e5m2,
-			UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2, 4);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm8_ime_op,
-			vfwmmacc_fp16_f8e4m3_f8e5m2,
-			UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2, 8);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm2_ime_op,
-			vfwmmacc_fp16_f8e5m2_f8e4m3,
-			UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3, 2);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm4_ime_op,
-			vfwmmacc_fp16_f8e5m2_f8e4m3,
-			UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3, 4);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm8_ime_op,
-			vfwmmacc_fp16_f8e5m2_f8e4m3,
-			UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3, 8);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm2_ime_op,
-			vfwmmacc_fp16_f8e5m2, UNSPEC_VFWMMACC_OFP8_FP16_E5M2, 2);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm4_ime_op,
-			vfwmmacc_fp16_f8e5m2, UNSPEC_VFWMMACC_OFP8_FP16_E5M2, 4);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_fp16_lm8_ime_op,
-			vfwmmacc_fp16_f8e5m2, UNSPEC_VFWMMACC_OFP8_FP16_E5M2, 8);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm2_ime_op,
-			vfwmmacc_bf16_f8e4m3, UNSPEC_VFWMMACC_OFP8_BF16_E4M3, 2);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm4_ime_op,
-			vfwmmacc_bf16_f8e4m3, UNSPEC_VFWMMACC_OFP8_BF16_E4M3, 4);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm8_ime_op,
-			vfwmmacc_bf16_f8e4m3, UNSPEC_VFWMMACC_OFP8_BF16_E4M3, 8);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm2_ime_op,
-			vfwmmacc_bf16_f8e4m3_f8e5m2,
-			UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2, 2);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm4_ime_op,
-			vfwmmacc_bf16_f8e4m3_f8e5m2,
-			UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2, 4);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm8_ime_op,
-			vfwmmacc_bf16_f8e4m3_f8e5m2,
-			UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2, 8);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm2_ime_op,
-			vfwmmacc_bf16_f8e5m2_f8e4m3,
-			UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3, 2);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm4_ime_op,
-			vfwmmacc_bf16_f8e5m2_f8e4m3,
-			UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3, 4);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm8_ime_op,
-			vfwmmacc_bf16_f8e5m2_f8e4m3,
-			UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3, 8);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm2_ime_op,
-			vfwmmacc_bf16_f8e5m2, UNSPEC_VFWMMACC_OFP8_BF16_E5M2, 2);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm4_ime_op,
-			vfwmmacc_bf16_f8e5m2, UNSPEC_VFWMMACC_OFP8_BF16_E5M2, 4);
-IME_M16_W2_OFP8_LM_OBJ (vfwmmacc_ofp8_bf16_lm8_ime_op,
-			vfwmmacc_bf16_f8e5m2, UNSPEC_VFWMMACC_OFP8_BF16_E5M2, 8);
-#undef IME_M16_W2_OFP8_OBJ
-#undef IME_M16_W2_OFP8_LM_OBJ
-
-/* W=4 OFP8 -> FP32 m16 (vfqwmmacc_ofp8).  */
-#define IME_M16_W4_OFP8_OBJ(NAME, UNSPEC)                                \
-  static CONSTEXPR const vfqwmmacc_ofp8_ime_op<UNSPEC>			\
-    NAME##_m16_obj
-IME_M16_W4_OFP8_OBJ (vfqwmmacc_f8e4m3,       UNSPEC_VFQWMMACC_F8E4M3);
-IME_M16_W4_OFP8_OBJ (vfqwmmacc_f8e5m2,       UNSPEC_VFQWMMACC_F8E5M2);
-IME_M16_W4_OFP8_OBJ (vfqwmmacc_f8e4m3_f8e5m2,
-		     UNSPEC_VFQWMMACC_F8E4M3_E5M2);
-IME_M16_W4_OFP8_OBJ (vfqwmmacc_f8e5m2_f8e4m3,
-		     UNSPEC_VFQWMMACC_F8E5M2_E4M3);
-#undef IME_M16_W4_OFP8_OBJ
-#define IME_M16_W4_OFP8_LM_OBJ(NAME, UNSPEC, N)                          \
-  static CONSTEXPR const vfqwmmacc_ofp8_lm##N##_ime_op<UNSPEC>		\
-    NAME##_m16_lm##N##_obj
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e4m3, UNSPEC_VFQWMMACC_F8E4M3, 2);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e4m3, UNSPEC_VFQWMMACC_F8E4M3, 4);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e4m3, UNSPEC_VFQWMMACC_F8E4M3, 8);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e5m2, UNSPEC_VFQWMMACC_F8E5M2, 2);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e5m2, UNSPEC_VFQWMMACC_F8E5M2, 4);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e5m2, UNSPEC_VFQWMMACC_F8E5M2, 8);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e4m3_f8e5m2,
-			UNSPEC_VFQWMMACC_F8E4M3_E5M2, 2);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e4m3_f8e5m2,
-			UNSPEC_VFQWMMACC_F8E4M3_E5M2, 4);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e4m3_f8e5m2,
-			UNSPEC_VFQWMMACC_F8E4M3_E5M2, 8);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e5m2_f8e4m3,
-			UNSPEC_VFQWMMACC_F8E5M2_E4M3, 2);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e5m2_f8e4m3,
-			UNSPEC_VFQWMMACC_F8E5M2_E4M3, 4);
-IME_M16_W4_OFP8_LM_OBJ (vfqwmmacc_f8e5m2_f8e4m3,
-			UNSPEC_VFQWMMACC_F8E5M2_E4M3, 8);
-#undef IME_M16_W4_OFP8_LM_OBJ
-
-/* W=8 OFP8 -> FP64 m16 (vf8wmmacc_ofp8).  */
-#define IME_M16_W8_OFP8_OBJ(NAME, UNSPEC)                                \
-  static CONSTEXPR const vf8wmmacc_ofp8_ime_op<UNSPEC>			\
-    NAME##_m16_obj
-IME_M16_W8_OFP8_OBJ (vf8wmmacc_f8e4m3,       UNSPEC_VF8WMMACC_F8E4M3);
-IME_M16_W8_OFP8_OBJ (vf8wmmacc_f8e5m2,       UNSPEC_VF8WMMACC_F8E5M2);
-IME_M16_W8_OFP8_OBJ (vf8wmmacc_f8e4m3_f8e5m2,
-		     UNSPEC_VF8WMMACC_F8E4M3_E5M2);
-IME_M16_W8_OFP8_OBJ (vf8wmmacc_f8e5m2_f8e4m3,
-		     UNSPEC_VF8WMMACC_F8E5M2_E4M3);
-#undef IME_M16_W8_OFP8_OBJ
-#define IME_M16_W8_OFP8_LM_OBJ(NAME, UNSPEC, N)                          \
-  static CONSTEXPR const vf8wmmacc_ofp8_lm##N##_ime_op<UNSPEC>		\
-    NAME##_m16_lm##N##_obj
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e4m3, UNSPEC_VF8WMMACC_F8E4M3, 2);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e4m3, UNSPEC_VF8WMMACC_F8E4M3, 4);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e4m3, UNSPEC_VF8WMMACC_F8E4M3, 8);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e5m2, UNSPEC_VF8WMMACC_F8E5M2, 2);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e5m2, UNSPEC_VF8WMMACC_F8E5M2, 4);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e5m2, UNSPEC_VF8WMMACC_F8E5M2, 8);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e4m3_f8e5m2,
-			UNSPEC_VF8WMMACC_F8E4M3_E5M2, 2);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e4m3_f8e5m2,
-			UNSPEC_VF8WMMACC_F8E4M3_E5M2, 4);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e4m3_f8e5m2,
-			UNSPEC_VF8WMMACC_F8E4M3_E5M2, 8);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e5m2_f8e4m3,
-			UNSPEC_VF8WMMACC_F8E5M2_E4M3, 2);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e5m2_f8e4m3,
-			UNSPEC_VF8WMMACC_F8E5M2_E4M3, 4);
-IME_M16_W8_OFP8_LM_OBJ (vf8wmmacc_f8e5m2_f8e4m3,
-			UNSPEC_VF8WMMACC_F8E5M2_E4M3, 8);
-#undef IME_M16_W8_OFP8_LM_OBJ
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_obj
+  (code_for_pred_vfmmacc, code_for_pred_vfmmacc_lm2, code_for_pred_vfmmacc_lm4,
+   code_for_pred_vfmmacc_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_f16_obj
+  (code_for_pred_vfwmmacc_f16, code_for_pred_vfwmmacc_f16_lm2, code_for_pred_vfwmmacc_f16_lm4,
+   code_for_pred_vfwmmacc_f16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_bf16_obj
+  (code_for_pred_vfwmmacc_bf16, code_for_pred_vfwmmacc_bf16_lm2, code_for_pred_vfwmmacc_bf16_lm4,
+   code_for_pred_vfwmmacc_bf16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_f32_obj
+  (code_for_pred_vfwmmacc_f32, code_for_pred_vfwmmacc_f32_lm2, code_for_pred_vfwmmacc_f32_lm4,
+   code_for_pred_vfwmmacc_f32_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfqwmmacc_f16_obj
+  (code_for_pred_vfqwmmacc_f16, code_for_pred_vfqwmmacc_f16_lm2, code_for_pred_vfqwmmacc_f16_lm4,
+   code_for_pred_vfqwmmacc_f16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfqwmmacc_bf16_obj
+  (code_for_pred_vfqwmmacc_bf16, code_for_pred_vfqwmmacc_bf16_lm2, code_for_pred_vfqwmmacc_bf16_lm4,
+   code_for_pred_vfqwmmacc_bf16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_f8e4m3_f8e4m3_f8e4m3_obj
+  (UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3, code_for_pred_vfmmacc_ofp8,
+   code_for_pred_vfmmacc_ofp8_lm2, code_for_pred_vfmmacc_ofp8_lm4,
+   code_for_pred_vfmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_f8e4m3_f8e4m3_f8e5m2_obj
+  (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2, code_for_pred_vfmmacc_ofp8,
+   code_for_pred_vfmmacc_ofp8_lm2, code_for_pred_vfmmacc_ofp8_lm4,
+   code_for_pred_vfmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_f8e4m3_f8e5m2_f8e4m3_obj
+  (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3, code_for_pred_vfmmacc_ofp8,
+   code_for_pred_vfmmacc_ofp8_lm2, code_for_pred_vfmmacc_ofp8_lm4,
+   code_for_pred_vfmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_f8e4m3_f8e5m2_f8e5m2_obj
+  (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2, code_for_pred_vfmmacc_ofp8,
+   code_for_pred_vfmmacc_ofp8_lm2, code_for_pred_vfmmacc_ofp8_lm4,
+   code_for_pred_vfmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_f8e5m2_f8e4m3_f8e4m3_obj
+  (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3, code_for_pred_vfmmacc_ofp8,
+   code_for_pred_vfmmacc_ofp8_lm2, code_for_pred_vfmmacc_ofp8_lm4,
+   code_for_pred_vfmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_f8e5m2_f8e4m3_f8e5m2_obj
+  (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2, code_for_pred_vfmmacc_ofp8,
+   code_for_pred_vfmmacc_ofp8_lm2, code_for_pred_vfmmacc_ofp8_lm4,
+   code_for_pred_vfmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_f8e5m2_f8e5m2_f8e4m3_obj
+  (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3, code_for_pred_vfmmacc_ofp8,
+   code_for_pred_vfmmacc_ofp8_lm2, code_for_pred_vfmmacc_ofp8_lm4,
+   code_for_pred_vfmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_f8e5m2_f8e5m2_f8e5m2_obj
+  (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2, code_for_pred_vfmmacc_ofp8,
+   code_for_pred_vfmmacc_ofp8_lm2, code_for_pred_vfmmacc_ofp8_lm4,
+   code_for_pred_vfmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_fp16_f8e4m3_obj
+  (UNSPEC_VFWMMACC_OFP8_FP16_E4M3, code_for_pred_vfwmmacc_ofp8_fp16,
+   code_for_pred_vfwmmacc_ofp8_fp16_lm2, code_for_pred_vfwmmacc_ofp8_fp16_lm4,
+   code_for_pred_vfwmmacc_ofp8_fp16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_fp16_f8e4m3_f8e5m2_obj
+  (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2, code_for_pred_vfwmmacc_ofp8_fp16,
+   code_for_pred_vfwmmacc_ofp8_fp16_lm2, code_for_pred_vfwmmacc_ofp8_fp16_lm4,
+   code_for_pred_vfwmmacc_ofp8_fp16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_fp16_f8e5m2_f8e4m3_obj
+  (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3, code_for_pred_vfwmmacc_ofp8_fp16,
+   code_for_pred_vfwmmacc_ofp8_fp16_lm2, code_for_pred_vfwmmacc_ofp8_fp16_lm4,
+   code_for_pred_vfwmmacc_ofp8_fp16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_fp16_f8e5m2_obj
+  (UNSPEC_VFWMMACC_OFP8_FP16_E5M2, code_for_pred_vfwmmacc_ofp8_fp16,
+   code_for_pred_vfwmmacc_ofp8_fp16_lm2, code_for_pred_vfwmmacc_ofp8_fp16_lm4,
+   code_for_pred_vfwmmacc_ofp8_fp16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_bf16_f8e4m3_obj
+  (UNSPEC_VFWMMACC_OFP8_BF16_E4M3, code_for_pred_vfwmmacc_ofp8_bf16,
+   code_for_pred_vfwmmacc_ofp8_bf16_lm2, code_for_pred_vfwmmacc_ofp8_bf16_lm4,
+   code_for_pred_vfwmmacc_ofp8_bf16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_bf16_f8e4m3_f8e5m2_obj
+  (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2, code_for_pred_vfwmmacc_ofp8_bf16,
+   code_for_pred_vfwmmacc_ofp8_bf16_lm2, code_for_pred_vfwmmacc_ofp8_bf16_lm4,
+   code_for_pred_vfwmmacc_ofp8_bf16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_bf16_f8e5m2_f8e4m3_obj
+  (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3, code_for_pred_vfwmmacc_ofp8_bf16,
+   code_for_pred_vfwmmacc_ofp8_bf16_lm2, code_for_pred_vfwmmacc_ofp8_bf16_lm4,
+   code_for_pred_vfwmmacc_ofp8_bf16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfwmmacc_bf16_f8e5m2_obj
+  (UNSPEC_VFWMMACC_OFP8_BF16_E5M2, code_for_pred_vfwmmacc_ofp8_bf16,
+   code_for_pred_vfwmmacc_ofp8_bf16_lm2, code_for_pred_vfwmmacc_ofp8_bf16_lm4,
+   code_for_pred_vfwmmacc_ofp8_bf16_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfqwmmacc_f8e4m3_obj
+  (UNSPEC_VFQWMMACC_F8E4M3, code_for_pred_vfqwmmacc_ofp8,
+   code_for_pred_vfqwmmacc_ofp8_lm2, code_for_pred_vfqwmmacc_ofp8_lm4,
+   code_for_pred_vfqwmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfqwmmacc_f8e5m2_obj
+  (UNSPEC_VFQWMMACC_F8E5M2, code_for_pred_vfqwmmacc_ofp8,
+   code_for_pred_vfqwmmacc_ofp8_lm2, code_for_pred_vfqwmmacc_ofp8_lm4,
+   code_for_pred_vfqwmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfqwmmacc_f8e4m3_f8e5m2_obj
+  (UNSPEC_VFQWMMACC_F8E4M3_E5M2, code_for_pred_vfqwmmacc_ofp8,
+   code_for_pred_vfqwmmacc_ofp8_lm2, code_for_pred_vfqwmmacc_ofp8_lm4,
+   code_for_pred_vfqwmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfqwmmacc_f8e5m2_f8e4m3_obj
+  (UNSPEC_VFQWMMACC_F8E5M2_E4M3, code_for_pred_vfqwmmacc_ofp8,
+   code_for_pred_vfqwmmacc_ofp8_lm2, code_for_pred_vfqwmmacc_ofp8_lm4,
+   code_for_pred_vfqwmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vf8wmmacc_f8e4m3_obj
+  (UNSPEC_VF8WMMACC_F8E4M3, code_for_pred_vf8wmmacc_ofp8,
+   code_for_pred_vf8wmmacc_ofp8_lm2, code_for_pred_vf8wmmacc_ofp8_lm4,
+   code_for_pred_vf8wmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vf8wmmacc_f8e5m2_obj
+  (UNSPEC_VF8WMMACC_F8E5M2, code_for_pred_vf8wmmacc_ofp8,
+   code_for_pred_vf8wmmacc_ofp8_lm2, code_for_pred_vf8wmmacc_ofp8_lm4,
+   code_for_pred_vf8wmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vf8wmmacc_f8e4m3_f8e5m2_obj
+  (UNSPEC_VF8WMMACC_F8E4M3_E5M2, code_for_pred_vf8wmmacc_ofp8,
+   code_for_pred_vf8wmmacc_ofp8_lm2, code_for_pred_vf8wmmacc_ofp8_lm4,
+   code_for_pred_vf8wmmacc_ofp8_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vf8wmmacc_f8e5m2_f8e4m3_obj
+  (UNSPEC_VF8WMMACC_F8E5M2_E4M3, code_for_pred_vf8wmmacc_ofp8,
+   code_for_pred_vf8wmmacc_ofp8_lm2, code_for_pred_vf8wmmacc_ofp8_lm4,
+   code_for_pred_vf8wmmacc_ofp8_lm8);
 
 class vf8wmmacc_f4e2m1_ime_op : public function_base
 {
@@ -5717,61 +4838,19 @@ BASE (v8wmmacc)
 /* Zvvmm widening m16 accumulator (#489).  */
 /* Zvvfmm */
 BASE (vfmmacc)
-BASE (vfmmacc_lm2)
-BASE (vfmmacc_lm4)
-BASE (vfmmacc_lm8)
 BASE (vfwmmacc_f16)
-BASE (vfwmmacc_f16_lm2)
-BASE (vfwmmacc_f16_lm4)
-BASE (vfwmmacc_f16_lm8)
 BASE (vfwmmacc_bf16)
-BASE (vfwmmacc_bf16_lm2)
-BASE (vfwmmacc_bf16_lm4)
-BASE (vfwmmacc_bf16_lm8)
 BASE (vfwmmacc_f32)
-BASE (vfwmmacc_f32_lm2)
-BASE (vfwmmacc_f32_lm4)
-BASE (vfwmmacc_f32_lm8)
 BASE (vfqwmmacc_f16)
-BASE (vfqwmmacc_f16_lm2)
-BASE (vfqwmmacc_f16_lm4)
-BASE (vfqwmmacc_f16_lm8)
 BASE (vfqwmmacc_bf16)
-BASE (vfqwmmacc_bf16_lm2)
-BASE (vfqwmmacc_bf16_lm4)
-BASE (vfqwmmacc_bf16_lm8)
 BASE (vfwmmacc_fp16_f8e4m3)
-BASE (vfwmmacc_fp16_f8e4m3_lm2)
-BASE (vfwmmacc_fp16_f8e4m3_lm4)
-BASE (vfwmmacc_fp16_f8e4m3_lm8)
 BASE (vfwmmacc_fp16_f8e4m3_f8e5m2)
-BASE (vfwmmacc_fp16_f8e4m3_f8e5m2_lm2)
-BASE (vfwmmacc_fp16_f8e4m3_f8e5m2_lm4)
-BASE (vfwmmacc_fp16_f8e4m3_f8e5m2_lm8)
 BASE (vfwmmacc_fp16_f8e5m2_f8e4m3)
-BASE (vfwmmacc_fp16_f8e5m2_f8e4m3_lm2)
-BASE (vfwmmacc_fp16_f8e5m2_f8e4m3_lm4)
-BASE (vfwmmacc_fp16_f8e5m2_f8e4m3_lm8)
 BASE (vfwmmacc_fp16_f8e5m2)
-BASE (vfwmmacc_fp16_f8e5m2_lm2)
-BASE (vfwmmacc_fp16_f8e5m2_lm4)
-BASE (vfwmmacc_fp16_f8e5m2_lm8)
 BASE (vfwmmacc_bf16_f8e4m3)
-BASE (vfwmmacc_bf16_f8e4m3_lm2)
-BASE (vfwmmacc_bf16_f8e4m3_lm4)
-BASE (vfwmmacc_bf16_f8e4m3_lm8)
 BASE (vfwmmacc_bf16_f8e4m3_f8e5m2)
-BASE (vfwmmacc_bf16_f8e4m3_f8e5m2_lm2)
-BASE (vfwmmacc_bf16_f8e4m3_f8e5m2_lm4)
-BASE (vfwmmacc_bf16_f8e4m3_f8e5m2_lm8)
 BASE (vfwmmacc_bf16_f8e5m2_f8e4m3)
-BASE (vfwmmacc_bf16_f8e5m2_f8e4m3_lm2)
-BASE (vfwmmacc_bf16_f8e5m2_f8e4m3_lm4)
-BASE (vfwmmacc_bf16_f8e5m2_f8e4m3_lm8)
 BASE (vfwmmacc_bf16_f8e5m2)
-BASE (vfwmmacc_bf16_f8e5m2_lm2)
-BASE (vfwmmacc_bf16_f8e5m2_lm4)
-BASE (vfwmmacc_bf16_f8e5m2_lm8)
 BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3)
 BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2)
 BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3)
@@ -5781,192 +4860,24 @@ BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2)
 BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3)
 BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2)
 /* W=1 OFP8 `_lm{N}' source-LMUL siblings (B.2).  */
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3_lm2)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3_lm4)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3_lm8)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2_lm2)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2_lm4)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2_lm8)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3_lm2)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3_lm4)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3_lm8)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e5m2_lm2)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e5m2_lm4)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e5m2_lm8)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3_lm2)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3_lm4)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3_lm8)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2_lm2)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2_lm4)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2_lm8)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3_lm2)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3_lm4)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3_lm8)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2_lm2)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2_lm4)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2_lm8)
 /* IME m16 acc (W=1 FP / OFP8).  */
-BASE (vfmmacc_m16)
-BASE (vfmmacc_m16_lm2)
-BASE (vfmmacc_m16_lm4)
-BASE (vfmmacc_m16_lm8)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16)
 /* W=1 OFP8 m16 acc `_lm{N}' source-LMUL siblings (B.2 + C.5).  */
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16_lm2)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16_lm4)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e4m3_m16_lm8)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16_lm2)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16_lm4)
-BASE (vfmmacc_f8e4m3_f8e4m3_f8e5m2_m16_lm8)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16_lm2)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16_lm4)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e4m3_m16_lm8)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16_lm2)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16_lm4)
-BASE (vfmmacc_f8e4m3_f8e5m2_f8e5m2_m16_lm8)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16_lm2)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16_lm4)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e4m3_m16_lm8)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16_lm2)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16_lm4)
-BASE (vfmmacc_f8e5m2_f8e4m3_f8e5m2_m16_lm8)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16_lm2)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16_lm4)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e4m3_m16_lm8)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16_lm2)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16_lm4)
-BASE (vfmmacc_f8e5m2_f8e5m2_f8e5m2_m16_lm8)
 BASE (vfqwmmacc_f8e4m3)
-BASE (vfqwmmacc_f8e4m3_lm2)
-BASE (vfqwmmacc_f8e4m3_lm4)
-BASE (vfqwmmacc_f8e4m3_lm8)
 BASE (vfqwmmacc_f8e5m2)
-BASE (vfqwmmacc_f8e5m2_lm2)
-BASE (vfqwmmacc_f8e5m2_lm4)
-BASE (vfqwmmacc_f8e5m2_lm8)
 BASE (vfqwmmacc_f8e4m3_f8e5m2)
-BASE (vfqwmmacc_f8e4m3_f8e5m2_lm2)
-BASE (vfqwmmacc_f8e4m3_f8e5m2_lm4)
-BASE (vfqwmmacc_f8e4m3_f8e5m2_lm8)
 BASE (vfqwmmacc_f8e5m2_f8e4m3)
-BASE (vfqwmmacc_f8e5m2_f8e4m3_lm2)
-BASE (vfqwmmacc_f8e5m2_f8e4m3_lm4)
-BASE (vfqwmmacc_f8e5m2_f8e4m3_lm8)
 BASE (vf8wmmacc_f8e4m3)
-BASE (vf8wmmacc_f8e4m3_lm2)
-BASE (vf8wmmacc_f8e4m3_lm4)
-BASE (vf8wmmacc_f8e4m3_lm8)
 BASE (vf8wmmacc_f8e5m2)
-BASE (vf8wmmacc_f8e5m2_lm2)
-BASE (vf8wmmacc_f8e5m2_lm4)
-BASE (vf8wmmacc_f8e5m2_lm8)
 BASE (vf8wmmacc_f8e4m3_f8e5m2)
-BASE (vf8wmmacc_f8e4m3_f8e5m2_lm2)
-BASE (vf8wmmacc_f8e4m3_f8e5m2_lm4)
-BASE (vf8wmmacc_f8e4m3_f8e5m2_lm8)
 BASE (vf8wmmacc_f8e5m2_f8e4m3)
-BASE (vf8wmmacc_f8e5m2_f8e4m3_lm2)
-BASE (vf8wmmacc_f8e5m2_f8e4m3_lm4)
-BASE (vf8wmmacc_f8e5m2_f8e4m3_lm8)
 BASE (vf8wmmacc_f4e2m1)
 /* Zvvfmm widening m16 accumulator (#489).  */
 /* W=2 non-OFP8.  */
-BASE (vfwmmacc_f16_m16)
-BASE (vfwmmacc_f16_m16_lm2)
-BASE (vfwmmacc_f16_m16_lm4)
-BASE (vfwmmacc_f16_m16_lm8)
-BASE (vfwmmacc_bf16_m16)
-BASE (vfwmmacc_bf16_m16_lm2)
-BASE (vfwmmacc_bf16_m16_lm4)
-BASE (vfwmmacc_bf16_m16_lm8)
-BASE (vfwmmacc_f32_m16)
-BASE (vfwmmacc_f32_m16_lm2)
-BASE (vfwmmacc_f32_m16_lm4)
-BASE (vfwmmacc_f32_m16_lm8)
 /* W=2 OFP8 -> FP16.  */
-BASE (vfwmmacc_fp16_f8e4m3_m16)
-BASE (vfwmmacc_fp16_f8e4m3_m16_lm2)
-BASE (vfwmmacc_fp16_f8e4m3_m16_lm4)
-BASE (vfwmmacc_fp16_f8e4m3_m16_lm8)
-BASE (vfwmmacc_fp16_f8e4m3_f8e5m2_m16)
-BASE (vfwmmacc_fp16_f8e4m3_f8e5m2_m16_lm2)
-BASE (vfwmmacc_fp16_f8e4m3_f8e5m2_m16_lm4)
-BASE (vfwmmacc_fp16_f8e4m3_f8e5m2_m16_lm8)
-BASE (vfwmmacc_fp16_f8e5m2_f8e4m3_m16)
-BASE (vfwmmacc_fp16_f8e5m2_f8e4m3_m16_lm2)
-BASE (vfwmmacc_fp16_f8e5m2_f8e4m3_m16_lm4)
-BASE (vfwmmacc_fp16_f8e5m2_f8e4m3_m16_lm8)
-BASE (vfwmmacc_fp16_f8e5m2_m16)
-BASE (vfwmmacc_fp16_f8e5m2_m16_lm2)
-BASE (vfwmmacc_fp16_f8e5m2_m16_lm4)
-BASE (vfwmmacc_fp16_f8e5m2_m16_lm8)
 /* W=2 OFP8 -> BF16.  */
-BASE (vfwmmacc_bf16_f8e4m3_m16)
-BASE (vfwmmacc_bf16_f8e4m3_m16_lm2)
-BASE (vfwmmacc_bf16_f8e4m3_m16_lm4)
-BASE (vfwmmacc_bf16_f8e4m3_m16_lm8)
-BASE (vfwmmacc_bf16_f8e4m3_f8e5m2_m16)
-BASE (vfwmmacc_bf16_f8e4m3_f8e5m2_m16_lm2)
-BASE (vfwmmacc_bf16_f8e4m3_f8e5m2_m16_lm4)
-BASE (vfwmmacc_bf16_f8e4m3_f8e5m2_m16_lm8)
-BASE (vfwmmacc_bf16_f8e5m2_f8e4m3_m16)
-BASE (vfwmmacc_bf16_f8e5m2_f8e4m3_m16_lm2)
-BASE (vfwmmacc_bf16_f8e5m2_f8e4m3_m16_lm4)
-BASE (vfwmmacc_bf16_f8e5m2_f8e4m3_m16_lm8)
-BASE (vfwmmacc_bf16_f8e5m2_m16)
-BASE (vfwmmacc_bf16_f8e5m2_m16_lm2)
-BASE (vfwmmacc_bf16_f8e5m2_m16_lm4)
-BASE (vfwmmacc_bf16_f8e5m2_m16_lm8)
 /* W=4 non-OFP8.  */
-BASE (vfqwmmacc_f16_m16)
-BASE (vfqwmmacc_f16_m16_lm2)
-BASE (vfqwmmacc_f16_m16_lm4)
-BASE (vfqwmmacc_f16_m16_lm8)
-BASE (vfqwmmacc_bf16_m16)
-BASE (vfqwmmacc_bf16_m16_lm2)
-BASE (vfqwmmacc_bf16_m16_lm4)
-BASE (vfqwmmacc_bf16_m16_lm8)
 /* W=4 OFP8 -> FP32.  */
-BASE (vfqwmmacc_f8e4m3_m16)
-BASE (vfqwmmacc_f8e4m3_m16_lm2)
-BASE (vfqwmmacc_f8e4m3_m16_lm4)
-BASE (vfqwmmacc_f8e4m3_m16_lm8)
-BASE (vfqwmmacc_f8e5m2_m16)
-BASE (vfqwmmacc_f8e5m2_m16_lm2)
-BASE (vfqwmmacc_f8e5m2_m16_lm4)
-BASE (vfqwmmacc_f8e5m2_m16_lm8)
-BASE (vfqwmmacc_f8e4m3_f8e5m2_m16)
-BASE (vfqwmmacc_f8e4m3_f8e5m2_m16_lm2)
-BASE (vfqwmmacc_f8e4m3_f8e5m2_m16_lm4)
-BASE (vfqwmmacc_f8e4m3_f8e5m2_m16_lm8)
-BASE (vfqwmmacc_f8e5m2_f8e4m3_m16)
-BASE (vfqwmmacc_f8e5m2_f8e4m3_m16_lm2)
-BASE (vfqwmmacc_f8e5m2_f8e4m3_m16_lm4)
-BASE (vfqwmmacc_f8e5m2_f8e4m3_m16_lm8)
 /* W=8 OFP8 -> FP64.  */
-BASE (vf8wmmacc_f8e4m3_m16)
-BASE (vf8wmmacc_f8e4m3_m16_lm2)
-BASE (vf8wmmacc_f8e4m3_m16_lm4)
-BASE (vf8wmmacc_f8e4m3_m16_lm8)
-BASE (vf8wmmacc_f8e5m2_m16)
-BASE (vf8wmmacc_f8e5m2_m16_lm2)
-BASE (vf8wmmacc_f8e5m2_m16_lm4)
-BASE (vf8wmmacc_f8e5m2_m16_lm8)
-BASE (vf8wmmacc_f8e4m3_f8e5m2_m16)
-BASE (vf8wmmacc_f8e4m3_f8e5m2_m16_lm2)
-BASE (vf8wmmacc_f8e4m3_f8e5m2_m16_lm4)
-BASE (vf8wmmacc_f8e4m3_f8e5m2_m16_lm8)
-BASE (vf8wmmacc_f8e5m2_f8e4m3_m16)
-BASE (vf8wmmacc_f8e5m2_f8e4m3_m16_lm2)
-BASE (vf8wmmacc_f8e5m2_f8e4m3_m16_lm4)
-BASE (vf8wmmacc_f8e5m2_f8e4m3_m16_lm8)
 /* Microscaled (section 8) FP-input scaled variants */
 BASE (vfwmmacc_scaled_f16_bs32)
 BASE (vfwmmacc_scaled_f16_bs16)

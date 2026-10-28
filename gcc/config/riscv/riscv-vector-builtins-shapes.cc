@@ -2012,6 +2012,27 @@ struct ime_int_mmacc_def : public ime_mmacc_def
   }
 };
 
+/* ime_fp_mmacc: an IME FP multiply-accumulate with given accumulator and
+   input formats.  The function group gives its default form (LMUL=1
+   inputs, m1..m8 accumulator); this also registers the forms with input
+   LMUL 2, 4 and 8, and all four with m16 accumulators.  */
+struct ime_fp_mmacc_def : public ime_mmacc_def
+{
+  void build (function_builder &b,
+	      const function_group_info &group) const override
+  {
+    for (unsigned m16 = 0;; m16++)
+      for (unsigned lm_log2 = 0; lm_log2 < 4; lm_log2++)
+	{
+	  const rvv_op_info *ops
+	    = ime_fp_mmacc_op_info (group.ops_infos, lm_log2, m16);
+	  if (!ops)
+	    return;
+	  build_ops (b, group, *ops);
+	}
+  }
+};
+
 
 SHAPE(vsetvl, vsetvl)
 SHAPE(vsetvl, vsetvlmax)
@@ -2054,6 +2075,7 @@ SHAPE(sf_vcix_se, sf_vcix_se)
 SHAPE(sf_vcix, sf_vcix)
 SHAPE (ime_mmacc, ime_mmacc)
 SHAPE (ime_int_mmacc, ime_int_mmacc)
+SHAPE (ime_fp_mmacc, ime_fp_mmacc)
 SHAPE (ime_tile, ime_tile)
 SHAPE (vsetlambda, vsetlambda)
 } // end namespace riscv_vector

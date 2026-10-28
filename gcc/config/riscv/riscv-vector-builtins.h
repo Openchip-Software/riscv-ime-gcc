@@ -874,6 +874,8 @@ struct ime_int_input
 bool ime_int_mmacc_input (const function_instance &, ime_int_input *);
 const rvv_op_info *ime_int_mmacc_op_info (unsigned, ime_int_sign, unsigned,
 					  bool);
+const rvv_op_info *ime_fp_mmacc_op_info (const rvv_op_info &, unsigned,
+					 unsigned);
 
 /* A class for building and registering function decls.  */
 class function_builder
