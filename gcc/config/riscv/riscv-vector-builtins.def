@@ -830,44 +830,17 @@ DEF_RVV_BASE_TYPE (xfqf_float, get_xfqf_float_type (type_idx))
 DEF_RVV_BASE_TYPE (scalar_float, get_scalar_float_type (type_idx))
 DEF_RVV_BASE_TYPE (void_const_ptr, const_ptr_type_node)
 
-/* IME (Zvmma) widening-input types: half the accumulator SEW at LMUL=1.
-   These are appended at the END of the base-type list so their enum
-   values do not shift the positional slot indices used by the
-   DEF_RVV_TYPE_INDEX macro body.  Lookups bypass function_types[] via
-   explicit dispatch in rvv_arg_type_info::get_function_type_index()
-   and get_tree_type().  */
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul1_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul1_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul1_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul1_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul1_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul1_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul1_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul1_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul1_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
+/* The inputs of the IME multiply-accumulates, with the parameters in
+   rvv_arg_type_info::ime_param: ime_input, derived from the accumulator
+   type, and ime_fixed_input, of a fixed format (see ime_input and
+   ime_fixed_input).  These are appended at the END of the base-type list
+   so their enum values do not shift the positional slot indices used by
+   the DEF_RVV_TYPE_INDEX macro body.  */
+DEF_RVV_BASE_TYPE (ime_input, get_ime_input_type (type_idx, *this))
+DEF_RVV_BASE_TYPE (ime_fixed_input, get_ime_input_type (type_idx, *this))
 
-/* IME FP fixed-input base types: always return a specific LMUL=1 FP type
-   regardless of the accumulator type.  Used for FP widening mmacc where
-   the input format is independent of the accumulator SEW.  */
-DEF_RVV_BASE_TYPE (ime_fp16_lmul1_vector,
-		   builtin_types[VECTOR_TYPE_vfloat16m1_t].vector)
-DEF_RVV_BASE_TYPE (ime_bf16_lmul1_vector,
-		   builtin_types[VECTOR_TYPE_vbfloat16m1_t].vector)
-DEF_RVV_BASE_TYPE (ime_fp32_lmul1_vector,
-		   builtin_types[VECTOR_TYPE_vfloat32m1_t].vector)
-DEF_RVV_BASE_TYPE (ime_f8e4m3_lmul1_vector,
-		   builtin_types[VECTOR_TYPE_vfloat8e4m3m1_t].vector)
-DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul1_vector,
-		   builtin_types[VECTOR_TYPE_vfloat8e5m2m1_t].vector)
+/* IME OFP4 input of the microscaled forms: always LMUL=1, regardless of
+   the accumulator type.  */
 DEF_RVV_BASE_TYPE (ime_f4e2m1_lmul1_vector,
 		   builtin_types[VECTOR_TYPE_vfloat4e2m1m1_t].vector)
 
@@ -881,102 +854,6 @@ DEF_RVV_BASE_TYPE (ime_scales_vector,
 DEF_RVV_BASE_TYPE (ime_i8_lmul1_vector,
 		   builtin_types[VECTOR_TYPE_vint8m1_t].vector)
 
-/* IME source-LMUL base types: for the W=1 mmacc _lm{N} variants, vs1/vs2
-   use LMUL=N at the same SEW as the accumulator (independent of the
-   accumulator's MUL_C).  These are appended at the END of the base-type
-   list so their enum values do not shift positional slot indices used by
-   DEF_RVV_TYPE_INDEX.  Lookups bypass function_types[] via explicit
-   dispatch in rvv_arg_type_info::get_function_type_index() and
-   get_tree_type().  */
-DEF_RVV_BASE_TYPE (lmul2_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul4_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul8_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-
-/* IME source-LMUL base types with explicit signedness.  Used for the
-   W=1 mmacc mixed-sign (_su / _us) variants where vs1 and vs2 share
-   the SEW and LMUL but use opposite signedness.  Each variant returns
-   the signed or unsigned sibling at LMUL=N at the accumulator's SEW.  */
-DEF_RVV_BASE_TYPE (lmul1_signed_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul1_unsigned_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul2_signed_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul2_unsigned_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul4_signed_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul4_unsigned_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul8_signed_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (lmul8_unsigned_vector,
-		   get_ime_lmul_input_type (type_idx, base_type))
-
-/* IME widening source-LMUL base types: for the W={2,4,8} mmacc _lm{N}
-   variants, vs1/vs2 use SEW/W and LMUL=N (independent of MUL_C).  These
-   are appended at the END of the base-type list so their enum values do
-   not shift positional slot indices used by DEF_RVV_TYPE_INDEX.  Lookups
-   bypass function_types[] via explicit dispatch in
-   rvv_arg_type_info::get_function_type_index() and get_tree_type().  */
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul2_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul2_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul2_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul4_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul4_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul4_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul8_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul8_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_double_trunc_lmul8_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul2_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul2_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul2_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul4_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul4_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul4_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul8_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul8_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_quad_trunc_lmul8_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul2_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul2_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul2_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul4_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul4_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul4_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul8_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul8_signed_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul8_unsigned_vector,
-		   get_ime_widening_input_type (type_idx, base_type))
-
 /* `void *' / `const void *' for IME `_as_e{S}' tile load/store
    intrinsics (spec §2983+): the base pointer is untyped because the
    logical type and storage element width are independent.  These
@@ -987,51 +864,8 @@ DEF_RVV_BASE_TYPE (ime_oct_trunc_lmul8_unsigned_vector,
 DEF_RVV_BASE_TYPE (untyped_ptr, ptr_type_node)
 DEF_RVV_BASE_TYPE (untyped_const_ptr, const_ptr_type_node)
 
-/* IME FP fixed-input base types at LMUL > 1: same SEW as the LMUL=1
-   sibling above, but with a wider input register group for the
-   _lm{N} variants of the FP widening mmaccs.  Spec § 2614-2618 +
-   § 2657: _lm{N} applies uniformly to FP and integer widening; the
-   integer side has `ime_{double,quad,oct}_trunc_lmul{2,4,8}_*' as
-   the wider-input counterparts of `_lmul1_*'.  These FP entries
-   close the symmetry.  Like other entries appended past the
-   DEF_RVV_TYPE_INDEX positional slot list, lookups for these types
-   use `get_tree_type's switch path directly; the standard
-   `function_types[].type_indexes[]' fallback is unused.  */
-DEF_RVV_BASE_TYPE (ime_fp16_lmul2_vector,
-		   builtin_types[VECTOR_TYPE_vfloat16m2_t].vector)
-DEF_RVV_BASE_TYPE (ime_fp16_lmul4_vector,
-		   builtin_types[VECTOR_TYPE_vfloat16m4_t].vector)
-DEF_RVV_BASE_TYPE (ime_fp16_lmul8_vector,
-		   builtin_types[VECTOR_TYPE_vfloat16m8_t].vector)
-DEF_RVV_BASE_TYPE (ime_bf16_lmul2_vector,
-		   builtin_types[VECTOR_TYPE_vbfloat16m2_t].vector)
-DEF_RVV_BASE_TYPE (ime_bf16_lmul4_vector,
-		   builtin_types[VECTOR_TYPE_vbfloat16m4_t].vector)
-DEF_RVV_BASE_TYPE (ime_bf16_lmul8_vector,
-		   builtin_types[VECTOR_TYPE_vbfloat16m8_t].vector)
-DEF_RVV_BASE_TYPE (ime_fp32_lmul2_vector,
-		   builtin_types[VECTOR_TYPE_vfloat32m2_t].vector)
-DEF_RVV_BASE_TYPE (ime_fp32_lmul4_vector,
-		   builtin_types[VECTOR_TYPE_vfloat32m4_t].vector)
-DEF_RVV_BASE_TYPE (ime_fp32_lmul8_vector,
-		   builtin_types[VECTOR_TYPE_vfloat32m8_t].vector)
-
 /* OFP8 (E4M3 / E5M2) `_lm{N}' input base types, for the W=2 OFP8 ->
    FP16/BF16, W=4 OFP8 -> FP32 and W=8 OFP8 -> FP64 _lm{N} variants.  */
-DEF_RVV_BASE_TYPE (ime_f8e4m3_lmul2_vector,
-		   builtin_types[VECTOR_TYPE_vfloat8e4m3m2_t].vector)
-DEF_RVV_BASE_TYPE (ime_f8e4m3_lmul4_vector,
-		   builtin_types[VECTOR_TYPE_vfloat8e4m3m4_t].vector)
-DEF_RVV_BASE_TYPE (ime_f8e4m3_lmul8_vector,
-		   builtin_types[VECTOR_TYPE_vfloat8e4m3m8_t].vector)
-DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul2_vector,
-		   builtin_types[VECTOR_TYPE_vfloat8e5m2m2_t].vector)
-DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul4_vector,
-		   builtin_types[VECTOR_TYPE_vfloat8e5m2m4_t].vector)
-DEF_RVV_BASE_TYPE (ime_f8e5m2_lmul8_vector,
-		   builtin_types[VECTOR_TYPE_vfloat8e5m2m8_t].vector)
-
-DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)
 DEF_RVV_VXRM_ENUM (ROD, VXRM_ROD)
@@ -1045,9 +879,11 @@ DEF_RVV_FRM_ENUM (RMM, FRM_RMM)
 #include "riscv-vector-type-indexer.gen.def"
 
 /* The IME types define only these relationships; the others are
-   INVALID.  */
+   INVALID.  The OFP8 types link LMUL=1 to LMUL=2, 4 and 8, as the
+   standard types do.  */
 #define DEF_RVV_IME_TYPE_INDEX(VECTOR, MASK, SIGNED, UNSIGNED, LMUL1,	\
-			       DOUBLE_TRUNC, QUAD_TRUNC, OCT_TRUNC)	\
+			       DOUBLE_TRUNC, QUAD_TRUNC, OCT_TRUNC,	\
+			       X2_VLMUL_EXT, X4_VLMUL_EXT, X8_VLMUL_EXT) \
   DEF_RVV_TYPE_INDEX (VECTOR, MASK, SIGNED, UNSIGNED, INVALID,	\
     INVALID, INVALID, INVALID, INVALID, INVALID, DOUBLE_TRUNC,	\
     QUAD_TRUNC, INVALID, INVALID, INVALID, INVALID, INVALID, INVALID,	\
@@ -1056,60 +892,76 @@ DEF_RVV_FRM_ENUM (RMM, FRM_RMM)
     INVALID, INVALID, INVALID, INVALID, INVALID, INVALID, INVALID,	\
     INVALID, INVALID, INVALID, INVALID, INVALID, INVALID, INVALID,	\
     INVALID, INVALID, INVALID, INVALID, INVALID, INVALID, INVALID,	\
-    INVALID, INVALID, INVALID, INVALID, INVALID, INVALID, INVALID)
+    X2_VLMUL_EXT, X4_VLMUL_EXT, X8_VLMUL_EXT, INVALID, INVALID,	\
+    INVALID, INVALID)
 
 /* IME packed-in-bytes types: opaque types with no standard V type
    relationships.  All relationship slots are INVALID except VECTOR
    (self), MASK, and SIGNED/UNSIGNED for Int4.  */
 DEF_RVV_IME_TYPE_INDEX (vint4m1_t, vbool8_t, vint4m1_t, vuint4m1_t,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vuint4m1_t, vbool8_t, vint4m1_t, vuint4m1_t,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e4m3m1_t, vbool8_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			vfloat8e4m3m2_t, vfloat8e4m3m4_t, vfloat8e4m3m8_t)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e4m3m2_t, vbool4_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e4m3m4_t, vbool2_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e4m3m8_t, vbool1_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e5m2m1_t, vbool8_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			vfloat8e5m2m2_t, vfloat8e5m2m4_t, vfloat8e5m2m8_t)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e5m2m2_t, vbool4_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e5m2m4_t, vbool2_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e5m2m8_t, vbool1_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat4e2m1m1_t, vbool8_t, INVALID, INVALID,
-			INVALID, INVALID, INVALID, INVALID)
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 
-/* IME m16 accumulator types.  Only the LMUL1 / SIGNED / UNSIGNED slots
-   are populated -- those are the ones the IME mmacc shape queries via
-   `RVV_BASE_lmul1_vector', `RVV_BASE_lmul1_signed_vector', and
-   `RVV_BASE_lmul1_unsigned_vector' to resolve the vs1/vs2 operand
-   types for `__riscv_vmmacc_vv_*m16'.  The LMUL2 / LMUL4 / LMUL8
-   sources (`_lm{N}' variants) route through `ime_lmul_input_idx',
-   which has its own m16 mapping -- those slots can stay INVALID
-   here.  All other fields are INVALID because m16 types do not
-   participate in any standard RVV type-conversion chain (no widen,
-   no truncate, no x{N}_vlmul_ext to m32, etc.).  */
+/* IME m16 accumulator types.  Only the LMUL1 / SIGNED / UNSIGNED and
+   truncation slots are populated -- those are the ones ime_input
+   follows to resolve the vs1/vs2 operand types; the LMUL1 sibling's
+   vlmul_ext links give the _lm{N} inputs.  The other fields are
+   INVALID because m16 types do not participate in any standard RVV
+   type-conversion chain.  */
 DEF_RVV_IME_TYPE_INDEX (vint8m16_t, INVALID, vint8m16_t, vuint8m16_t,
-			vint8m1_t, INVALID, INVALID, INVALID)
+			vint8m1_t, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vuint8m16_t, INVALID, vint8m16_t, vuint8m16_t,
-			vuint8m1_t, INVALID, INVALID, INVALID)
+			vuint8m1_t, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vint16m16_t, INVALID, vint16m16_t, vuint16m16_t,
-			vint16m1_t, vint8m8_t, INVALID, INVALID)
+			vint16m1_t, vint8m8_t, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vuint16m16_t, INVALID, vint16m16_t, vuint16m16_t,
-			vuint16m1_t, vuint8m8_t, INVALID, INVALID)
+			vuint16m1_t, vuint8m8_t, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vint32m16_t, INVALID, vint32m16_t, vuint32m16_t,
-			vint32m1_t, vint16m8_t, vint8m4_t, INVALID)
+			vint32m1_t, vint16m8_t, vint8m4_t, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vuint32m16_t, INVALID, vint32m16_t, vuint32m16_t,
-			vuint32m1_t, vuint16m8_t, vuint8m4_t, INVALID)
+			vuint32m1_t, vuint16m8_t, vuint8m4_t, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vint64m16_t, INVALID, vint64m16_t, vuint64m16_t,
-			vint64m1_t, vint32m8_t, vint16m4_t, vint8m2_t)
+			vint64m1_t, vint32m8_t, vint16m4_t, vint8m2_t,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vuint64m16_t, INVALID, vint64m16_t, vuint64m16_t,
-			vuint64m1_t, vuint32m8_t, vuint16m4_t, vuint8m2_t)
+			vuint64m1_t, vuint32m8_t, vuint16m4_t, vuint8m2_t,
+			INVALID, INVALID, INVALID)
 
 /* IME-only `m16' FP and OFP8 accumulator types.  Same opaque
    relationship slots as the integer m16 entries above; only LMUL1
@@ -1118,17 +970,23 @@ DEF_RVV_IME_TYPE_INDEX (vuint64m16_t, INVALID, vint64m16_t, vuint64m16_t,
    that the positional `function_types[]' index matches the enum
    value of each VECTOR_TYPE_* entry.  */
 DEF_RVV_IME_TYPE_INDEX (vfloat16m16_t, INVALID, INVALID, INVALID,
-			vfloat16m1_t, INVALID, INVALID, INVALID)
+			vfloat16m1_t, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vbfloat16m16_t, INVALID, INVALID, INVALID,
-			vbfloat16m1_t, INVALID, INVALID, INVALID)
+			vbfloat16m1_t, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat32m16_t, INVALID, INVALID, INVALID,
-			vfloat32m1_t, INVALID, INVALID, INVALID)
+			vfloat32m1_t, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat64m16_t, INVALID, INVALID, INVALID,
-			vfloat64m1_t, INVALID, INVALID, INVALID)
+			vfloat64m1_t, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e4m3m16_t, INVALID, INVALID, INVALID,
-			vfloat8e4m3m1_t, INVALID, INVALID, INVALID)
+			vfloat8e4m3m1_t, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e5m2m16_t, INVALID, INVALID, INVALID,
-			vfloat8e5m2m1_t, INVALID, INVALID, INVALID)
+			vfloat8e5m2m1_t, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
 
 #undef DEF_RVV_IME_TYPE_INDEX
 

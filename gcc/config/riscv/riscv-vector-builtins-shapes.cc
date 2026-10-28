@@ -883,8 +883,7 @@ struct vundefined_def : public build_base
    `__riscv_<base>_<m16-type-suffix>' pattern -- one builtin per m16
    element type per direction.  These primitives are not overloaded:
    the type suffix selects the m16 element type unambiguously and the
-   builtin's m8 argument types follow via the `lmul8_vector' arg
-   kind, so a no-suffix overloaded form would have no useful type to
+   builtin's m8 argument types follow from it, so a no-suffix overloaded form would have no useful type to
    resolve.  */
 struct ime_pair_unpair_def : public build_base
 {
@@ -1706,104 +1705,15 @@ struct ime_mmacc_def : public build_base
   }
 
   /* Return the LMUL (1, 2, 4 or 8) of the vs1 input operand of an IME
-     multiply-accumulate instance.  Used to decide whether to emit the
-     "_lm{N}" canonical suffix.  Most IME multiply-accumulate intrinsics
-     use LMUL=1 inputs (the spec's default Convention 1).  The W=1 mmacc
-     family also offers _lm{N} variants where vs1/vs2 use LMUL=N at the
-     same SEW as the accumulator (Convention 2): those route through the
-     RVV_BASE_lmul{2,4,8}_vector base types.  The default
-     gcc_unreachable () ensures any new input kind is caught loudly
-     rather than silently emitting the wrong canonical name.  */
+     multiply-accumulate instance.  */
   static unsigned
   ime_input_lmul (const function_instance &instance)
   {
-    rvv_base_type bt = instance.op_info->args[1].base_type;
-    switch (bt)
-      {
-      case RVV_BASE_lmul1_vector:
-      case RVV_BASE_ime_double_trunc_lmul1_vector:
-      case RVV_BASE_ime_double_trunc_lmul1_signed_vector:
-      case RVV_BASE_ime_double_trunc_lmul1_unsigned_vector:
-      case RVV_BASE_ime_quad_trunc_lmul1_vector:
-      case RVV_BASE_ime_quad_trunc_lmul1_signed_vector:
-      case RVV_BASE_ime_quad_trunc_lmul1_unsigned_vector:
-      case RVV_BASE_ime_oct_trunc_lmul1_vector:
-      case RVV_BASE_ime_oct_trunc_lmul1_signed_vector:
-      case RVV_BASE_ime_oct_trunc_lmul1_unsigned_vector:
-      /* FP fixed-input base types (all at LMUL=1).  */
-      case RVV_BASE_ime_fp16_lmul1_vector:
-      case RVV_BASE_ime_bf16_lmul1_vector:
-      case RVV_BASE_ime_fp32_lmul1_vector:
-      case RVV_BASE_ime_f8e4m3_lmul1_vector:
-      case RVV_BASE_ime_f8e5m2_lmul1_vector:
-      case RVV_BASE_ime_f4e2m1_lmul1_vector:
-      case RVV_BASE_ime_i8_lmul1_vector:
-      case RVV_BASE_lmul1_signed_vector:
-      case RVV_BASE_lmul1_unsigned_vector:
-	return 1;
-      /* FP fixed-input base types at LMUL=N>1 -- _lm{N} variants of
-	 the FP widening mmaccs.  Spec §2614-2618 + §2657: _lm{N}
-	 applies uniformly to FP and integer widening.  */
-      case RVV_BASE_ime_fp16_lmul2_vector:
-      case RVV_BASE_ime_bf16_lmul2_vector:
-      case RVV_BASE_ime_fp32_lmul2_vector:
-      case RVV_BASE_ime_f8e4m3_lmul2_vector:
-      case RVV_BASE_ime_f8e5m2_lmul2_vector:
-	/* fall through to the integer-lmul2 case below.  */
-      case RVV_BASE_lmul2_vector:
-      case RVV_BASE_lmul2_signed_vector:
-      case RVV_BASE_lmul2_unsigned_vector:
-      case RVV_BASE_ime_double_trunc_lmul2_vector:
-      case RVV_BASE_ime_double_trunc_lmul2_signed_vector:
-      case RVV_BASE_ime_double_trunc_lmul2_unsigned_vector:
-      case RVV_BASE_ime_quad_trunc_lmul2_vector:
-      case RVV_BASE_ime_quad_trunc_lmul2_signed_vector:
-      case RVV_BASE_ime_quad_trunc_lmul2_unsigned_vector:
-      case RVV_BASE_ime_oct_trunc_lmul2_vector:
-      case RVV_BASE_ime_oct_trunc_lmul2_signed_vector:
-      case RVV_BASE_ime_oct_trunc_lmul2_unsigned_vector:
-	return 2;
-      case RVV_BASE_ime_fp16_lmul4_vector:
-      case RVV_BASE_ime_bf16_lmul4_vector:
-      case RVV_BASE_ime_fp32_lmul4_vector:
-      case RVV_BASE_ime_f8e4m3_lmul4_vector:
-      case RVV_BASE_ime_f8e5m2_lmul4_vector:
-	/* fall through */
-      case RVV_BASE_lmul4_vector:
-      case RVV_BASE_lmul4_signed_vector:
-      case RVV_BASE_lmul4_unsigned_vector:
-      case RVV_BASE_ime_double_trunc_lmul4_vector:
-      case RVV_BASE_ime_double_trunc_lmul4_signed_vector:
-      case RVV_BASE_ime_double_trunc_lmul4_unsigned_vector:
-      case RVV_BASE_ime_quad_trunc_lmul4_vector:
-      case RVV_BASE_ime_quad_trunc_lmul4_signed_vector:
-      case RVV_BASE_ime_quad_trunc_lmul4_unsigned_vector:
-      case RVV_BASE_ime_oct_trunc_lmul4_vector:
-      case RVV_BASE_ime_oct_trunc_lmul4_signed_vector:
-      case RVV_BASE_ime_oct_trunc_lmul4_unsigned_vector:
-	return 4;
-      case RVV_BASE_ime_fp16_lmul8_vector:
-      case RVV_BASE_ime_bf16_lmul8_vector:
-      case RVV_BASE_ime_fp32_lmul8_vector:
-      case RVV_BASE_ime_f8e4m3_lmul8_vector:
-      case RVV_BASE_ime_f8e5m2_lmul8_vector:
-	/* fall through */
-      case RVV_BASE_lmul8_vector:
-      case RVV_BASE_lmul8_signed_vector:
-      case RVV_BASE_lmul8_unsigned_vector:
-      case RVV_BASE_ime_double_trunc_lmul8_vector:
-      case RVV_BASE_ime_double_trunc_lmul8_signed_vector:
-      case RVV_BASE_ime_double_trunc_lmul8_unsigned_vector:
-      case RVV_BASE_ime_quad_trunc_lmul8_vector:
-      case RVV_BASE_ime_quad_trunc_lmul8_signed_vector:
-      case RVV_BASE_ime_quad_trunc_lmul8_unsigned_vector:
-      case RVV_BASE_ime_oct_trunc_lmul8_vector:
-      case RVV_BASE_ime_oct_trunc_lmul8_signed_vector:
-      case RVV_BASE_ime_oct_trunc_lmul8_unsigned_vector:
-	return 8;
-      default:
-	gcc_unreachable ();
-      }
+    const rvv_arg_type_info &a = instance.op_info->args[1];
+    if (a.base_type == RVV_BASE_ime_input
+	|| a.base_type == RVV_BASE_ime_fixed_input)
+      return 1 << ime_input_lm_log2 (a);
+    return 1;
   }
 
   char *get_name (function_builder &b, const function_instance &instance,
@@ -1845,82 +1755,22 @@ struct ime_mmacc_def : public build_base
 	   For mixed-input variants (vs1 and vs2 different formats), also
 	   append the vs2 suffix.  Same-format and integer cases keep just
 	   the single vs1 suffix (or none for integer).  */
-	auto append_input_suffix = [&] (rvv_base_type bt) -> bool
+	auto append_input_suffix = [&] (const rvv_arg_type_info &arg) -> bool
 	  {
-	    switch (bt)
-	      {
-	      case RVV_BASE_ime_fp16_lmul1_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m1_t].vector);
-		return true;
-	      case RVV_BASE_ime_fp16_lmul2_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m2_t].vector);
-		return true;
-	      case RVV_BASE_ime_fp16_lmul4_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m4_t].vector);
-		return true;
-	      case RVV_BASE_ime_fp16_lmul8_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat16m8_t].vector);
-		return true;
-	      case RVV_BASE_ime_bf16_lmul1_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m1_t].vector);
-		return true;
-	      case RVV_BASE_ime_bf16_lmul2_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m2_t].vector);
-		return true;
-	      case RVV_BASE_ime_bf16_lmul4_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m4_t].vector);
-		return true;
-	      case RVV_BASE_ime_bf16_lmul8_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vbfloat16m8_t].vector);
-		return true;
-	      case RVV_BASE_ime_fp32_lmul1_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m1_t].vector);
-		return true;
-	      case RVV_BASE_ime_fp32_lmul2_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m2_t].vector);
-		return true;
-	      case RVV_BASE_ime_fp32_lmul4_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m4_t].vector);
-		return true;
-	      case RVV_BASE_ime_fp32_lmul8_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat32m8_t].vector);
-		return true;
-	      case RVV_BASE_ime_f8e4m3_lmul1_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m1_t].vector);
-		return true;
-	      case RVV_BASE_ime_f8e4m3_lmul2_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m2_t].vector);
-		return true;
-	      case RVV_BASE_ime_f8e4m3_lmul4_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m4_t].vector);
-		return true;
-	      case RVV_BASE_ime_f8e4m3_lmul8_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e4m3m8_t].vector);
-		return true;
-	      case RVV_BASE_ime_f8e5m2_lmul1_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m1_t].vector);
-		return true;
-	      case RVV_BASE_ime_f8e5m2_lmul2_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m2_t].vector);
-		return true;
-	      case RVV_BASE_ime_f8e5m2_lmul4_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m4_t].vector);
-		return true;
-	      case RVV_BASE_ime_f8e5m2_lmul8_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat8e5m2m8_t].vector);
-		return true;
-	      case RVV_BASE_ime_f4e2m1_lmul1_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vfloat4e2m1m1_t].vector);
-		return true;
-	      case RVV_BASE_ime_i8_lmul1_vector:
-		b.append_name (type_suffixes[VECTOR_TYPE_vint8m1_t].vector);
-		return true;
-	      default:
-		return false;
-	      }
+	    vector_type_index idx;
+	    if (arg.base_type == RVV_BASE_ime_fixed_input)
+	      idx = arg.get_function_type_index (instance.type.index);
+	    else if (arg.base_type == RVV_BASE_ime_f4e2m1_lmul1_vector)
+	      idx = VECTOR_TYPE_vfloat4e2m1m1_t;
+	    else if (arg.base_type == RVV_BASE_ime_i8_lmul1_vector)
+	      idx = VECTOR_TYPE_vint8m1_t;
+	    else
+	      return false;
+	    b.append_name (type_suffixes[idx].vector);
+	    return true;
 	  };
-	rvv_base_type vs1_bt = instance.op_info->args[1].base_type;
-	rvv_base_type vs2_bt = instance.op_info->args[2].base_type;
+	const rvv_arg_type_info &vs1 = instance.op_info->args[1];
+	const rvv_arg_type_info &vs2 = instance.op_info->args[2];
 	/* Always include the input-format suffix when one is available.
 	   It disambiguates between FP widening variants that share an
 	   accumulator type (e.g. `vfwmmacc_vv_f32m1_f16m2_lm2' vs
@@ -1928,9 +1778,11 @@ struct ime_mmacc_def : public build_base
 	   `_bf16m2' token the two intrinsics would collide on the same
 	   canonical name).  The `_lm{N}' token is then appended below
 	   for LMUL>1.  */
-	bool emitted_vs1 = append_input_suffix (vs1_bt);
-	if (emitted_vs1 && vs1_bt != vs2_bt)
-	  append_input_suffix (vs2_bt);
+	bool emitted_vs1 = append_input_suffix (vs1);
+	if (emitted_vs1
+	    && (vs1.base_type != vs2.base_type
+		|| vs1.ime_param != vs2.ime_param))
+	  append_input_suffix (vs2);
 
 	/* Mixed-sign token ("_su" / "_us").  */
 	if (*sign_suffix)

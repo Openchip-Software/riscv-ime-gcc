@@ -756,10 +756,14 @@ struct function_type_info
 /* RVV Builtin argument information.  */
 struct rvv_arg_type_info
 {
-  CONSTEXPR rvv_arg_type_info (rvv_base_type base_type_in)
-    : base_type (base_type_in)
+  CONSTEXPR rvv_arg_type_info (rvv_base_type base_type_in,
+			       unsigned ime_param_in = 0)
+    : base_type (base_type_in), ime_param (ime_param_in)
   {}
   enum rvv_base_type base_type;
+  /* The parameters of the RVV_BASE_ime_input and RVV_BASE_ime_fixed_input
+     types; see ime_input.  */
+  unsigned char ime_param;
 
   tree get_scalar_ptr_type (vector_type_index) const;
   tree get_scalar_const_ptr_type (vector_type_index) const;
@@ -771,6 +775,77 @@ struct rvv_arg_type_info
   tree get_xfqf_float_type (vector_type_index) const;
   tree get_scalar_float_type (vector_type_index) const;
 };
+
+/* The signedness of an RVV_BASE_ime_input: that of the accumulator, or
+   the given one.  */
+enum ime_input_sign
+{
+  IME_INPUT_SAME_SIGN,
+  IME_INPUT_SIGNED,
+  IME_INPUT_UNSIGNED
+};
+
+/* The format of an RVV_BASE_ime_fixed_input.  */
+enum ime_input_format
+{
+  IME_FORMAT_FP16,
+  IME_FORMAT_BF16,
+  IME_FORMAT_FP32,
+  IME_FORMAT_E4M3,
+  IME_FORMAT_E5M2
+};
+
+/* An input of an IME multiply-accumulate derived from the accumulator
+   type: its element width divided by 1 << W_LOG2, at LMUL 1 << LM_LOG2,
+   with signedness SIGN.  */
+inline CONSTEXPR rvv_arg_type_info
+ime_input (unsigned w_log2, unsigned lm_log2,
+	   ime_input_sign sign = IME_INPUT_SAME_SIGN)
+{
+  return rvv_arg_type_info (RVV_BASE_ime_input,
+			    lm_log2 | w_log2 << 2 | (unsigned) sign << 4);
+}
+
+/* An input of an IME multiply-accumulate of format FORMAT at LMUL
+   1 << LM_LOG2, whatever the accumulator type.  */
+inline CONSTEXPR rvv_arg_type_info
+ime_fixed_input (ime_input_format format, unsigned lm_log2)
+{
+  return rvv_arg_type_info (RVV_BASE_ime_fixed_input,
+			    lm_log2 | (unsigned) format << 2);
+}
+
+/* The parameters of an ime_input or ime_fixed_input ARG.  */
+inline unsigned
+ime_input_lm_log2 (const rvv_arg_type_info &arg)
+{
+  return arg.ime_param & 3;
+}
+
+inline unsigned
+ime_input_w_log2 (const rvv_arg_type_info &arg)
+{
+  return (arg.ime_param >> 2) & 3;
+}
+
+inline ime_input_sign
+ime_input_sign_of (const rvv_arg_type_info &arg)
+{
+  return (ime_input_sign) (arg.ime_param >> 4);
+}
+
+inline ime_input_format
+ime_input_format_of (const rvv_arg_type_info &arg)
+{
+  return (ime_input_format) (arg.ime_param >> 2);
+}
+
+/* ARG with input LMUL 1 << LM_LOG2.  */
+inline rvv_arg_type_info
+ime_input_with_lmul (const rvv_arg_type_info &arg, unsigned lm_log2)
+{
+  return rvv_arg_type_info (arg.base_type, (arg.ime_param & ~3u) | lm_log2);
+}
 
 /* Static information for each operand.  */
 struct rvv_type_info
