@@ -2326,7 +2326,7 @@ bool
 riscv_zvvm_int_mm_p (machine_mode mode, int w)
 {
   int bits = GET_MODE_UNIT_BITSIZE (mode);
-  if (bits < 8 * w)
+  if (bits < 4 * w)
     return false;
   return riscv_zvvm_mm_p ((riscv_zvvm_format) (ZVVM_FMT_Int4
 					       + exact_log2 (bits / w / 4)),

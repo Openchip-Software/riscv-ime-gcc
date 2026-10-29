@@ -1535,8 +1535,6 @@ static vector_type_index
 ime_input_type (const function_instance &instance,
 		const rvv_arg_type_info &arg)
 {
-  if (arg.base_type == RVV_BASE_ime_f4e2m1_lmul1_vector)
-    return VECTOR_TYPE_vfloat4e2m1m1_t;
   if (arg.base_type == RVV_BASE_ime_i8_lmul1_vector)
     return VECTOR_TYPE_vint8m1_t;
   return arg.get_function_type_index (instance.type.index);
@@ -1815,9 +1813,17 @@ struct ime_mmacc_def : public build_base
 	   the single vs1 suffix (or none for integer).  */
 	auto append_input_suffix = [&] (const rvv_arg_type_info &arg) -> bool
 	  {
-	    if (arg.base_type == RVV_BASE_ime_input)
-	      return false;
 	    vector_type_index idx = ime_input_type (instance, arg);
+	    /* Integer inputs are named only if they are Int4, in the
+	       signedness of the accumulator; the _su or _us suffix gives
+	       that of each input.  */
+	    if (arg.base_type == RVV_BASE_ime_input)
+	      {
+		idx = ime_input (ime_input_w_log2 (arg), ime_input_lm_log2 (arg))
+			.get_function_type_index (instance.type.index);
+		if (atoi (type_suffixes[idx].scalar + 2) != 4)
+		  return false;
+	      }
 	    b.append_name (type_suffixes[idx].vector);
 	    return true;
 	  };
@@ -1832,8 +1838,8 @@ struct ime_mmacc_def : public build_base
 	   for LMUL>1.  */
 	bool emitted_vs1 = append_input_suffix (vs1);
 	if (emitted_vs1
-	    && (vs1.base_type != vs2.base_type
-		|| vs1.ime_param != vs2.ime_param))
+	    && vs1.base_type == RVV_BASE_ime_fixed_input
+	    && vs1.ime_param != vs2.ime_param)
 	  append_input_suffix (vs2);
 
 	/* Mixed-sign token ("_su" / "_us").  */

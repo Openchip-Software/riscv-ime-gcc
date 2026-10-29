@@ -2839,7 +2839,8 @@ ime_unspec_altfmt_b (int unspec)
     }
 }
 
-/* (altfmt_A, altfmt_B, altfmt) triple for OFP8 mmacc UNSPECs.  Mirrors
+/* (altfmt_A, altfmt_B, altfmt) triple for the mmacc UNSPECs with OFP8
+   accumulators or inputs.  Mirrors
    the per-pattern ime_fp_altfmt MD attribute that the static-VLEN path
    reads in riscv_extract_ime_requirements (see riscv-vsetvl.cc).  Both
    paths must agree, otherwise the runtime probe writes a vtype with
@@ -2881,6 +2882,9 @@ ime_unspec_ofp8_altfmt (int unspec)
     case UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2: return { false, true,  true };
     case UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3: return { true,  false, true };
     case UNSPEC_VFWMMACC_OFP8_BF16_E5M2:      return { true,  true,  true };
+    /* W=2 vfwmmacc OFP4 -> E4M3 / E5M2 (the only OFP4 format is 0).  */
+    case UNSPEC_VFWMMACC_OFP4_E4M3:           return { false, false, false };
+    case UNSPEC_VFWMMACC_OFP4_E5M2:           return { false, false, true };
     /* W=4 / W=8 OFP8 (acc altfmt fixed at 0 for SEW>=32).  */
     case UNSPEC_VFQMMACC_F8E4M3:       return { false, false, false };
     case UNSPEC_VFQMMACC_F8E5M2:       return { true,  true,  false };
@@ -3162,29 +3166,6 @@ static CONSTEXPR const ime_fp_mmacc_op vfmmacc_obj (UNSPEC_VFMMACC, false);
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   static CONSTEXPR const ime_fp_mmacc_op NAME##_obj (UNSPEC, true);
 #include "zvvm-mmacc.def"
-
-class vf8wmmacc_f4e2m1_ime_op : public function_base
-{
-public:
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-  bool can_be_overloaded_p (enum predication_type_index) const override
-  { return false; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  false, false, false, false, false);
-    rtx result
-      = e.use_exact_insn (code_for_pred_vf8wmmacc_f4e2m1 (e.vector_mode ()));
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-};
-
-static CONSTEXPR const vf8wmmacc_f4e2m1_ime_op vf8wmmacc_f4e2m1_obj;
 
 /* Microscaled function base class.
 
@@ -3914,7 +3895,6 @@ BASE (vfmmacc)
 #define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
 #include "zvvm-mmacc.def"
-BASE (vf8wmmacc_f4e2m1)
 /* Microscaled FP-input scaled variants */
 BASE (vfqmmacc_scaled_f8e4m3_bs32)
 BASE (vfqmmacc_scaled_f8e4m3_bs16)

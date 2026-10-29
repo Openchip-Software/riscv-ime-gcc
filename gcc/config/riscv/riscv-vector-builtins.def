@@ -609,15 +609,28 @@ DEF_RVV_TYPE (vfloat64m8_t, 17, __rvv_float64m8_t, double, RVVM8DF, _f64m8,
 	      _f64, _e64m8)
 
 /* IME packed-in-bytes types.  These are opaque vector types that share
-   the byte-vector machine mode (RVVM1QI) but are distinct C types for
-   type checking in IME intrinsics.  No standalone arithmetic, load, or
-   store intrinsics exist for these types.
+   the byte-vector machine modes (RVVM*QI) but are distinct C types for
+   type checking in IME intrinsics.  No standalone arithmetic intrinsics
+   exist for these types; the IME tile loads and stores move them.
 
-   Int4: 4-bit integers packed two per byte.  */
+   Int4: 4-bit integers packed two per byte, at m1 / m2 / m4 / m8 for
+   the inputs of any LMUL.  */
 DEF_RVV_TYPE (vint4m1_t, 14, __rvv_int4m1_t, int8, RVVM1QI, _i4m1, _i4,
 	      _e8m1)
+DEF_RVV_TYPE (vint4m2_t, 14, __rvv_int4m2_t, int8, RVVM2QI, _i4m2, _i4,
+	      _e8m2)
+DEF_RVV_TYPE (vint4m4_t, 14, __rvv_int4m4_t, int8, RVVM4QI, _i4m4, _i4,
+	      _e8m4)
+DEF_RVV_TYPE (vint4m8_t, 14, __rvv_int4m8_t, int8, RVVM8QI, _i4m8, _i4,
+	      _e8m8)
 DEF_RVV_TYPE (vuint4m1_t, 15, __rvv_uint4m1_t, uint8, RVVM1QI, _u4m1, _u4,
 	      _e8m1)
+DEF_RVV_TYPE (vuint4m2_t, 15, __rvv_uint4m2_t, uint8, RVVM2QI, _u4m2, _u4,
+	      _e8m2)
+DEF_RVV_TYPE (vuint4m4_t, 15, __rvv_uint4m4_t, uint8, RVVM4QI, _u4m4, _u4,
+	      _e8m4)
+DEF_RVV_TYPE (vuint4m8_t, 15, __rvv_uint4m8_t, uint8, RVVM8QI, _u4m8, _u4,
+	      _e8m8)
 /* OFP8: 8-bit floating point (E4M3 and E5M2 formats), at m1 / m2 / m4 /
    m8 for the inputs of any LMUL and the W=1 vfmmacc accumulators.  */
 DEF_RVV_TYPE (vfloat8e4m3m1_t, 20, __rvv_float8e4m3m1_t, uint8, RVVM1QI,
@@ -636,9 +649,16 @@ DEF_RVV_TYPE (vfloat8e5m2m4_t, 20, __rvv_float8e5m2m4_t, uint8, RVVM4QI,
 	      _f8e5m2m4, _f8e5m2, _e8m4)
 DEF_RVV_TYPE (vfloat8e5m2m8_t, 20, __rvv_float8e5m2m8_t, uint8, RVVM8QI,
 	      _f8e5m2m8, _f8e5m2, _e8m8)
-/* OFP4: 4-bit floating point (E2M1 format), packed two per byte.  */
+/* OFP4: 4-bit floating point (E2M1 format), packed two per byte, at
+   m1 / m2 / m4 / m8.  */
 DEF_RVV_TYPE (vfloat4e2m1m1_t, 20, __rvv_float4e2m1m1_t, uint8, RVVM1QI,
 	      _f4e2m1m1, _f4e2m1, _e8m1)
+DEF_RVV_TYPE (vfloat4e2m1m2_t, 20, __rvv_float4e2m1m2_t, uint8, RVVM2QI,
+	      _f4e2m1m2, _f4e2m1, _e8m2)
+DEF_RVV_TYPE (vfloat4e2m1m4_t, 20, __rvv_float4e2m1m4_t, uint8, RVVM4QI,
+	      _f4e2m1m4, _f4e2m1, _e8m4)
+DEF_RVV_TYPE (vfloat4e2m1m8_t, 20, __rvv_float4e2m1m8_t, uint8, RVVM8QI,
+	      _f4e2m1m8, _f4e2m1, _e8m8)
 
 /* IME-only `m16' accumulator types.  Valid only as the accumulator
    operand/result of an IME mmacc intrinsic when EMUL_C = 16, and as
@@ -837,11 +857,6 @@ DEF_RVV_BASE_TYPE (void_const_ptr, const_ptr_type_node)
 DEF_RVV_BASE_TYPE (ime_input, get_ime_input_type (type_idx, *this))
 DEF_RVV_BASE_TYPE (ime_fixed_input, get_ime_input_type (type_idx, *this))
 
-/* IME OFP4 input of the microscaled forms: always LMUL=1, regardless of
-   the accumulator type.  */
-DEF_RVV_BASE_TYPE (ime_f4e2m1_lmul1_vector,
-		   builtin_types[VECTOR_TYPE_vfloat4e2m1m1_t].vector)
-
 /* IME scales vector: always vuint16m1_t, used for the block-scale operand
    of microscaled intrinsics.  */
 DEF_RVV_BASE_TYPE (ime_scales_vector,
@@ -894,11 +909,30 @@ DEF_RVV_FRM_ENUM (RMM, FRM_RMM)
 
 /* IME packed-in-bytes types: opaque types with no standard V type
    relationships.  All relationship slots are INVALID except VECTOR
-   (self), MASK, and SIGNED/UNSIGNED for Int4.  */
+   (self), MASK, SIGNED/UNSIGNED for Int4, and the links from LMUL=1 to
+   LMUL=2, 4 and 8.  */
 DEF_RVV_IME_TYPE_INDEX (vint4m1_t, vbool8_t, vint4m1_t, vuint4m1_t,
+			INVALID, INVALID, INVALID, INVALID,
+			vint4m2_t, vint4m4_t, vint4m8_t)
+DEF_RVV_IME_TYPE_INDEX (vint4m2_t, vbool4_t, vint4m2_t, vuint4m2_t,
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
+DEF_RVV_IME_TYPE_INDEX (vint4m4_t, vbool2_t, vint4m4_t, vuint4m4_t,
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
+DEF_RVV_IME_TYPE_INDEX (vint4m8_t, vbool1_t, vint4m8_t, vuint4m8_t,
 			INVALID, INVALID, INVALID, INVALID,
 			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vuint4m1_t, vbool8_t, vint4m1_t, vuint4m1_t,
+			INVALID, INVALID, INVALID, INVALID,
+			vuint4m2_t, vuint4m4_t, vuint4m8_t)
+DEF_RVV_IME_TYPE_INDEX (vuint4m2_t, vbool4_t, vint4m2_t, vuint4m2_t,
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
+DEF_RVV_IME_TYPE_INDEX (vuint4m4_t, vbool2_t, vint4m4_t, vuint4m4_t,
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
+DEF_RVV_IME_TYPE_INDEX (vuint4m8_t, vbool1_t, vint4m8_t, vuint4m8_t,
 			INVALID, INVALID, INVALID, INVALID,
 			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat8e4m3m1_t, vbool8_t, INVALID, INVALID,
@@ -926,6 +960,15 @@ DEF_RVV_IME_TYPE_INDEX (vfloat8e5m2m8_t, vbool1_t, INVALID, INVALID,
 			INVALID, INVALID, INVALID, INVALID,
 			INVALID, INVALID, INVALID)
 DEF_RVV_IME_TYPE_INDEX (vfloat4e2m1m1_t, vbool8_t, INVALID, INVALID,
+			INVALID, INVALID, INVALID, INVALID,
+			vfloat4e2m1m2_t, vfloat4e2m1m4_t, vfloat4e2m1m8_t)
+DEF_RVV_IME_TYPE_INDEX (vfloat4e2m1m2_t, vbool4_t, INVALID, INVALID,
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
+DEF_RVV_IME_TYPE_INDEX (vfloat4e2m1m4_t, vbool2_t, INVALID, INVALID,
+			INVALID, INVALID, INVALID, INVALID,
+			INVALID, INVALID, INVALID)
+DEF_RVV_IME_TYPE_INDEX (vfloat4e2m1m8_t, vbool1_t, INVALID, INVALID,
 			INVALID, INVALID, INVALID, INVALID,
 			INVALID, INVALID, INVALID)
 

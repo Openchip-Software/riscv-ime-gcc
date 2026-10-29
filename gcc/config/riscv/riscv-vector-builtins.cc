@@ -781,13 +781,6 @@ static CONSTEXPR const rvv_arg_type_info ime_8wvss_args[]
      ime_input (3, 0), ime_input (3, 0),
      rvv_arg_type_info_end};
 
-/* Args for the OFP4 vf8wmmacc.  */
-static CONSTEXPR const rvv_arg_type_info ime_fwvss_f4e2m1_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_f4e2m1_lmul1_vector),
-     rvv_arg_type_info (RVV_BASE_ime_f4e2m1_lmul1_vector),
-     rvv_arg_type_info_end};
-
 /* Args for microscaled FP-input scaled variants: same as
    the non-scaled variant but with an extra vuint16m1_t scales operand.  */
 static CONSTEXPR const rvv_arg_type_info ime_scaled_fwvss_f8e4m3_args[]
@@ -3593,9 +3586,9 @@ static const rvv_type_info iu_lmul_ge1_ops[]
    element types at LMUL in {1, 2, 4, 8}.  The tile load/store
    instructions treat memory as opaque bytes, so they support all
    element types uniformly; the element-type distinction is purely
-   for C front-end type checking.  Sub-byte element types (Int4,
-   OFP4) are not included -- they would require a new scalar pointer
-   base type and are less common in practice.  */
+   for C front-end type checking.  The 4-bit types (Int4 and OFP4)
+   are in ime4_lmul_ge1_ops, since the transposing tile loads and
+   stores exclude them.  */
 static const rvv_type_info fiu_lmul_ge1_ops[]
   = {{VECTOR_TYPE_vint8m1_t, 0},   {VECTOR_TYPE_vint8m2_t, 0},
      {VECTOR_TYPE_vint8m4_t, 0},   {VECTOR_TYPE_vint8m8_t, 0},
@@ -3644,6 +3637,18 @@ static const rvv_type_info fiu_lmul_ge1_ops[]
      {VECTOR_TYPE_vfloat8e4m3m4_t, 0}, {VECTOR_TYPE_vfloat8e4m3m8_t, 0},
      {VECTOR_TYPE_vfloat8e5m2m1_t, 0}, {VECTOR_TYPE_vfloat8e5m2m2_t, 0},
      {VECTOR_TYPE_vfloat8e5m2m4_t, 0}, {VECTOR_TYPE_vfloat8e5m2m8_t, 0},
+     {NUM_VECTOR_TYPES, 0}};
+
+/* The 4-bit types (Int4 and OFP4) for the order-preserving IME tile
+   loads and stores, which move them as bytes; the transposing ones
+   cannot transpose sub-byte elements.  */
+static const rvv_type_info ime4_lmul_ge1_ops[]
+  = {{VECTOR_TYPE_vint4m1_t, 0},  {VECTOR_TYPE_vint4m2_t, 0},
+     {VECTOR_TYPE_vint4m4_t, 0},  {VECTOR_TYPE_vint4m8_t, 0},
+     {VECTOR_TYPE_vuint4m1_t, 0}, {VECTOR_TYPE_vuint4m2_t, 0},
+     {VECTOR_TYPE_vuint4m4_t, 0}, {VECTOR_TYPE_vuint4m8_t, 0},
+     {VECTOR_TYPE_vfloat4e2m1m1_t, 0}, {VECTOR_TYPE_vfloat4e2m1m2_t, 0},
+     {VECTOR_TYPE_vfloat4e2m1m4_t, 0}, {VECTOR_TYPE_vfloat4e2m1m8_t, 0},
      {NUM_VECTOR_TYPES, 0}};
 
 /* FP type sets at LMUL >= 1 for IME FP matrix multiply-accumulate.  */
@@ -3704,6 +3709,7 @@ static const rvv_type_info f8e5m2_lmul1_ops[]
 #define IME_INPUT_TYPE_FP32 ime_fixed_input (IME_FORMAT_FP32, 0)
 #define IME_INPUT_TYPE_E4M3 ime_fixed_input (IME_FORMAT_E4M3, 0)
 #define IME_INPUT_TYPE_E5M2 ime_fixed_input (IME_FORMAT_E5M2, 0)
+#define IME_INPUT_TYPE_E2M1 ime_fixed_input (IME_FORMAT_E2M1, 0)
 #define IME_MMACC_OPS(NAME, C, A, B)					\
   static CONSTEXPR const rvv_arg_type_info NAME##_ime_args[]		\
     = {rvv_arg_type_info (RVV_BASE_vector),				\
@@ -3821,15 +3827,42 @@ static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops
      rvv_arg_type_info (RVV_BASE_void),
      untyped_ptr_ptrdiff_args};
 
+/* The same for the 4-bit types.  */
+static CONSTEXPR const rvv_op_info i4_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops
+  = {ime4_lmul_ge1_ops, OP_TYPE_v, rvv_arg_type_info (RVV_BASE_vector),
+     scalar_const_ptr_ptrdiff_args};
+
+static CONSTEXPR const rvv_op_info i4_lmul_ge1_v_scalar_ptr_ptrdiff_ops
+  = {ime4_lmul_ge1_ops, OP_TYPE_v, rvv_arg_type_info (RVV_BASE_void),
+     scalar_ptr_ptrdiff_args};
+
+static CONSTEXPR const rvv_op_info
+  i4_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops
+  = {ime4_lmul_ge1_ops, OP_TYPE_v, rvv_arg_type_info (RVV_BASE_vector),
+     untyped_const_ptr_ptrdiff_args};
+
+static CONSTEXPR const rvv_op_info i4_lmul_ge1_v_untyped_ptr_ptrdiff_ops
+  = {ime4_lmul_ge1_ops, OP_TYPE_v, rvv_arg_type_info (RVV_BASE_void),
+     untyped_ptr_ptrdiff_args};
+
 /* Return the operands of the _as_e{S} forms of the IME tile load or
    store with operands OPS: the same, but with an untyped base pointer.  */
 const rvv_op_info *
 ime_tile_as_e_op_info (const rvv_op_info &ops)
 {
-  if (ops.args == iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops.args)
-    return &iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops;
-  gcc_assert (ops.args == iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops.args);
-  return &iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops;
+  static const rvv_op_info *const as_e[][2] = {
+    {&iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops,
+     &iu_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops},
+    {&iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops,
+     &iu_lmul_ge1_v_untyped_ptr_ptrdiff_ops},
+    {&i4_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops,
+     &i4_lmul_ge1_v_untyped_const_ptr_ptrdiff_ops},
+    {&i4_lmul_ge1_v_scalar_ptr_ptrdiff_ops,
+     &i4_lmul_ge1_v_untyped_ptr_ptrdiff_ops}};
+  for (const auto &m : as_e)
+    if (m[0]->args == ops.args && m[0]->types == ops.types)
+      return m[1];
+  gcc_unreachable ();
 }
 
 /* Op-info structs for v8wmmacc.vv (W=8).  */
@@ -3844,11 +3877,6 @@ static CONSTEXPR const rvv_op_info i_ime_8wvss_ops
 static CONSTEXPR const rvv_op_info f_ime_vss_ops
   = {fp_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
-
-/* vf8wmmacc_f4e2m1: OFP4_E2M1 -> FP32 accumulator.  */
-static CONSTEXPR const rvv_op_info f32_ime_8wvss_f4e2m1_ops
-  = {f32_lmul_ge1_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f4e2m1_args};
 
 /* Microscaled FP-input scaled op_info structs.  */
 
@@ -4805,6 +4833,11 @@ rvv_arg_type_info::get_scalar_ptr_type (vector_type_index type_idx) const
    __riscv_vsm (uint8_t *base, vbool1_t value, size_t vl).  */
   if (type_idx >= VECTOR_TYPE_vbool64_t && type_idx <= VECTOR_TYPE_vbool1_t)
     return builtin_types[VECTOR_TYPE_vuint8mf8_t].scalar_ptr;
+  /* The IME tile loads and stores of the Int4 types, like those of the
+     other packed IME types, take a uint8_t pointer.  */
+  else if (type_idx >= VECTOR_TYPE_vint4m1_t
+	   && type_idx <= VECTOR_TYPE_vint4m8_t)
+    return builtin_types[VECTOR_TYPE_vuint8mf8_t].scalar_ptr;
   else
     return builtin_types[type_idx].scalar_ptr;
 }
@@ -4815,6 +4848,9 @@ rvv_arg_type_info::get_scalar_const_ptr_type (vector_type_index type_idx) const
   /* According to the latest rvv-intrinsic-doc, it defines vlm.v intrinsic:
    __riscv_vlm_v_b1 (const uint8_t *base, size_t vl).  */
   if (type_idx >= VECTOR_TYPE_vbool64_t && type_idx <= VECTOR_TYPE_vbool1_t)
+    return builtin_types[VECTOR_TYPE_vuint8mf8_t].scalar_const_ptr;
+  else if (type_idx >= VECTOR_TYPE_vint4m1_t
+	   && type_idx <= VECTOR_TYPE_vint4m8_t)
     return builtin_types[VECTOR_TYPE_vuint8mf8_t].scalar_const_ptr;
   else
     return builtin_types[type_idx].scalar_const_ptr;
@@ -4854,14 +4890,15 @@ rvv_arg_type_info::get_scalar_float_type (vector_type_index type_idx) const
 /* Return the type of the IME multiply-accumulate input ARG, an
    ime_input or ime_fixed_input, for accumulator type TYPE_IDX, or
    NUM_VECTOR_TYPES if there is none.  An ime_input follows the type's
-   signedness, truncation, LMUL1 and vlmul_ext links.  */
+   signedness, truncation, LMUL1 and vlmul_ext links; the 4-bit inputs,
+   which no truncation link reaches, are the Int4 types.  */
 static vector_type_index
 ime_input_idx (vector_type_index type_idx, const rvv_arg_type_info &arg)
 {
   static const vector_type_index fixed[] = {
     VECTOR_TYPE_vfloat16m1_t, VECTOR_TYPE_vbfloat16m1_t,
     VECTOR_TYPE_vfloat32m1_t, VECTOR_TYPE_vfloat8e4m3m1_t,
-    VECTOR_TYPE_vfloat8e5m2m1_t
+    VECTOR_TYPE_vfloat8e5m2m1_t, VECTOR_TYPE_vfloat4e2m1m1_t
   };
   static const rvv_base_type trunc[] = {
     NUM_BASE_TYPES, RVV_BASE_double_trunc_vector, RVV_BASE_quad_trunc_vector,
@@ -4886,6 +4923,18 @@ ime_input_idx (vector_type_index type_idx, const rvv_arg_type_info &arg)
       steps[0] = sign[ime_input_sign_of (arg)];
       steps[1] = trunc[ime_input_w_log2 (arg)];
       steps[2] = RVV_BASE_lmul1_vector;
+      /* The scalar suffix is "_i<SEW>" or "_u<SEW>" for an integer
+	 accumulator.  */
+      const char *s = type_suffixes[type_idx].scalar;
+      if ((s[1] == 'i' || s[1] == 'u')
+	  && atoi (s + 2) >> ime_input_w_log2 (arg) == 4)
+	{
+	  bool uns = (ime_input_sign_of (arg) == IME_INPUT_SAME_SIGN
+		      ? s[1] == 'u'
+		      : ime_input_sign_of (arg) == IME_INPUT_UNSIGNED);
+	  idx = uns ? VECTOR_TYPE_vuint4m1_t : VECTOR_TYPE_vint4m1_t;
+	  steps[0] = steps[1] = steps[2] = NUM_BASE_TYPES;
+	}
     }
   for (rvv_base_type step : steps)
     {

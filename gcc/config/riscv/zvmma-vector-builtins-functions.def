@@ -91,8 +91,6 @@ DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f32_ime_vunpair_op
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f64_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e4m3_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e5m2_ime_vunpair_ops)
-/* vf8wmmacc.vv (W=8) */
-DEF_RVV_FUNCTION (vf8wmmacc_f4e2m1, ime_mmacc, none_tu_preds, f32_ime_8wvss_f4e2m1_ops)
 
 /* Microscaled multiply-accumulates, gated on the Zvvx* (BS=32) or
    Zvvxn* (BS=16) extension.  */
@@ -126,12 +124,17 @@ DEF_RVV_FUNCTION (vf8wimmacc_i8_bs16, ime_mmacc, none_tu_preds,
 
 /* Zvvmtls -- Order-preserving tile load (vmtl.v) and store (vmts.v).
    The ime_tile shape registers each with every _L{N} lambda immediate
-   and _as_e{S} storage width.  */
+   and _as_e{S} storage width.  The 4-bit types (Int4 and OFP4) are
+   stored as bytes and take a uint8_t pointer.  */
 #define REQUIRED_EXTENSIONS ZVVMTLS_EXT
 DEF_RVV_FUNCTION (vmtl, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
 DEF_RVV_FUNCTION (vmts, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmtl, ime_tile, none_m_preds,
+		  i4_lmul_ge1_v_scalar_const_ptr_ptrdiff_ops)
+DEF_RVV_FUNCTION (vmts, ime_tile, none_m_preds,
+		  i4_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
 #undef REQUIRED_EXTENSIONS
 
 /* Zvvmttls -- Transposing tile load (vmttl.v) and store (vmtts.v).

@@ -419,7 +419,8 @@ enum ime_input_format
   IME_FORMAT_BF16,
   IME_FORMAT_FP32,
   IME_FORMAT_E4M3,
-  IME_FORMAT_E5M2
+  IME_FORMAT_E5M2,
+  IME_FORMAT_E2M1
 };
 
 /* An input of an IME multiply-accumulate derived from the accumulator

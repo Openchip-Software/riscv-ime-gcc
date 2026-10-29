@@ -46,6 +46,7 @@ TYPES = {
   "FP64": ("vfloat64", "f64"),
   "E4M3": ("vfloat8e4m3", "f8e4m3"),
   "E5M2": ("vfloat8e5m2", "f8e5m2"),
+  "E2M1": ("vfloat4e2m1", "f4e2m1"),
 }
 
 # Rows of the encoding map that zvvm-mmacc.def leaves to the same-format
