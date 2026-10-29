@@ -3217,10 +3217,11 @@ ime_unspec_bs32_p (int unspec)
     }
 }
 
-template<insn_code (*CODE_FOR)(int, machine_mode), int UNSPEC>
 class microscaled_ime_op : public function_base
 {
 public:
+  CONSTEXPR microscaled_ime_op (int unspec) : m_unspec (unspec) {}
+
   bool apply_mask_policy_p () const override { return false; }
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
@@ -3235,47 +3236,50 @@ public:
 				  /* altfmt_a = */ false,
 				  /* altfmt_b = */ false,
 				  /* altfmt = */ false,
-				  /* bs = */ ime_unspec_bs32_p (UNSPEC));
+				  /* bs = */ ime_unspec_bs32_p (m_unspec));
     /* The scales argument is the second-to-last (before vl).  */
     int scales_idx = call_expr_nargs (e.exp) - 2;
-    insn_code icode = CODE_FOR (UNSPEC, e.vector_mode ());
+    insn_code icode = code_for_pred_ime_mmacc (m_unspec, e.vector_mode ());
     rtx result = e.use_microscaled_insn (icode, scales_idx);
     emit_ime_post_consumer_blockage ();
     return result;
   }
+
+private:
+  int m_unspec;
 };
 
 /* FP-input scaled variant instances.  */
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vfwmmacc_scaled_f16,
-  UNSPEC_VFWMMACC_F16_BS32> vfwmmacc_scaled_f16_bs32_obj;
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vfwmmacc_scaled_f16,
-  UNSPEC_VFWMMACC_F16_BS16> vfwmmacc_scaled_f16_bs16_obj;
+static CONSTEXPR const microscaled_ime_op vfwmmacc_scaled_f16_bs32_obj
+  (UNSPEC_VFWMMACC_F16_BS32);
+static CONSTEXPR const microscaled_ime_op vfwmmacc_scaled_f16_bs16_obj
+  (UNSPEC_VFWMMACC_F16_BS16);
 
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vfqwmmacc_scaled_f8e4m3,
-  UNSPEC_VFQWMMACC_F8E4M3_BS32> vfqwmmacc_scaled_f8e4m3_bs32_obj;
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vfqwmmacc_scaled_f8e4m3,
-  UNSPEC_VFQWMMACC_F8E4M3_BS16> vfqwmmacc_scaled_f8e4m3_bs16_obj;
+static CONSTEXPR const microscaled_ime_op vfqwmmacc_scaled_f8e4m3_bs32_obj
+  (UNSPEC_VFQWMMACC_F8E4M3_BS32);
+static CONSTEXPR const microscaled_ime_op vfqwmmacc_scaled_f8e4m3_bs16_obj
+  (UNSPEC_VFQWMMACC_F8E4M3_BS16);
 
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vf8wmmacc_scaled_f8e4m3,
-  UNSPEC_VF8WMMACC_F8E4M3_BS32> vf8wmmacc_scaled_f8e4m3_bs32_obj;
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vf8wmmacc_scaled_f8e4m3,
-  UNSPEC_VF8WMMACC_F8E4M3_BS16> vf8wmmacc_scaled_f8e4m3_bs16_obj;
+static CONSTEXPR const microscaled_ime_op vf8wmmacc_scaled_f8e4m3_bs32_obj
+  (UNSPEC_VF8WMMACC_F8E4M3_BS32);
+static CONSTEXPR const microscaled_ime_op vf8wmmacc_scaled_f8e4m3_bs16_obj
+  (UNSPEC_VF8WMMACC_F8E4M3_BS16);
 
 /* Integer-input microscaled variant instances.  */
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vfwimmacc_i8,
-  UNSPEC_VFWIMMACC_I8_BS32> vfwimmacc_i8_bs32_obj;
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vfwimmacc_i8,
-  UNSPEC_VFWIMMACC_I8_BS16> vfwimmacc_i8_bs16_obj;
+static CONSTEXPR const microscaled_ime_op vfwimmacc_i8_bs32_obj
+  (UNSPEC_VFWIMMACC_I8_BS32);
+static CONSTEXPR const microscaled_ime_op vfwimmacc_i8_bs16_obj
+  (UNSPEC_VFWIMMACC_I8_BS16);
 
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vfqwimmacc_i8,
-  UNSPEC_VFQWIMMACC_I8_BS32> vfqwimmacc_i8_bs32_obj;
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vfqwimmacc_i8,
-  UNSPEC_VFQWIMMACC_I8_BS16> vfqwimmacc_i8_bs16_obj;
+static CONSTEXPR const microscaled_ime_op vfqwimmacc_i8_bs32_obj
+  (UNSPEC_VFQWIMMACC_I8_BS32);
+static CONSTEXPR const microscaled_ime_op vfqwimmacc_i8_bs16_obj
+  (UNSPEC_VFQWIMMACC_I8_BS16);
 
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vf8wimmacc_i8,
-  UNSPEC_VF8WIMMACC_I8_BS32> vf8wimmacc_i8_bs32_obj;
-static CONSTEXPR const microscaled_ime_op<code_for_pred_vf8wimmacc_i8,
-  UNSPEC_VF8WIMMACC_I8_BS16> vf8wimmacc_i8_bs16_obj;
+static CONSTEXPR const microscaled_ime_op vf8wimmacc_i8_bs32_obj
+  (UNSPEC_VF8WIMMACC_I8_BS32);
+static CONSTEXPR const microscaled_ime_op vf8wimmacc_i8_bs16_obj
+  (UNSPEC_VF8WIMMACC_I8_BS16);
 
 /* Implements __riscv_ime_vlen(): returns VLEN in bits.
    Compile-time constant when VLEN is known, otherwise csrr vlenb << 3.  */
