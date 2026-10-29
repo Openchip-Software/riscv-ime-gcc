@@ -238,13 +238,14 @@ struct GTY(())  machine_function {
      metadata operand; AVL is NOT part of the key, so consumers with
      the same IME geometry but different AVLs share a probe).  A
      subsequent consumer matching a cached key reuses the cached
-     `full_vtype' pseudo and emits no fresh probe.  Bounded at a small
-     fixed size: real functions rarely have more than a handful of
-     distinct IME tuples, and overflow just degrades to "emit a probe"
-     -- no correctness impact.  */
+     `full_vtype' pseudo and the probe's `bad' flag, and emits no fresh
+     probe.  Bounded at a small fixed size: real functions rarely have
+     more than a handful of distinct IME tuples, and overflow just
+     degrades to "emit a probe" -- no correctness impact.  */
 #define RISCV_IME_PROBE_CACHE_SIZE 8
   HOST_WIDE_INT ime_probe_cache_key[RISCV_IME_PROBE_CACHE_SIZE];
-  rtx ime_probe_cache_val[RISCV_IME_PROBE_CACHE_SIZE];
+  rtx ime_probe_cache_vtype[RISCV_IME_PROBE_CACHE_SIZE];
+  rtx ime_probe_cache_bad[RISCV_IME_PROBE_CACHE_SIZE];
   int ime_probe_cache_count;
 };
 
@@ -12416,18 +12417,21 @@ riscv_ime_set_last_full_vtype (rtx pseudo)
 }
 
 rtx
-riscv_ime_probe_cache_lookup (HOST_WIDE_INT key)
+riscv_ime_probe_cache_lookup (HOST_WIDE_INT key, rtx *bad)
 {
   if (!cfun || !cfun->machine)
     return NULL_RTX;
   for (int i = 0; i < cfun->machine->ime_probe_cache_count; i++)
     if (cfun->machine->ime_probe_cache_key[i] == key)
-      return cfun->machine->ime_probe_cache_val[i];
+      {
+	*bad = cfun->machine->ime_probe_cache_bad[i];
+	return cfun->machine->ime_probe_cache_vtype[i];
+      }
   return NULL_RTX;
 }
 
 void
-riscv_ime_probe_cache_store (HOST_WIDE_INT key, rtx full_vtype)
+riscv_ime_probe_cache_store (HOST_WIDE_INT key, rtx full_vtype, rtx bad)
 {
   if (!cfun || !cfun->machine)
     return;
@@ -12435,7 +12439,8 @@ riscv_ime_probe_cache_store (HOST_WIDE_INT key, rtx full_vtype)
     return;
   int idx = cfun->machine->ime_probe_cache_count++;
   cfun->machine->ime_probe_cache_key[idx] = key;
-  cfun->machine->ime_probe_cache_val[idx] = full_vtype;
+  cfun->machine->ime_probe_cache_vtype[idx] = full_vtype;
+  cfun->machine->ime_probe_cache_bad[idx] = bad;
 }
 
 /* Return the VLEN value associated with -march and -mrvv-vector-bits.

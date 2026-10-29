@@ -13,8 +13,9 @@
      - The lambda computation (`csrr vlenb' followed by shifts and
        `ctz') must appear OUTSIDE the loop label.  Either it's emitted
        before the loop's first label, or inside a function prologue.
-     - The loop body itself must NOT contain a perfect-square trap
-       (`bne ..., zero, .Lebreak') or a WARL readback (`csrr vtype').
+     - The loop body itself must NOT contain the WARL readback
+       (`csrr vtype'); only the consumer's check of the probe result
+       (`bne ..., zero, .Lebreak') stays in the loop.
      - The loop body must NOT contain a `vsetvl' (register-form, IME)
        instruction.
 

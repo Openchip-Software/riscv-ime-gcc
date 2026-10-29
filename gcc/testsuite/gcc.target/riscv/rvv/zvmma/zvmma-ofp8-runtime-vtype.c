@@ -70,8 +70,7 @@ vfloat64m1_t w8_mixed (vfloat64m1_t a, vfloat8e4m3m1_t s1,
 /* { dg-final { scan-assembler-times {\tctz\t} 8 } } */
 
 /* The runtime probe writes vtype via vsetvl (register-form), then
-   reads it back via csrr vtype, compares lambda field, and traps on
-   mismatch (ebreak).  Each consumer goes through this sequence; with
-   8 consumers we expect 8 ebreak instructions (one trap label per
-   consumer).  */
+   reads it back via csrr vtype and compares the lambda field; the
+   consumer traps (ebreak) on a mismatch.  With 8 consumers we expect
+   8 ebreak instructions (one trap label per consumer).  */
 /* { dg-final { scan-assembler-times {\tebreak} 8 } } */

@@ -6409,7 +6409,7 @@ splat_to_scalar_move_p (rtx *ops)
    TA and MA are the tail/mask-agnostic policy bits.
    AVL is the application vector length (a register rtx).
 
-   The emitted sequence:
+   The probe, emitted at function entry:
      vlenb   = csrr vlenb                      ; VLEN/8
      vlen    = vlenb << 3                       ; VLEN in bits
      lsq     = vlen >> log2(SEW * MUL_C)        ; lambda^2
@@ -6422,7 +6422,30 @@ splat_to_scalar_move_p (rtx *ops)
      ; WARL verification:
      vtype_rb = csrr vtype
      got      = (vtype_rb >> (xlen - 4)) & 7
-     if (got != lenc) trap  */
+     bad      = (llog2sq & 1) | (got ^ lenc)
+
+   and at the consumer:
+     if (bad) trap
+
+   The probe cannot trap, so running it on paths that never reach the
+   consumer is harmless; only the consumer traps when the geometry is
+   not available at this VLEN.  */
+
+/* Trap at the consumer if the runtime IME probe failed.  BAD is the
+   probe's failure flag, or NULL_RTX if the probe cannot fail.  */
+
+static void
+emit_ime_probe_check (rtx bad)
+{
+  if (!bad)
+    return;
+  rtx ok_label = gen_label_rtx ();
+  emit_cmp_and_jump_insns (bad, const0_rtx, EQ, NULL_RTX, Pmode, 1,
+			   ok_label, profile_probability::very_likely ());
+  emit_insn (gen_trap ());
+  emit_barrier ();
+  emit_label (ok_label);
+}
 
 void
 emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
@@ -6457,7 +6480,8 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 			  (uint8_t) vlmul_enc, widen_w,
 			  altfmt_a, altfmt_b, altfmt, bs,
 			  (int8_t) static_lambda_log2);
-  rtx cached_full_vtype = riscv_ime_probe_cache_lookup (cache_key);
+  rtx bad = NULL_RTX;
+  rtx cached_full_vtype = riscv_ime_probe_cache_lookup (cache_key, &bad);
   if (cached_full_vtype)
     {
       /* Cache hit: a probe with this exact IME tuple already runs at
@@ -6467,25 +6491,9 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 	 `vsetvl_ime_reg' if and only if the consumer's AVL or position
 	 require it.  */
       riscv_ime_set_last_full_vtype (cached_full_vtype);
+      emit_ime_probe_check (bad);
       return;
     }
-
-  /* Cache miss.  Hoist the entire probe (lambda compute, perfect-square
-     check, vsetvl_ime_reg write, WARL readback verification) to
-     function entry by building it into a separate insn sequence and
-     inserting it on the entry-block fall-through edge.  Once the
-     probe runs at function entry, vtype carries the IME-specific bits
-     (lambda, altfmt_A/B, altfmt, bs).  Inside any loop, a basic
-     vsetvli at the loop header that matches (SEW, VLMUL, ta, ma)
-     preserves those bits via WARL, so the IME consumer in the loop body
-     finds vtype already correctly programmed -- no in-loop IME vsetvl
-     needed.
-
-     A function whose IME consumer is reached only on one CFG path
-     pays a probe at entry even if the consumer is dynamically never
-     executed; this is acceptable since the compiler has already
-     decided to emit the consumer.  */
-  start_sequence ();
 
   /* If the caller already knows lambda (e.g. an `_L{N}' tile-immediate
      consumer where the instruction encodes its own lambda and
@@ -6500,6 +6508,21 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 	     "%<Zbb%>");
       return;
     }
+
+  /* Cache miss.  Hoist the probe (lambda compute, vsetvl_ime_reg
+     write, WARL readback) to function entry by building it into a
+     separate insn sequence and inserting it on the entry-block
+     fall-through edge.  Once the probe runs at function entry, vtype
+     carries the IME-specific bits (lambda, altfmt_A/B, altfmt, bs).
+     Inside any loop, a basic vsetvli at the loop header that matches
+     (SEW, VLMUL, ta, ma) preserves those bits via WARL, so the IME
+     consumer in the loop body finds vtype already correctly
+     programmed -- no in-loop IME vsetvl needed.
+
+     The probe runs even on paths that never reach the consumer, so it
+     must not trap: it only computes `bad', and the consumer traps on
+     it.  */
+  start_sequence ();
 
   machine_mode xmode = Pmode;
   int xlen = GET_MODE_BITSIZE (xmode).to_constant ();
@@ -6581,17 +6604,10 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 	 VLEN=128, SEW=32, MUL_C=2 gives lambda_sq=2), the arithmetic
 	 `log2_lsq >> 1` below would silently truncate to a smaller valid
 	 lambda whose MUL_C does NOT match the accumulator type.  The WARL
-	 probe would then pass for the wrong geometry.  Trap here instead.
-       */
-      rtx log_parity = expand_simple_binop (xmode, AND, log2_lsq,
-					    const1_rtx, NULL_RTX,
-					    1, OPTAB_DIRECT);
-      rtx sq_ok_label = gen_label_rtx ();
-      emit_cmp_and_jump_insns (log_parity, const0_rtx, EQ, NULL_RTX,
-			       xmode, 1, sq_ok_label);
-      emit_insn (gen_trap ());
-      emit_barrier ();
-      emit_label (sq_ok_label);
+	 probe would then pass for the wrong geometry, so the odd parity
+	 goes into `bad'.  */
+      bad = expand_simple_binop (xmode, AND, log2_lsq, const1_rtx,
+				 NULL_RTX, 1, OPTAB_DIRECT);
 
       /* log2_lambda = log2_lambda_sq >> 1.  */
       rtx log2_lambda = expand_simple_binop (xmode, LSHIFTRT, log2_lsq,
@@ -6664,13 +6680,12 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
 					    GEN_INT (7), NULL_RTX,
 					    1, OPTAB_DIRECT);
 
-      /* if (lambda_got != lambda_enc) __builtin_trap().  */
-      rtx ok_label = gen_label_rtx ();
-      emit_cmp_and_jump_insns (lambda_got, lambda_enc, EQ, NULL_RTX,
-			       xmode, 1, ok_label);
-      emit_insn (gen_trap ());
-      emit_barrier ();
-      emit_label (ok_label);
+      /* bad |= lambda_got ^ lambda_enc.  */
+      rtx mismatch = expand_simple_binop (xmode, XOR, lambda_got,
+					  lambda_enc, NULL_RTX,
+					  1, OPTAB_DIRECT);
+      bad = expand_simple_binop (xmode, IOR, bad, mismatch, NULL_RTX,
+				 1, OPTAB_DIRECT);
     }
 
   /* Stash the full_vtype rtx so the caller's `use_exact_insn' can
@@ -6704,7 +6719,9 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
      Bounded; on overflow we just stop caching -- correctness is
      preserved, only the dedup benefit degrades to "always emit a
      probe."  */
-  riscv_ime_probe_cache_store (cache_key, full_vtype);
+  riscv_ime_probe_cache_store (cache_key, full_vtype, bad);
+
+  emit_ime_probe_check (bad);
 }
 
 } // namespace riscv_vector

@@ -11,8 +11,8 @@
    lambda) but the implied MUL_C would not match the accumulator type.
 
    The fix adds a perfect-square check: log2(lambda^2) & 1 == 0.  If
-   lambda^2 has an odd log2 (not a perfect square), the code traps
-   before reaching vsetvl.
+   lambda^2 has an odd log2 (not a perfect square), the consumer
+   traps.
 
    Verify the check is emitted: the sequence must contain the parity
    test and a trap arm reachable from it.  */
@@ -26,12 +26,10 @@ test_m2 (vfloat32m2_t acc, vfloat32m1_t a, vfloat32m1_t b, size_t vl)
   return __riscv_vfmmacc_vv_f32m2 (acc, a, b, vl);
 }
 
-/* Verify the parity check is emitted before the WARL probe.  We should
-   see ctz (log2(lambda^2)), andi ..., 1 (low-bit parity), and at least
-   one ebreak reachable from the odd-parity branch.  GCC typically
-   merges the two trap arms (parity failure and WARL mismatch) into a
-   single shared ebreak -- both predicates branch to the same trap
-   label -- so scan for >= 1 ebreak.  */
+/* Verify the parity check is emitted.  We should see ctz
+   (log2(lambda^2)), andi ..., 1 (low-bit parity), and an ebreak at the
+   consumer.  The parity failure and the WARL mismatch are combined into
+   one flag, so a single ebreak covers both.  */
 /* { dg-final { scan-assembler-times {\tctz\t} 1 } } */
 /* { dg-final { scan-assembler-times {\tandi\t[^,]+,[^,]+,1\n} 1 } } */
 /* { dg-final { scan-assembler {\tebreak\n} } } */
