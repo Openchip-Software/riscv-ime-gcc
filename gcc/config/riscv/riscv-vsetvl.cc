@@ -590,11 +590,10 @@ decode_static_vtype_const (HOST_WIDE_INT vtype_const,
   return true;
 }
 
-/* Pack the consumer-side IME demand (the fields of `ime_vtype_req' that
-   are NOT recoverable from the static vtype bits) into a CONST_INT so it
-   can ride along as an operand of the `@vsetvl_ime<mode>' / `@vsetvl_ime_reg<mode>'
-   patterns.  This lets `vsetvl_info::parse_insn' recover the full IME
-   demand for the emitted vsetvl, instead of marking it UNKNOWN.
+/* Pack the IME demand into a CONST_INT for the demand operand of the
+   `@vsetvl_ime<mode>' and `@vsetvl_ime_reg<mode>' patterns, from which
+   `vsetvl_info::parse_insn' recovers the IME demand of an emitted
+   vsetvl.
 
    Layout (HOST_WIDE_INT):
      [ 7: 0] sew         (8/16/32/64)
@@ -606,41 +605,22 @@ decode_static_vtype_const (HOST_WIDE_INT vtype_const,
      [   22] altfmt
      [   23] bs
      [31:24] lambda_log2 + 128  (-1..6 stored offset)  */
-static HOST_WIDE_INT
-pack_ime_req_fields (uint8_t sew, uint8_t mul_c, uint8_t lmul,
-		     uint8_t widen_w,
-		     bool altfmt_a, bool altfmt_b,
-		     bool altfmt, bool bs,
-		     int8_t lambda_log2)
-{
-  HOST_WIDE_INT p = 0;
-  p |= (HOST_WIDE_INT) sew & 0xff;
-  p |= ((HOST_WIDE_INT) mul_c & 0xf) << 8;
-  p |= ((HOST_WIDE_INT) lmul & 0xf) << 12;
-  p |= ((HOST_WIDE_INT) widen_w & 0xf) << 16;
-  p |= ((HOST_WIDE_INT) (altfmt_a ? 1 : 0)) << 20;
-  p |= ((HOST_WIDE_INT) (altfmt_b ? 1 : 0)) << 21;
-  p |= ((HOST_WIDE_INT) (altfmt ? 1 : 0)) << 22;
-  p |= ((HOST_WIDE_INT) (bs ? 1 : 0)) << 23;
-  p |= ((HOST_WIDE_INT) ((int) lambda_log2 + 128) & 0xff) << 24;
-  return p;
-}
-
-/* Forward-declared for use from riscv-v.cc (emit_ime_runtime_vtype_setup).
-   Declared in riscv-v.h inside the riscv_vector namespace; provide the
-   matching definition here.  */
 namespace riscv_vector
 {
 HOST_WIDE_INT
 riscv_pack_ime_req (uint8_t sew, uint8_t mul_c, uint8_t lmul,
-		    uint8_t widen_w,
-		    bool altfmt_a, bool altfmt_b,
-		    bool altfmt, bool bs,
-		    int8_t lambda_log2)
+		    uint8_t widen_w, bool altfmt_a, bool altfmt_b,
+		    bool altfmt, bool bs, int8_t lambda_log2)
 {
-  return pack_ime_req_fields (sew, mul_c, lmul, widen_w,
-			      altfmt_a, altfmt_b, altfmt, bs,
-			      lambda_log2);
+  return ((HOST_WIDE_INT) sew
+	  | (HOST_WIDE_INT) (mul_c & 0xf) << 8
+	  | (HOST_WIDE_INT) (lmul & 0xf) << 12
+	  | (HOST_WIDE_INT) (widen_w & 0xf) << 16
+	  | (HOST_WIDE_INT) altfmt_a << 20
+	  | (HOST_WIDE_INT) altfmt_b << 21
+	  | (HOST_WIDE_INT) altfmt << 22
+	  | (HOST_WIDE_INT) bs << 23
+	  | (HOST_WIDE_INT) ((lambda_log2 + 128) & 0xff) << 24);
 }
 } // namespace riscv_vector
 
@@ -1027,17 +1007,16 @@ struct ime_vtype_req
   bool operator!= (const ime_vtype_req &o) const { return !(*this == o); }
 };
 
-/* Pack an `ime_vtype_req' tuple to ride along as a CONST_INT operand on
-   the `@vsetvl_ime*' patterns.  See `pack_ime_req_fields' for the layout.  */
+/* Pack R for the IME demand operand of the `@vsetvl_ime*' patterns.  */
 static HOST_WIDE_INT
 pack_ime_req (const ime_vtype_req &r)
 {
-  return pack_ime_req_fields (r.sew, (uint8_t) r.mul_c, r.lmul, r.widen_w,
-			      r.altfmt_a, r.altfmt_b, r.altfmt, r.bs,
-			      r.lambda_log2);
+  return riscv_pack_ime_req (r.sew, (uint8_t) r.mul_c, r.lmul, r.widen_w,
+			     r.altfmt_a, r.altfmt_b, r.altfmt, r.bs,
+			     r.lambda_log2);
 }
 
-/* Reverse of `pack_ime_req' / `pack_ime_req_fields'.  */
+/* Reverse of `pack_ime_req'.  */
 static ime_vtype_req
 unpack_ime_req (HOST_WIDE_INT p)
 {
@@ -1637,116 +1616,45 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
   gcc_assert (r.sew > 0 && in_sew > 0 && r.sew % in_sew == 0);
   r.widen_w = r.sew / in_sew;
 
-  /* Integer: altfmt (output) always 0.  Signedness comes from the
-     per-pattern ime_altfmt attribute set by the RTL pattern.  */
-  r.altfmt = false;
+  /* The signedness of integer inputs: ime_altfmt is ss, su, us or uu,
+     so bit 1 is set for an unsigned A and bit 0 for an unsigned B.  */
+  int sign = get_attr_ime_altfmt (rinsn) - IME_ALTFMT_SS;
+  r.altfmt_a = sign & 2;
+  r.altfmt_b = sign & 1;
+  r.bs = get_attr_ime_bs (rinsn) == IME_BS_BS32;
 
-  /* Read the block-scale size from the ime_bs attribute.  */
-  switch (get_attr_ime_bs (rinsn))
+  /* A BF16 accumulator or input selects its altfmt bit; each input is
+     checked separately for mixed-format inputs.  */
+  auto bf16_operand_p = [] (int i)
     {
-    case IME_BS_BS32:
-      r.bs = true;
-      break;
-    case IME_BS_BS16:
-    case IME_BS_NONE:
-      r.bs = false;
-      break;
-    default:
-      gcc_unreachable ();
+      return (i < recog_data.n_operands
+	      && REG_P (recog_data.operand[i])
+	      && VECTOR_MODE_P (GET_MODE (recog_data.operand[i]))
+	      && GET_MODE_INNER (GET_MODE (recog_data.operand[i])) == E_BFmode);
+    };
+  r.altfmt = GET_MODE_INNER (acc_mode) == E_BFmode;
+  r.altfmt_a |= bf16_operand_p (2);
+  r.altfmt_b |= bf16_operand_p (3);
+
+  /* The OFP8 formats share QImode, so ime_fp_altfmt gives their altfmt_A,
+     altfmt_B and altfmt bits, E5M2 being 1, in that order.  */
+  if (get_attr_ime_fp_altfmt (rinsn) != IME_FP_ALTFMT_NONE)
+    {
+      int fmt = (get_attr_ime_fp_altfmt (rinsn)
+		 - IME_FP_ALTFMT_E4M3_E4M3_E4M3);
+      r.altfmt_a = fmt & 4;
+      r.altfmt_b = fmt & 2;
+      r.altfmt = fmt & 1;
     }
 
-  switch (get_attr_ime_altfmt (rinsn))
-    {
-    case IME_ALTFMT_SS:
-      r.altfmt_a = false;
-      r.altfmt_b = false;
-      break;
-    case IME_ALTFMT_UU:
-      r.altfmt_a = true;
-      r.altfmt_b = true;
-      break;
-    case IME_ALTFMT_SU:
-      r.altfmt_a = false;
-      r.altfmt_b = true;
-      break;
-    case IME_ALTFMT_US:
-      r.altfmt_a = true;
-      r.altfmt_b = false;
-      break;
-    default:
-      gcc_unreachable ();
-    }
-
-  /* For FP mmacc, the altfmt bits select the alternative IEEE format at
-     the relevant SEW: BFmode at SEW=16 selects bf16, HFmode selects fp16.
-     Per the IME spec / QEMU dispatch fns[altfmt_a][altfmt_b][altfmt][sew]:
-       altfmt_a -- vs1 input format (per-operand)
-       altfmt_b -- vs2 input format (per-operand)
-       altfmt   -- accumulator/output format
-     W=1 same-format bf16 requires all three set; widening bf16->fp32
-     sets altfmt_{a,b} only.  Mixed-format intrinsics (e.g. fp16 x bf16)
-     would set altfmt_a and altfmt_b differently -- inspect each input
-     operand independently so the same code handles them when added.
-     OFP8 (E4M3 vs E5M2) cannot be told apart from the mode; the
-     ime_fp_altfmt attribute below selects their bits.  */
-  if (GET_MODE_INNER (acc_mode) == E_BFmode)
-    r.altfmt = true;
-  if (recog_data.n_operands > 2
-      && REG_P (recog_data.operand[2])
-      && VECTOR_MODE_P (GET_MODE (recog_data.operand[2]))
-      && GET_MODE_INNER (GET_MODE (recog_data.operand[2])) == E_BFmode)
-    r.altfmt_a = true;
-  if (recog_data.n_operands > 3
-      && REG_P (recog_data.operand[3])
-      && VECTOR_MODE_P (GET_MODE (recog_data.operand[3]))
-      && GET_MODE_INNER (GET_MODE (recog_data.operand[3])) == E_BFmode)
-    r.altfmt_b = true;
-
-  /* OFP8 / explicit FP altfmt override.  When the pattern carries a
-     non-"none" ime_fp_altfmt attribute, overwrite the three altfmt
-     bits we just inferred -- needed for OFP8 (E4M3 vs E5M2) at SEW=8
-     where both formats share RVVM*QI mode and the BFmode inference
-     above cannot tell them apart.  The encoding is "<A>_<B>_<F>",
-     each token e4m3 (=0) or e5m2 (=1).  */
-  switch (get_attr_ime_fp_altfmt (rinsn))
-    {
-    case IME_FP_ALTFMT_NONE:
-      break;  /* keep BFmode/integer inference */
-    case IME_FP_ALTFMT_E4M3_E4M3_E4M3:
-      r.altfmt_a = false; r.altfmt_b = false; r.altfmt = false; break;
-    case IME_FP_ALTFMT_E4M3_E4M3_E5M2:
-      r.altfmt_a = false; r.altfmt_b = false; r.altfmt = true;  break;
-    case IME_FP_ALTFMT_E4M3_E5M2_E4M3:
-      r.altfmt_a = false; r.altfmt_b = true;  r.altfmt = false; break;
-    case IME_FP_ALTFMT_E4M3_E5M2_E5M2:
-      r.altfmt_a = false; r.altfmt_b = true;  r.altfmt = true;  break;
-    case IME_FP_ALTFMT_E5M2_E4M3_E4M3:
-      r.altfmt_a = true;  r.altfmt_b = false; r.altfmt = false; break;
-    case IME_FP_ALTFMT_E5M2_E4M3_E5M2:
-      r.altfmt_a = true;  r.altfmt_b = false; r.altfmt = true;  break;
-    case IME_FP_ALTFMT_E5M2_E5M2_E4M3:
-      r.altfmt_a = true;  r.altfmt_b = true;  r.altfmt = false; break;
-    case IME_FP_ALTFMT_E5M2_E5M2_E5M2:
-      r.altfmt_a = true;  r.altfmt_b = true;  r.altfmt = true;  break;
-    default:
-      gcc_unreachable ();
-    }
-
-  /* Static lambda if VLEN is known; runtime otherwise.  */
-  int mul_c_val;
-  switch (r.mul_c)
-    {
-    case LMUL_1:  mul_c_val = 1; break;
-    case LMUL_2:  mul_c_val = 2; break;
-    case LMUL_4:  mul_c_val = 4; break;
-    case LMUL_8:  mul_c_val = 8; break;
-    case LMUL_16: mul_c_val = 16; break;
-    default:      mul_c_val = 0; break;  /* Fractional or reserved: invalid.  */
-    }
-  if (mul_c_val == 0)
-    r.lambda_log2 = -2;
+  /* A static lambda if VLEN is known, a runtime one otherwise; MUL_C
+     must be a whole number of registers.  */
+  if (r.mul_c <= LMUL_8 || r.mul_c == LMUL_16)
+    r.lambda_log2
+      = compute_ime_lambda_log2 (r.sew,
+				 r.mul_c == LMUL_16 ? 16 : 1 << r.mul_c);
   else
-    r.lambda_log2 = compute_ime_lambda_log2 (r.sew, mul_c_val);
+    r.lambda_log2 = -2;
 
   return r;
 }

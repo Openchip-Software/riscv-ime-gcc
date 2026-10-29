@@ -335,8 +335,8 @@
 
 ;; Signedness of the two integer inputs of IME multiply-accumulate
 ;; instructions, as the vtype altfmt_A / altfmt_B bits that the vsetvl
-;; pass sets.
-(define_attr "ime_altfmt" "ss,uu,su,us"
+;; pass sets.  The order of the values gives the bits.
+(define_attr "ime_altfmt" "ss,su,us,uu"
   (const_string "ss"))
 
 ;; FP-only altfmt encoding for IME mmacc patterns whose operand modes
