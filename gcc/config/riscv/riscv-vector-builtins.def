@@ -862,8 +862,7 @@ DEF_RVV_BASE_TYPE (ime_i8_lmul1_vector,
 DEF_RVV_BASE_TYPE (untyped_ptr, ptr_type_node)
 DEF_RVV_BASE_TYPE (untyped_const_ptr, const_ptr_type_node)
 
-/* OFP8 (E4M3 / E5M2) `_lm{N}' input base types, for the W=2 OFP8 ->
-   FP16/BF16, W=4 OFP8 -> FP32 and W=8 OFP8 -> FP64 _lm{N} variants.  */
+DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)
 DEF_RVV_VXRM_ENUM (RDN, VXRM_RDN)
 DEF_RVV_VXRM_ENUM (ROD, VXRM_ROD)
