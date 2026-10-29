@@ -390,8 +390,6 @@ Mask(ZVVXOFP4BF16MM) Var(riscv_zvmmx_subext)
 
 Mask(ZVVXOFP4FP32MM) Var(riscv_zvmmx_subext)
 
-Mask(ZVVXOFP8MM) Var(riscv_zvmmx_subext)
-
 Mask(ZVVXOFP8FP16MM) Var(riscv_zvmmx_subext)
 
 Mask(ZVVXOFP8BF16MM) Var(riscv_zvmmx_subext)
@@ -421,8 +419,6 @@ Mask(ZVVXNOFP4FP16MM) Var(riscv_zvmmx_subext)
 Mask(ZVVXNOFP4BF16MM) Var(riscv_zvmmx_subext)
 
 Mask(ZVVXNOFP4FP32MM) Var(riscv_zvmmx_subext)
-
-Mask(ZVVXNOFP8MM) Var(riscv_zvmmx_subext)
 
 Mask(ZVVXNOFP8FP16MM) Var(riscv_zvmmx_subext)
 

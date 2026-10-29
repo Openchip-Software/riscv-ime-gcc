@@ -184,6 +184,17 @@ extern bool riscv_gpr_save_operation_p (rtx);
 extern void riscv_reinit (void);
 extern poly_uint64 riscv_regmode_natural_size (machine_mode);
 extern bool riscv_vla_mode_p (machine_mode);
+/* The formats of the Zvvm multiply-accumulate inputs and accumulators,
+   named as in riscv-ext-zvv.def.  */
+enum riscv_zvvm_format
+{
+  ZVVM_FMT_Int4, ZVVM_FMT_Int8, ZVVM_FMT_Int16, ZVVM_FMT_Int32,
+  ZVVM_FMT_Int64, ZVVM_FMT_OFP4, ZVVM_FMT_OFP8, ZVVM_FMT_FP16,
+  ZVVM_FMT_FP32, ZVVM_FMT_FP64, ZVVM_FMT_BF16, ZVVM_FMT_MXINT4,
+  ZVVM_FMT_MXINT8, ZVVM_FMT_MXFP4, ZVVM_FMT_MXFP8
+};
+extern bool riscv_zvvm_int_mm_p (machine_mode, int);
+extern bool riscv_zvvm_fp_mm_p (int, machine_mode, int);
 extern bool riscv_tuple_mode_p (machine_mode);
 extern bool riscv_vls_mode_p (machine_mode);
 extern int riscv_get_v_regno_alignment (machine_mode);

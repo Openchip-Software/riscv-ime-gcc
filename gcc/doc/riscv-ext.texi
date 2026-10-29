@@ -562,10 +562,6 @@
 @tab 1.0
 @tab Vector matrix multiply-accumulate microscaling (BS=32), MXFP4 inputs/FP32 accumulator
 
-@item @samp{zvvxofp8mm}
-@tab 1.0
-@tab Vector matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/OFP8 accumulator
-
 @item @samp{zvvxofp8fp16mm}
 @tab 1.0
 @tab Vector matrix multiply-accumulate microscaling (BS=32), MXFP8 inputs/FP16 accumulator
@@ -625,10 +621,6 @@
 @item @samp{zvvxnofp4fp32mm}
 @tab 1.0
 @tab Vector matrix multiply-accumulate microscaling (BS=16), MXFP4 inputs/FP32 accumulator
-
-@item @samp{zvvxnofp8mm}
-@tab 1.0
-@tab Vector matrix multiply-accumulate microscaling (BS=16), MXFP8 inputs/OFP8 accumulator
 
 @item @samp{zvvxnofp8fp16mm}
 @tab 1.0

@@ -161,6 +161,13 @@ enum rvv_vector_bits_enum {
   (int) ((rvv_max_lmul == RVV_DYNAMIC || rvv_max_lmul == RVV_CONV_DYNAMIC) \
 	 ? RVV_M8 : rvv_max_lmul)
 
+/* Any Zvvm multiply-accumulate extension.  */
+#define TARGET_ZVVM_MM_OPTS_P(opts)					\
+  ((opts->x_riscv_zvmmi_subext | opts->x_riscv_zvmmf_subext		\
+    | opts->x_riscv_zvmmx_subext) != 0)
+#define TARGET_ZVVM_MM							\
+  ((riscv_zvmmi_subext | riscv_zvmmf_subext | riscv_zvmmx_subext) != 0)
+
 /* TLS types.  */
 enum riscv_tls_type {
   TLS_TRADITIONAL,

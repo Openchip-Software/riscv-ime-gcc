@@ -21,6 +21,10 @@ along with GCC; see the file COPYING3. If not see
 #define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)
 #endif
 
+/* The shapes gate each multiply-accumulate on the individual extension
+   of its input and accumulator formats, from riscv-ext-zvv.def;
+   REQUIRED_EXTENSIONS applies to the other functions.  */
+
 /* Zvvmm - Vector integer matrix multiply-accumulate.  Each entry names
    the instruction's default form (signed inputs at LMUL=1); the
    ime_int_mmacc shape registers its unsigned, _su and _us forms, the
@@ -92,11 +96,8 @@ DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e5m2_ime_vunpair
 DEF_RVV_FUNCTION (vf8wmmacc_f4e2m1, ime_mmacc, none_tu_preds, f32_ime_8wvss_f4e2m1_ops)
 #undef REQUIRED_EXTENSIONS
 
-/* Microscaled FP-input scaled variants.
-   BS=32 extensions use Zvvx*, BS=16 extensions use Zvvxn*.
-   For MVP, we gate on ZVVFMM (the base FP mmacc extension) since
-   the individual Zvvx/Zvvxn target flags are not yet wired to
-   command-line options.  This will be tightened in a follow-up.  */
+/* Microscaled multiply-accumulates, gated on the Zvvx* (BS=32) or
+   Zvvxn* (BS=16) extension.  */
 #define REQUIRED_EXTENSIONS ZVVFMM_EXT
 /* vfwmmacc_scaled (W=2): FP16 -> FP32, with block scales.  */
 DEF_RVV_FUNCTION (vfwmmacc_scaled_f16_bs32, ime_mmacc, none_tu_preds,

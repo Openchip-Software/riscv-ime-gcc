@@ -74,11 +74,12 @@ build_one (function_builder &b, const function_group_info &group,
   b.apply_predication (function_instance, return_type, argument_types);
 
   /* Skip the function when any of its types are unresolved.  This happens
-     for IME `m16' accumulator types when the active `-march' does not
-     include Zvvmm: `register_vector_type' leaves their builtin entry
-     NULL_TREE, and `build_function_type_array' would segfault on the
-     null arg/return tree before `check_required_extensions' could
-     gate the function out.  Used to be `TARGET_XTHEADVECTOR'-only.  */
+     for IME `m16' accumulator types when the active `-march' has no
+     Zvvm multiply-accumulate extension: `register_vector_type' leaves
+     their builtin entry NULL_TREE, and `build_function_type_array'
+     would segfault on the null arg/return tree before
+     `check_required_extensions' could gate the function out.  Used to
+     be `TARGET_XTHEADVECTOR'-only.  */
   if (!check_type (return_type, argument_types))
     return;
 
@@ -268,11 +269,12 @@ build_th_loadstore (function_builder &b, const function_group_info &group,
   b.apply_predication (function_instance, return_type, argument_types);
 
   /* Skip the function when any of its types are unresolved.  This happens
-     for IME `m16' accumulator types when the active `-march' does not
-     include Zvvmm: `register_vector_type' leaves their builtin entry
-     NULL_TREE, and `build_function_type_array' would segfault on the
-     null arg/return tree before `check_required_extensions' could
-     gate the function out.  Used to be `TARGET_XTHEADVECTOR'-only.  */
+     for IME `m16' accumulator types when the active `-march' has no
+     Zvvm multiply-accumulate extension: `register_vector_type' leaves
+     their builtin entry NULL_TREE, and `build_function_type_array'
+     would segfault on the null arg/return tree before
+     `check_required_extensions' could gate the function out.  Used to
+     be `TARGET_XTHEADVECTOR'-only.  */
   if (!check_type (return_type, argument_types))
     return;
 
@@ -1527,6 +1529,59 @@ struct ime_tile_def : public build_base
   }
 };
 
+/* Return the type of input ARG of the IME multiply-accumulate
+   INSTANCE.  */
+static vector_type_index
+ime_input_type (const function_instance &instance,
+		const rvv_arg_type_info &arg)
+{
+  if (arg.base_type == RVV_BASE_ime_f4e2m1_lmul1_vector)
+    return VECTOR_TYPE_vfloat4e2m1m1_t;
+  if (arg.base_type == RVV_BASE_ime_i8_lmul1_vector)
+    return VECTOR_TYPE_vint8m1_t;
+  return arg.get_function_type_index (instance.type.index);
+}
+
+/* Return the format of the elements of TYPE, for microscaled inputs if
+   MX.  */
+static riscv_zvvm_format
+ime_format (vector_type_index type, bool mx)
+{
+  const char *s = type_suffixes[type].scalar + 1;
+  int bits = atoi (s + (*s == 'b' ? 2 : 1));
+  int fmt;
+  if (*s == 'i' || *s == 'u')
+    fmt = (mx ? ZVVM_FMT_MXINT4 : ZVVM_FMT_Int4) + exact_log2 (bits / 4);
+  else if (*s == 'b')
+    fmt = ZVVM_FMT_BF16;
+  else if (strchr (s, 'e'))
+    fmt = (mx ? ZVVM_FMT_MXFP4 : ZVVM_FMT_OFP4) + (bits == 8);
+  else
+    fmt = ZVVM_FMT_FP16 + exact_log2 (bits / 16);
+  return (riscv_zvvm_format) fmt;
+}
+
+/* Return the Zvvm extension of the multiply-accumulate with inputs of
+   type A and an accumulator of type C, microscaled with block size BS
+   if BS is nonzero.  */
+static required_ext
+ime_mm_required_ext (vector_type_index a, vector_type_index c, int bs)
+{
+  riscv_zvvm_format fa = ime_format (a, bs), fc = ime_format (c, false);
+#define ZVV_IMM(NAME, UPPER, A, C, ZVE)					\
+  if (!bs && fa == ZVVM_FMT_##A && fc == ZVVM_FMT_##C)			\
+    return UPPER##_EXT;
+#define ZVV_FMM ZVV_IMM
+#define ZVV_XMM(NAME, UPPER, A, C, BS, DEP)				\
+  if (bs == BS && fa == ZVVM_FMT_##A && fc == ZVVM_FMT_##C)		\
+    return UPPER##_EXT;
+#include "riscv-ext-zvv.def"
+  /* The microscaled FP16-input multiply-accumulates have no extension
+     of their own; gate them on that of the unscaled one.  */
+  gcc_assert (bs);
+  return ime_mm_required_ext (a, c, 0);
+}
+
 struct ime_mmacc_def : public build_base
 {
   /* IME intrinsics derive their vs1/vs2 operand types by chaining
@@ -1568,10 +1623,16 @@ struct ime_mmacc_def : public build_base
 	  enum vlmul_type lmul = get_vlmul (TYPE_MODE (return_type));
 	  if (lmul == LMUL_F8 || lmul == LMUL_F4 || lmul == LMUL_F2)
 	    continue;
+	  const char *bs = strstr (group.base_name, "_bs");
+	  required_ext required
+	    = ime_mm_required_ext (ime_input_type (function_instance,
+						   ops.args[1]),
+				   ops.types[vec_type_idx].index,
+				   bs ? atoi (bs + 3) : 0);
 	  b.add_overloaded_function (function_instance, *group.shape,
-				     group.required_extensions);
+				     required);
 	  b.add_unique_function (function_instance, (*group.shape), return_type,
-				 argument_types, group.required_extensions);
+				 argument_types, required);
 	}
   }
 
@@ -1757,15 +1818,9 @@ struct ime_mmacc_def : public build_base
 	   the single vs1 suffix (or none for integer).  */
 	auto append_input_suffix = [&] (const rvv_arg_type_info &arg) -> bool
 	  {
-	    vector_type_index idx;
-	    if (arg.base_type == RVV_BASE_ime_fixed_input)
-	      idx = arg.get_function_type_index (instance.type.index);
-	    else if (arg.base_type == RVV_BASE_ime_f4e2m1_lmul1_vector)
-	      idx = VECTOR_TYPE_vfloat4e2m1m1_t;
-	    else if (arg.base_type == RVV_BASE_ime_i8_lmul1_vector)
-	      idx = VECTOR_TYPE_vint8m1_t;
-	    else
+	    if (arg.base_type == RVV_BASE_ime_input)
 	      return false;
+	    vector_type_index idx = ime_input_type (instance, arg);
 	    b.append_name (type_suffixes[idx].vector);
 	    return true;
 	  };

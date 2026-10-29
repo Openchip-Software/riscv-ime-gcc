@@ -180,7 +180,7 @@
 (define_expand "mov<mode>"
   [(set (match_operand:VM16 0 "nonimmediate_operand")
 	(match_operand:VM16 1 "general_operand"))]
-  "TARGET_ZVVMM"
+  "TARGET_ZVVM_MM"
 {
   /* Accept the all-zero CONST_VECTOR (init-regs uses it to zero an
      m16 pseudo that is read before being defined); reject every
@@ -211,7 +211,7 @@
   [(set (match_operand:VM16 0 "nonimmediate_operand" "=vr,vr, vr,  m")
 	(match_operand:VM16 1 "vm16_src_operand"     " vr, m,Wc0, vr"))
    (clobber (match_scratch:P 2 "=&r,&r,&r,&r"))]
-  "TARGET_ZVVMM
+  "TARGET_ZVVM_MM
    && (register_operand (operands[0], <VM16:MODE>mode)
        || register_operand (operands[1], <VM16:MODE>mode)
        || operands[1] == CONST0_RTX (<VM16:MODE>mode))"
@@ -423,12 +423,37 @@
    UNSPEC_VF8WIMMACC_I8_BS32 UNSPEC_VF8WIMMACC_I8_BS16])
 
 (define_int_attr ime_scaled_bs
-  [(UNSPEC_VFWMMACC_F16_BS32 "bs32") (UNSPEC_VFWMMACC_F16_BS16 "bs16")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS32 "bs32") (UNSPEC_VFQWMMACC_F8E4M3_BS16 "bs16")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS32 "bs32") (UNSPEC_VF8WMMACC_F8E4M3_BS16 "bs16")
-   (UNSPEC_VFWIMMACC_I8_BS32 "bs32") (UNSPEC_VFWIMMACC_I8_BS16 "bs16")
-   (UNSPEC_VFQWIMMACC_I8_BS32 "bs32") (UNSPEC_VFQWIMMACC_I8_BS16 "bs16")
-   (UNSPEC_VF8WIMMACC_I8_BS32 "bs32") (UNSPEC_VF8WIMMACC_I8_BS16 "bs16")])
+  [(UNSPEC_VFWMMACC_F16_BS32 "32") (UNSPEC_VFWMMACC_F16_BS16 "16")
+   (UNSPEC_VFQWMMACC_F8E4M3_BS32 "32") (UNSPEC_VFQWMMACC_F8E4M3_BS16 "16")
+   (UNSPEC_VF8WMMACC_F8E4M3_BS32 "32") (UNSPEC_VF8WMMACC_F8E4M3_BS16 "16")
+   (UNSPEC_VFWIMMACC_I8_BS32 "32") (UNSPEC_VFWIMMACC_I8_BS16 "16")
+   (UNSPEC_VFQWIMMACC_I8_BS32 "32") (UNSPEC_VFQWIMMACC_I8_BS16 "16")
+   (UNSPEC_VF8WIMMACC_I8_BS32 "32") (UNSPEC_VF8WIMMACC_I8_BS16 "16")])
+
+;; The input format of each FP multiply-accumulate, as riscv_zvvm_format
+;; names it.
+(define_int_attr ime_fp_in
+  [(UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "OFP8") (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "OFP8")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "OFP8") (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2 "OFP8")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "OFP8") (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "OFP8")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "OFP8") (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "OFP8")
+   (UNSPEC_VFWMMACC_F16 "FP16") (UNSPEC_VFWMMACC_BF16 "BF16")
+   (UNSPEC_VFWMMACC_F32 "FP32")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3 "OFP8") (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2 "OFP8")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "OFP8") (UNSPEC_VFWMMACC_OFP8_FP16_E5M2 "OFP8")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3 "OFP8") (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "OFP8")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "OFP8") (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "OFP8")
+   (UNSPEC_VFQWMMACC_F16 "FP16") (UNSPEC_VFQWMMACC_BF16 "BF16")
+   (UNSPEC_VFQWMMACC_F8E4M3 "OFP8") (UNSPEC_VFQWMMACC_F8E5M2 "OFP8")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "OFP8") (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "OFP8")
+   (UNSPEC_VF8WMMACC_F8E4M3 "OFP8") (UNSPEC_VF8WMMACC_F8E5M2 "OFP8")
+   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "OFP8") (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "OFP8")
+   (UNSPEC_VFWMMACC_F16_BS32 "FP16") (UNSPEC_VFWMMACC_F16_BS16 "FP16")
+   (UNSPEC_VFQWMMACC_F8E4M3_BS32 "MXFP8") (UNSPEC_VFQWMMACC_F8E4M3_BS16 "MXFP8")
+   (UNSPEC_VF8WMMACC_F8E4M3_BS32 "MXFP8") (UNSPEC_VF8WMMACC_F8E4M3_BS16 "MXFP8")
+   (UNSPEC_VFWIMMACC_I8_BS32 "MXINT8") (UNSPEC_VFWIMMACC_I8_BS16 "MXINT8")
+   (UNSPEC_VFQWIMMACC_I8_BS32 "MXINT8") (UNSPEC_VFQWIMMACC_I8_BS16 "MXINT8")
+   (UNSPEC_VF8WIMMACC_I8_BS32 "MXINT8") (UNSPEC_VF8WIMMACC_I8_BS16 "MXINT8")])
 
 ;; The pattern name and the instruction of each multiply-accumulate.
 (define_int_attr ime_mmacc
@@ -900,7 +925,7 @@
 	    IME_INT_MMACC)
 	  (match_dup 1)))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM && GET_MODE_UNIT_BITSIZE (<MODE>mode) >= 8 * <ime_int_w>"
+  "riscv_zvvm_int_mm_p (<MODE>mode, <ime_int_w>)"
   "<ime_mmacc_insn>.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
@@ -1023,7 +1048,7 @@
 	    IME_VFMMACC)
 	  (match_dup 1)))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
+  "riscv_zvvm_fp_mm_p (-1, <MODE>mode, 0)"
   "vfmmacc.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
@@ -1050,7 +1075,8 @@
 	    IME_FP_MMACC)
 	  (match_dup 1)))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM && GET_MODE_INNER (<MODE>mode) == <ime_fp_acc>mode"
+  "GET_MODE_INNER (<MODE>mode) == <ime_fp_acc>mode
+   && riscv_zvvm_fp_mm_p (ZVVM_FMT_<ime_fp_in>, <MODE>mode, 0)"
   "<ime_mmacc_insn>.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
@@ -1078,7 +1104,7 @@
 	    UNSPEC_VF8WMMACC_F4E2M1)
 	  (match_dup 1)))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
+  "riscv_zvvm_fp_mm_p (ZVVM_FMT_OFP4, <MODE>mode, 0)"
   "vf8wmmacc.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
@@ -1115,11 +1141,12 @@
 	  (match_dup 1)))
    (use (reg:RVVM1HI V0_REGNUM))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM && GET_MODE_INNER (<MODE>mode) == <ime_fp_acc>mode"
+  "GET_MODE_INNER (<MODE>mode) == <ime_fp_acc>mode
+   && riscv_zvvm_fp_mm_p (ZVVM_FMT_<ime_fp_in>, <MODE>mode, <ime_scaled_bs>)"
   "<ime_mmacc_insn>.vv\t%0,%2,%3,v0.t"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_bs" "<ime_scaled_bs>")
+   (set_attr "ime_bs" "bs<ime_scaled_bs>")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
@@ -1153,7 +1180,7 @@
 	(unspec:<VM16_HALF>
 	  [(match_operand:VM16 1 "register_operand" "vr")]
 	  UNSPEC_VUNPAIRLO))]
-  "TARGET_ZVVMM"
+  "TARGET_ZVVM_MM"
   "#"
   "&& reload_completed"
   [(const_int 0)]
@@ -1182,7 +1209,7 @@
 	(unspec:<VM16_HALF>
 	  [(match_operand:VM16 1 "register_operand" "vr")]
 	  UNSPEC_VUNPAIRHI))]
-  "TARGET_ZVVMM"
+  "TARGET_ZVVM_MM"
   "#"
   "&& reload_completed"
   [(const_int 0)]
@@ -1211,7 +1238,7 @@
 	   (match_operand:<VM16_HALF> 2 "register_operand" "vr")]
 	  UNSPEC_VPAIR))
    (clobber (match_scratch:<VM16_HALF> 3                "=&vr"))]
-  "TARGET_ZVVMM"
+  "TARGET_ZVVM_MM"
   "#"
   "&& reload_completed"
   [(const_int 0)]

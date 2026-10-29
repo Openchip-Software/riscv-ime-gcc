@@ -2285,6 +2285,62 @@ riscv_vla_mode_p (machine_mode mode)
   return false;
 }
 
+/* Return true if the Zvvm multiply-accumulate with inputs of format A
+   and an accumulator of format C, microscaled with block size BS if BS
+   is nonzero, is enabled.  */
+
+static bool
+riscv_zvvm_mm_p (riscv_zvvm_format a, riscv_zvvm_format c, int bs)
+{
+#define ZVV_IMM(NAME, UPPER, A, C, ZVE)					\
+  if (!bs && a == ZVVM_FMT_##A && c == ZVVM_FMT_##C)			\
+    return TARGET_##UPPER;
+#define ZVV_FMM ZVV_IMM
+#define ZVV_XMM(NAME, UPPER, A, C, BS, DEP)				\
+  if (bs == BS && a == ZVVM_FMT_##A && c == ZVVM_FMT_##C)		\
+    return TARGET_##UPPER;
+#include "riscv-ext-zvv.def"
+  /* The microscaled FP16-input multiply-accumulates have no extension
+     of their own; they follow the unscaled one.  */
+  return bs && riscv_zvvm_mm_p (a, c, 0);
+}
+
+/* Return true if the Zvvm integer multiply-accumulate with an
+   accumulator of mode MODE and widening factor W is enabled.  */
+
+bool
+riscv_zvvm_int_mm_p (machine_mode mode, int w)
+{
+  int bits = GET_MODE_UNIT_BITSIZE (mode);
+  if (bits < 8 * w)
+    return false;
+  return riscv_zvvm_mm_p ((riscv_zvvm_format) (ZVVM_FMT_Int4
+					       + exact_log2 (bits / w / 4)),
+			  (riscv_zvvm_format) (ZVVM_FMT_Int4
+					       + exact_log2 (bits / 4)), 0);
+}
+
+/* Return true if the Zvvm FP multiply-accumulate with inputs of format
+   A, or of the accumulator's format if A is negative, and an accumulator
+   of mode MODE, microscaled with block size BS if BS is nonzero, is
+   enabled.  */
+
+bool
+riscv_zvvm_fp_mm_p (int a, machine_mode mode, int bs)
+{
+  riscv_zvvm_format c;
+  switch (GET_MODE_INNER (mode))
+    {
+    case E_QImode: c = ZVVM_FMT_OFP8; break;
+    case E_HFmode: c = ZVVM_FMT_FP16; break;
+    case E_BFmode: c = ZVVM_FMT_BF16; break;
+    case E_SFmode: c = ZVVM_FMT_FP32; break;
+    case E_DFmode: c = ZVVM_FMT_FP64; break;
+    default: return false;
+    }
+  return riscv_zvvm_mm_p (a < 0 ? c : (riscv_zvvm_format) a, c, bs);
+}
+
 /* Return true if mode is the RVV enabled tuple mode.  */
 
 bool
@@ -12510,14 +12566,14 @@ riscv_override_options_internal (struct gcc_options *opts)
 
      We can only allow TARGET_MIN_VLEN * MAX_LMUL < 65535.  For the
      base RVV extensions MAX_LMUL = 8, so the historical bound is
-     TARGET_MIN_VLEN <= 4096.  The IME `Zvvmm' extension introduces
-     LMUL = 16 modes for the `m16' accumulator, which tightens the
-     bound to TARGET_MIN_VLEN <= 2048 (any larger and the product
+     TARGET_MIN_VLEN <= 4096.  The IME multiply-accumulate extensions
+     introduce LMUL = 16 modes for the `m16' accumulator, which tighten
+     the bound to TARGET_MIN_VLEN <= 2048 (any larger and the product
      overflows the `poly_uint16' storage for `mode_precision' /
      `mode_size', producing a stored size of 0 and triggering wrong
      codegen in IRA + LRA).  Reject the over-the-line cases here.  */
-  if (TARGET_ZVVMM_OPTS_P (opts) && TARGET_MIN_VLEN_OPTS (opts) > 2048)
-    sorry ("IME %<Zvvmm%> with LMUL=16 requires "
+  if (TARGET_ZVVM_MM_OPTS_P (opts) && TARGET_MIN_VLEN_OPTS (opts) > 2048)
+    sorry ("IME multiply-accumulate with LMUL=16 requires "
 	   "%<TARGET_MIN_VLEN <= 2048%>; raise this bound only after the "
 	   "%<poly_uint16%> storage for mode tables is widened "
 	   "(see <https://gcc.gnu.org/PR/...>)");
