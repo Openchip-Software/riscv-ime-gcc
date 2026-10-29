@@ -1330,40 +1330,16 @@ classify_lambda_effect (rtx_insn *rinsn)
   return lambda_state ();
 }
 
-/* Walk backwards from CONSUMER inside its basic block looking for a
-   preceding lambda DEF that statically matches DEMAND_LAMBDA_LOG2.
-   Returns true if such a DEF is found with no intervening kill of
-   the tracked lambda value; the caller can then skip emitting a
-   fresh `vsetvl_ime' for the consumer.
-
-   This is intentionally an intra-EBB scan: cross-block reach analysis
-   is the job of the LCM data flow already running, and is wired into
-   the lambda lattice in a later commit of this series.  Here we want
-   the simplest correct optimisation that covers the common
-   "user vsetlambda then mmacc" idiom: the install pattern is in the
-   same block as the consumer, and the walk-back finds it before
-   anything kills lambda.
-
-   The walk is bounded by a small step limit to avoid pathological
-   long-block compile-time costs.  */
-
-static bool lambda_reach_at_block_entry_matches_p (basic_block,
-						   int demand_lambda_log2);
-
-/* Return the lambda_dataflow's entry state for block BB, or a
-   default-constructed NOT_TOUCHED if no dataflow has been computed.
-   Defined AFTER the lambda_dataflow class so the body can reach into
-   it.  */
-static lambda_state lambda_reach_at_block_entry (basic_block);
-
-/* Return the lambda_state that reaches CONSUMER -- the result of the
-   intra-block walk back from CONSUMER, falling through to the
-   cross-block dataflow's entry state on block-boundary crossing.
-   Used by the pass's lambda-USE-aware vsetvl emitter to decide
-   between the const-arg vtype-build path (DEFINED), the runtime
-   vtype-preserve path (DEFINED_RUNTIME), and a plain vsetvli
-   (NOT_TOUCHED / KILLED).  */
+/* Return the lambda_state reaching CONSUMER: the effect of the last
+   instruction before it in its block that touches vtype.lambda, or the
+   lambda dataflow's entry state for the block if there is none.  The
+   walk is bounded; if it gives up inside the block, the state is
+   KILLED.  */
 static lambda_state lambda_reach_before (rtx_insn *consumer);
+
+/* Return the dataflow's entry state for BB, or NOT_TOUCHED if no
+   dataflow has been computed.  */
+static lambda_state lambda_reach_at_block_entry (basic_block);
 
 /* Return true if RINSN is a USE of vtype.lambda -- i.e. an IME tile
    load/store or multiply-accumulate.  Such an insn must not have its
@@ -1371,61 +1347,19 @@ static lambda_state lambda_reach_before (rtx_insn *consumer);
    the most recent DEF and itself.  */
 static bool insn_uses_lambda_p (rtx_insn *rinsn);
 
+/* Return true if the static lambda DEMAND_LAMBDA_LOG2 of CONSUMER is
+   already established when it executes, so that the IME vsetvl before
+   it can be omitted.  */
+
 static bool
 lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
 {
-  if (!riscv_ime_elide_redundant_vsetvl_lambda)
+  if (!riscv_ime_elide_redundant_vsetvl_lambda || demand_lambda_log2 < 0)
     return false;
-  if (demand_lambda_log2 < 0)
-    return false;  /* Runtime-derived demand: cannot elide statically.  */
-
-  const int max_walk = 64;
-  basic_block bb = BLOCK_FOR_INSN (consumer);
-  if (!bb)
-    return false;
-
-  int steps = 0;
-  for (rtx_insn *p = PREV_INSN (consumer);
-       p && steps < max_walk;
-       p = PREV_INSN (p), ++steps)
-    {
-      if (BLOCK_FOR_INSN (p) != bb)
-	{
-	  /* Crossed a block boundary.  Fall through to cross-block
-	     dataflow if available (commit 4).  */
-	  break;
-	}
-      if (!NONDEBUG_INSN_P (p))
-	continue;
-      lambda_state s = classify_lambda_effect (p);
-      switch (s.kind)
-	{
-	case lambda_state_kind::DEFINED:
-	  /* Found a static DEF.  Elide iff it matches the demand.  */
-	  return s.known_log2 == demand_lambda_log2;
-	case lambda_state_kind::DEFINED_RUNTIME:
-	  /* A runtime DEF establishes some unknown lambda; we cannot
-	     prove it matches a statically demanded value, so we cannot
-	     elide.  */
-	  return false;
-	case lambda_state_kind::KILLED:
-	  return false;
-	case lambda_state_kind::USE_ONLY:
-	case lambda_state_kind::NOT_TOUCHED:
-	  continue;
-	}
-    }
-  /* Intra-block walk exhausted without resolution.  Consult the
-     cross-block dataflow's entry state for this block: if it is a
-     matching DEFINED(N) on every predecessor path, the lambda is
-     already established at block entry.  */
-  return lambda_reach_at_block_entry_matches_p (bb, demand_lambda_log2);
+  lambda_state s = lambda_reach_before (consumer);
+  return (s.kind == lambda_state_kind::DEFINED
+	  && s.known_log2 == demand_lambda_log2);
 }
-
-/* Return the lambda_state reaching CONSUMER.  Intra-block walk first
-   (stopping at the first DEFINED, DEFINED_RUNTIME or KILLED), then
-   the cross-block dataflow's entry state if the walk crosses a
-   block boundary without resolution.  */
 
 static lambda_state
 lambda_reach_before (rtx_insn *consumer)
@@ -1437,37 +1371,22 @@ lambda_reach_before (rtx_insn *consumer)
 
   int steps = 0;
   for (rtx_insn *p = PREV_INSN (consumer);
-       p && steps < max_walk;
-       p = PREV_INSN (p), ++steps)
+       p && BLOCK_FOR_INSN (p) == bb;
+       p = PREV_INSN (p))
     {
-      if (BLOCK_FOR_INSN (p) != bb)
-	break;
       if (!NONDEBUG_INSN_P (p))
 	continue;
+      if (++steps > max_walk)
+	return lambda_state::make_killed ();
       lambda_state s = classify_lambda_effect (p);
-      switch (s.kind)
-	{
-	case lambda_state_kind::DEFINED:
-	case lambda_state_kind::DEFINED_RUNTIME:
-	case lambda_state_kind::KILLED:
-	  return s;
-	case lambda_state_kind::USE_ONLY:
-	case lambda_state_kind::NOT_TOUCHED:
-	  continue;
-	}
+      if (s.kind != lambda_state_kind::USE_ONLY
+	  && s.kind != lambda_state_kind::NOT_TOUCHED)
+	return s;
     }
-  /* Cross-block fall-through.  */
   return lambda_reach_at_block_entry (bb);
 }
-
 /* True for IME tile loads/stores and multiply-accumulates -- the
-   insns that consume vtype.lambda implicitly.  The conservative test
-   is `requires_ime_vtype == REQUIRES_IME_VTYPE_YES' (mmacc family);
-   tile ops have type `vlds'/'vsts' and read vtype.lambda dynamically.
-
-   `requires_ime_vtype' is the cleanest test where the attribute is
-   set; for tile ops that no longer carry it (per the architectural
-   change in commit e69d583b9aa0), fall back on the type attribute.  */
+   insns that consume vtype.lambda implicitly.  */
 
 static bool
 insn_uses_lambda_p (rtx_insn *rinsn)
@@ -1656,26 +1575,6 @@ lambda_dataflow::run ()
    pass end.  */
 static lambda_dataflow *g_lambda_df;
 
-
-/* Cross-block extension of `lambda_already_established_p': if the
-   intra-block walk reaches block start without resolving, consult the
-   dataflow's entry state for the block.  Returns true iff the
-   computed entry state is DEFINED(N) with N matching the demand.  */
-
-static bool
-lambda_reach_at_block_entry_matches_p (basic_block bb,
-				       int demand_lambda_log2)
-{
-  if (!g_lambda_df)
-    return false;
-  lambda_state s = g_lambda_df->entry_state_of (bb);
-  return s.kind == lambda_state_kind::DEFINED
-	 && s.known_log2 == demand_lambda_log2;
-}
-
-/* Return the dataflow's entry state for BB, or NOT_TOUCHED if no
-   dataflow has been computed.  Used by `lambda_reach_before' when
-   the intra-block walk crosses the block boundary.  */
 static lambda_state
 lambda_reach_at_block_entry (basic_block bb)
 {
@@ -6007,9 +5906,7 @@ pass_vsetvl::lazy_vsetvl ()
    placeholder's rewrite) or nullptr if no such consumer exists.
    Other `vsetvl_no_side_effects' placeholders along the way are
    skipped: each gets rewritten independently when this function
-   visits it, so they do not cut the search short.
-
-   Bounded by MAX_WALK steps to defend against pathological blocks.  */
+   visits it, so they do not cut the search short.  */
 
 static rtx_insn *
 find_lambda_use_consumer (rtx_insn *placeholder)
@@ -6018,14 +5915,10 @@ find_lambda_use_consumer (rtx_insn *placeholder)
   if (!bb)
     return nullptr;
 
-  const int max_walk = 64;
-  int steps = 0;
   for (rtx_insn *p = NEXT_INSN (placeholder);
-       p && steps < max_walk;
-       p = NEXT_INSN (p), ++steps)
+       p && BLOCK_FOR_INSN (p) == bb;
+       p = NEXT_INSN (p))
     {
-      if (BLOCK_FOR_INSN (p) != bb)
-	return nullptr;
       if (!NONDEBUG_INSN_P (p))
 	continue;
 
