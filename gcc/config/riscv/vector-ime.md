@@ -957,29 +957,30 @@
 				(UNSPEC_VMTS "TARGET_ZVVMTLS")
 				(UNSPEC_VMTTS "TARGET_ZVVMTTLS")])
 
+;; A masked tile load may not write v0, so its destination is "vd".
 ;; Operand 3 is a memory_operand representing the base "(rs1)" so the
 ;; RTL aliasing framework knows this is a memory read.  Operand 4 is
 ;; the leading dimension in elements for rs2; a zero, which selects the
 ;; natural dimension, is emitted as x0.
 (define_insn "@pred_ime_<ime_tile><mode>"
-  [(set (match_operand:VI_LMUL1 0 "register_operand"           "=vr")
+  [(set (match_operand:VI_LMUL1 0 "register_operand"           "=vd,  vr")
 	(if_then_else:VI_LMUL1
 	  (unspec:<VM>
-	    [(match_operand:<VM> 1 "vector_mask_operand"     "vmWc1")
-	     (match_operand 5 "vector_length_operand"        "   rK")
-	     (match_operand 6 "const_int_operand"            "    i")
-	     (match_operand 7 "const_int_operand"            "    i")
-	     (match_operand 8 "const_int_operand"            "    i")
+	    [(match_operand:<VM> 1 "vector_mask_operand"     " vm, Wc1")
+	     (match_operand 5 "vector_length_operand"        " rK,  rK")
+	     (match_operand 6 "const_int_operand"            "  i,   i")
+	     (match_operand 7 "const_int_operand"            "  i,   i")
+	     (match_operand 8 "const_int_operand"            "  i,   i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VI_LMUL1
-	    [(match_operand:VI_LMUL1 3 "memory_operand"      "    m")
+	    [(match_operand:VI_LMUL1 3 "memory_operand"      "  m,   m")
 	     (mem:BLK (scratch))
-	     (match_operand 4 "pmode_reg_or_0_operand"       "   rJ")
-	     (match_operand 9 "const_int_operand"            "    i")
-	     (match_operand 10 "const_int_operand"           "    i")]
+	     (match_operand 4 "pmode_reg_or_0_operand"       " rJ,  rJ")
+	     (match_operand 9 "const_int_operand"            "  i,   i")
+	     (match_operand 10 "const_int_operand"           "  i,   i")]
 	    IME_TILE_LOAD)
-	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   "   vu")))]
+	  (match_operand:VI_LMUL1 2 "vector_merge_operand"   " vu,  vu")))]
   "<ime_tile_cond>
    && GET_MODE_UNIT_BITSIZE (<MODE>mode) <= (INTVAL (operands[10])
 					      ? INTVAL (operands[10]) : 64)"
