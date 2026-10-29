@@ -193,6 +193,7 @@ enum riscv_zvvm_format
   ZVVM_FMT_FP32, ZVVM_FMT_FP64, ZVVM_FMT_BF16, ZVVM_FMT_MXINT4,
   ZVVM_FMT_MXINT8, ZVVM_FMT_MXFP4, ZVVM_FMT_MXFP8
 };
+extern bool riscv_zvvm_acc_p (riscv_zvvm_format);
 extern bool riscv_zvvm_int_mm_p (machine_mode, int);
 extern bool riscv_zvvm_fp_mm_p (int, machine_mode, int);
 extern bool riscv_tuple_mode_p (machine_mode);

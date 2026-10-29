@@ -75,8 +75,8 @@ build_one (function_builder &b, const function_group_info &group,
 
   /* Skip the function when any of its types are unresolved.  This happens
      for IME `m16' accumulator types when the active `-march' has no
-     Zvvm multiply-accumulate extension: `register_vector_type' leaves
-     their builtin entry NULL_TREE, and `build_function_type_array'
+     Zvvm extension with their accumulator format: `register_vector_type'
+     leaves their builtin entry NULL_TREE, and `build_function_type_array'
      would segfault on the null arg/return tree before
      `check_required_extensions' could gate the function out.  Used to
      be `TARGET_XTHEADVECTOR'-only.  */
@@ -270,8 +270,8 @@ build_th_loadstore (function_builder &b, const function_group_info &group,
 
   /* Skip the function when any of its types are unresolved.  This happens
      for IME `m16' accumulator types when the active `-march' has no
-     Zvvm multiply-accumulate extension: `register_vector_type' leaves
-     their builtin entry NULL_TREE, and `build_function_type_array'
+     Zvvm extension with their accumulator format: `register_vector_type'
+     leaves their builtin entry NULL_TREE, and `build_function_type_array'
      would segfault on the null arg/return tree before
      `check_required_extensions' could gate the function out.  Used to
      be `TARGET_XTHEADVECTOR'-only.  */

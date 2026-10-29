@@ -137,8 +137,7 @@ enum required_ext
   XANDESVSINTLOAD_EXT,	/* XANDESVSINTLOAD extension */
   XANDESVPACKFPH_EXT,	/* XANDESVPACKFPH extension */
   XANDESVDOT_EXT,	/* XANDESVDOT extension */
-  ZVVMM_EXT,		/* Zvvmm extension */
-  ZVVFMM_EXT,		/* Zvvfmm extension */
+  ZVVM_EXT,		/* Any Zvvm extension */
   ZVVMTLS_EXT,		/* Zvvmtls extension */
   ZVVMTTLS_EXT,		/* Zvvmttls extension */
   /* The individual Zvvm multiply-accumulate extensions.  */
@@ -237,10 +236,8 @@ static inline const char * required_ext_to_isa_name (enum required_ext required)
       return "xandesvpackfph";
     case XANDESVDOT_EXT:
       return "xandesvdot";
-    case ZVVMM_EXT:
-      return "zvvmm";
-    case ZVVFMM_EXT:
-      return "zvvfmm";
+    case ZVVM_EXT:
+      return "zvvmm, zvvfmm, zvvmtls or zvvmttls";
     case ZVVMTLS_EXT:
       return "zvvmtls";
     case ZVVMTTLS_EXT:
@@ -304,10 +301,8 @@ static inline bool required_extensions_specified (enum required_ext required)
       return TARGET_XANDESVPACKFPH;
     case XANDESVDOT_EXT:
       return TARGET_XANDESVDOT;
-    case ZVVMM_EXT:
-      return TARGET_ZVVMM;
-    case ZVVFMM_EXT:
-      return TARGET_ZVVFMM;
+    case ZVVM_EXT:
+      return TARGET_ZVVM;
     case ZVVMTLS_EXT:
       return TARGET_ZVVMTLS;
     case ZVVMTTLS_EXT:

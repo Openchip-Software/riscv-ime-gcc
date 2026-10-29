@@ -4293,7 +4293,7 @@ get_builtin_partition (required_ext ext, const function_instance &instance)
       return RVV_PARTITION_XANDESVDOT;
     default:
       /* The Zvvm extensions come last.  */
-      gcc_assert (ext >= ZVVMM_EXT);
+      gcc_assert (ext >= ZVVM_EXT);
       return RVV_PARTITION_ZVVM;
     }
 }

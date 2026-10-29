@@ -137,20 +137,33 @@ ENTRY (RVVM4DF, TARGET_VECTOR_ELEN_FP_64, LMUL_4, 16)
 ENTRY (RVVM2DF, TARGET_VECTOR_ELEN_FP_64, LMUL_2, 32)
 ENTRY (RVVM1DF, TARGET_VECTOR_ELEN_FP_64, LMUL_1, 64)
 
-/* IME `m16' accumulator modes, available with any Zvvm multiply-accumulate
-   extension.  ratio is 0 (sentinel) because m16 modes never participate
-   in standard SEW/LMUL ratio reasoning -- they are only consumed by IME
-   mmacc patterns and pair/unpair intrinsics, all of which use the input
-   LMUL (m1..m8) for vtype.LMUL.  Any code that queries get_ratio() for
-   an RVVM16* mode is a bug.  */
-ENTRY (RVVM16QI, TARGET_ZVVM_MM, LMUL_16, 0)
-ENTRY (RVVM16HI, TARGET_ZVVM_MM, LMUL_16, 0)
-ENTRY (RVVM16BF, TARGET_ZVVM_MM && TARGET_VECTOR_ELEN_BF_16, LMUL_16, 0)
-ENTRY (RVVM16HF, TARGET_ZVVM_MM && TARGET_VECTOR_ELEN_FP_16, LMUL_16, 0)
-ENTRY (RVVM16SI, TARGET_ZVVM_MM, LMUL_16, 0)
-ENTRY (RVVM16SF, TARGET_ZVVM_MM && TARGET_VECTOR_ELEN_FP_32, LMUL_16, 0)
-ENTRY (RVVM16DI, TARGET_ZVVM_MM && TARGET_VECTOR_ELEN_64, LMUL_16, 0)
-ENTRY (RVVM16DF, TARGET_ZVVM_MM && TARGET_VECTOR_ELEN_FP_64, LMUL_16, 0)
+/* IME `m16' accumulator modes, available when a Zvvm multiply-accumulate
+   extension with that accumulator format is.  ratio is 0 (sentinel)
+   because m16 modes never participate in standard SEW/LMUL ratio
+   reasoning -- they are only consumed by IME mmacc patterns and
+   pair/unpair intrinsics, all of which use the input LMUL (m1..m8) for
+   vtype.LMUL.  Any code that queries get_ratio() for an RVVM16* mode is
+   a bug.  */
+ENTRY (RVVM16QI,
+       riscv_zvvm_acc_p (ZVVM_FMT_Int8) || riscv_zvvm_acc_p (ZVVM_FMT_OFP8),
+       LMUL_16, 0)
+ENTRY (RVVM16HI, riscv_zvvm_acc_p (ZVVM_FMT_Int16), LMUL_16, 0)
+ENTRY (RVVM16BF,
+       riscv_zvvm_acc_p (ZVVM_FMT_BF16) && TARGET_VECTOR_ELEN_BF_16,
+       LMUL_16, 0)
+ENTRY (RVVM16HF,
+       riscv_zvvm_acc_p (ZVVM_FMT_FP16) && TARGET_VECTOR_ELEN_FP_16,
+       LMUL_16, 0)
+ENTRY (RVVM16SI, riscv_zvvm_acc_p (ZVVM_FMT_Int32), LMUL_16, 0)
+ENTRY (RVVM16SF,
+       riscv_zvvm_acc_p (ZVVM_FMT_FP32) && TARGET_VECTOR_ELEN_FP_32,
+       LMUL_16, 0)
+ENTRY (RVVM16DI,
+       riscv_zvvm_acc_p (ZVVM_FMT_Int64) && TARGET_VECTOR_ELEN_64,
+       LMUL_16, 0)
+ENTRY (RVVM16DF,
+       riscv_zvvm_acc_p (ZVVM_FMT_FP64) && TARGET_VECTOR_ELEN_FP_64,
+       LMUL_16, 0)
 
 /* Tuple modes for segment loads/stores according to NF.
 

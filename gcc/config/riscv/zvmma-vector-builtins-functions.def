@@ -21,16 +21,17 @@ along with GCC; see the file COPYING3. If not see
 #define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)
 #endif
 
-/* The shapes gate each multiply-accumulate on the individual extension
-   of its input and accumulator formats, from riscv-ext-zvv.def;
-   REQUIRED_EXTENSIONS applies to the other functions.  */
+/* The multiply-accumulates and the pair and unpair intrinsics require
+   any Zvvm extension; the shapes gate each multiply-accumulate on the
+   individual extension of its input and accumulator formats, from
+   riscv-ext-zvv.def.  */
+#define REQUIRED_EXTENSIONS ZVVM_EXT
 
-/* Zvvmm - Vector integer matrix multiply-accumulate.  Each entry names
-   the instruction's default form (signed inputs at LMUL=1); the
-   ime_int_mmacc shape registers its unsigned, _su and _us forms, the
-   _lm{2,4,8} forms and the m16-accumulator forms.  The accumulator type
-   suffix encodes SEW and MUL_C, e.g. __riscv_vmmacc_vv_i32m2.  */
-#define REQUIRED_EXTENSIONS ZVVMM_EXT
+/* Integer multiply-accumulates.  Each entry names the instruction's
+   default form (signed inputs at LMUL=1); the ime_int_mmacc shape
+   registers its unsigned, _su and _us forms, the _lm{2,4,8} forms and
+   the m16-accumulator forms.  The accumulator type suffix encodes SEW
+   and MUL_C, e.g. __riscv_vmmacc_vv_i32m2.  */
 DEF_RVV_FUNCTION (vmmacc, ime_int_mmacc, none_tu_preds, i_ime_vss_ops)
 /* IME `pair' / `unpair' primitives.  Iterate over the m16 type list
    to produce one variant per (signedness, element size) pair:
@@ -54,14 +55,12 @@ DEF_RVV_FUNCTION (vwmmacc, ime_int_mmacc, none_tu_preds, i_ime_wvss_ops)
 DEF_RVV_FUNCTION (vqwmmacc, ime_int_mmacc, none_tu_preds, i_ime_qwvss_ops)
 /* v8wmmacc.vv (W=8): accumulator SEW (DI only), inputs SEW/8.  */
 DEF_RVV_FUNCTION (v8wmmacc, ime_int_mmacc, none_tu_preds, i_ime_8wvss_ops)
-#undef REQUIRED_EXTENSIONS
 
-/* Zvvfmm - FP matrix multiply-accumulate.  Each ime_fp_mmacc entry is
-   one combination of accumulator and input formats, given in its
-   default form (LMUL=1 inputs, m1..m8 accumulator); the shape registers
-   its _lm{2,4,8} and m16-accumulator forms.  Except for the same-format
-   FP16, BF16, FP32 and FP64 vfmmacc, they come from zvvm-mmacc.def.  */
-#define REQUIRED_EXTENSIONS ZVVFMM_EXT
+/* FP multiply-accumulates.  Each ime_fp_mmacc entry is one combination
+   of accumulator and input formats, given in its default form (LMUL=1
+   inputs, m1..m8 accumulator); the shape registers its _lm{2,4,8} and
+   m16-accumulator forms.  Except for the same-format FP16, BF16, FP32
+   and FP64 vfmmacc, they come from zvvm-mmacc.def.  */
 DEF_RVV_FUNCTION (vfmmacc,     ime_fp_mmacc, none_tu_preds, f_ime_vss_ops)
 #define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   DEF_RVV_FUNCTION (NAME, ime_fp_mmacc, none_tu_preds, NAME##_ime_ops)
@@ -94,11 +93,9 @@ DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e4m3_ime_vunpair
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e5m2_ime_vunpair_ops)
 /* vf8wmmacc.vv (W=8) */
 DEF_RVV_FUNCTION (vf8wmmacc_f4e2m1, ime_mmacc, none_tu_preds, f32_ime_8wvss_f4e2m1_ops)
-#undef REQUIRED_EXTENSIONS
 
 /* Microscaled multiply-accumulates, gated on the Zvvx* (BS=32) or
    Zvvxn* (BS=16) extension.  */
-#define REQUIRED_EXTENSIONS ZVVFMM_EXT
 /* vfwmmacc_scaled (W=2): FP16 -> FP32, with block scales.  */
 DEF_RVV_FUNCTION (vfwmmacc_scaled_f16_bs32, ime_mmacc, none_tu_preds,
 		  f32_ime_scaled_wvss_f16_ops)
@@ -153,8 +150,7 @@ DEF_RVV_FUNCTION (vmtts, ime_tile, none_m_preds,
 		  iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops)
 #undef REQUIRED_EXTENSIONS
 
-/* IME geometry query builtins.  These are gated on the Zvmma macro
-   extension (any IME subextension implies Zvmma).
+/* IME geometry query builtins, available with any Zvvm extension.
    __riscv_ime_vlen()         returns VLEN in bits (compile-time or
                               runtime).
    __riscv_ime_lambda()       returns the maximum IME lambda value for
@@ -164,7 +160,7 @@ DEF_RVV_FUNCTION (vmtts, ime_tile, none_m_preds,
                               other vtype fields and vl) and returns
                               the WARL-clamped result; N=0 is a
                               read-only query.  */
-#define REQUIRED_EXTENSIONS ZVVMM_EXT
+#define REQUIRED_EXTENSIONS ZVVM_EXT
 DEF_RVV_FUNCTION (ime_vlen,    vlenb,      none_preds, ul_none_void_ops)
 DEF_RVV_FUNCTION (ime_lambda,  vlenb,      none_preds, ul_none_void_ops)
 DEF_RVV_FUNCTION (vsetlambda,  vsetlambda, none_preds, ul_none_size_ops)

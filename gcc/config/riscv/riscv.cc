@@ -2285,6 +2285,21 @@ riscv_vla_mode_p (machine_mode mode)
   return false;
 }
 
+/* Return true if an enabled Zvvm multiply-accumulate extension has
+   accumulator format C.  */
+
+bool
+riscv_zvvm_acc_p (riscv_zvvm_format c)
+{
+#define ZVV_IMM(NAME, UPPER, A, C, ...)					\
+  if (TARGET_##UPPER && c == ZVVM_FMT_##C)				\
+    return true;
+#define ZVV_FMM ZVV_IMM
+#define ZVV_XMM ZVV_IMM
+#include "riscv-ext-zvv.def"
+  return false;
+}
+
 /* Return true if the Zvvm multiply-accumulate with inputs of format A
    and an accumulator of format C, microscaled with block size BS if BS
    is nonzero, is enabled.  */
