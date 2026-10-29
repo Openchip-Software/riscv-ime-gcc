@@ -1068,47 +1068,26 @@ compute_ime_lambda_log2 (int sew_bits, int mul_c)
   return lambda_log2;
 }
 
-/* Tracked lambda-DEF state attached to each `vsetvl_info'.
+/* The effect of an instruction on vtype.lambda, and the lambda state
+   reaching an instruction:
 
-   Plumbing layer for the lambda-aware optimisations that follow:
-   commit 3 of this series uses DEFINED to elide redundant mmacc
-   auto-vsetvl_ime emissions; commit 4 uses it for cross-block
-   vsetlambda DCE and preservation.  In this commit the lattice is
-   populated but no optimisation reads it -- behaviour is unchanged.
+     NOT_TOUCHED      The instruction neither reads nor writes lambda.
+     USE_ONLY         It reads lambda without writing it, e.g. a read of
+		      vtype.
+     DEFINED(N)       It writes the known lambda 1 << KNOWN_LOG2, with
+		      KNOWN_LOG2 in [0, 6]: a constant `__riscv_vsetlambda'
+		      or a static IME vsetvl.
+     DEFINED_RUNTIME  It establishes a lambda unknown at compile time that
+		      later instructions must keep: a `__riscv_vsetlambda'
+		      with a run-time argument, or a vsetvl that keeps the
+		      current lambda (`@riscv_vsetvl_preserve_lambda<mode>').
+     KILLED           It may change lambda to an unknown value: any other
+		      vtype write, including a vsetvli that may re-clamp
+		      lambda, a call or an asm.
 
-   States:
-
-     NOT_TOUCHED  The insn does not read or write vtype.lambda.
-		  Identity element under merge.
-
-     USE_ONLY     The insn reads lambda but does not write it (e.g.
-		  the read-only `__riscv_vsetlambda(0)' path or an
-		  explicit csrr vtype).  Does not change the
-		  downstream tracked value.
-
-     DEFINED(N)   The insn writes lambda to a statically known value.
-		  KNOWN_LOG2 is in [0, 6] (so lambda = 1 << KNOWN_LOG2,
-		  i.e. one of {1, 2, 4, 8, 16, 32, 64}); KNOWN_LAMBDA
-		  is the same value pre-decoded for convenience.
-
-     KILLED       The insn touches lambda but the post-state is not
-		  statically computable.  Catches:
-		    - register-form `vsetvl' with opaque rs2;
-		    - vsetvli/vsetivli that change SEW or LMUL (WARL
-		      re-clamp), at first cut treated unconditionally
-		      as KILLED;
-		    - calls and asm with vtype clobber;
-		    - runtime-arg `__riscv_vsetlambda';
-		    - the auto-emitted `vsetvl_ime' helper (which DOES
-		      know its target value, but until commit 5 wires
-		      the lattice into the IME pipeline we treat it as
-		      KILLED to be safe).
-
-   Merge for CFG joins (commit 4):
-     same DEFINED(N)  -> DEFINED(N)
-     anything else    -> KILLED
-     identity         -> NOT_TOUCHED
-   USE_ONLY is preserved iff both inputs are USE_ONLY or NOT_TOUCHED.  */
+   At a CFG join, NOT_TOUCHED is the identity and KILLED absorbs;
+   USE_ONLY, DEFINED(N) and DEFINED_RUNTIME survive only if both sides
+   agree, and everything else becomes KILLED.  */
 
 enum class lambda_state_kind : uint8_t
 {
@@ -1292,10 +1271,7 @@ classify_lambda_effect (rtx_insn *rinsn)
   /* Anything else that writes VTYPE_REGNUM is a may-DEF of lambda.
      This includes plain vsetvli/vsetivli (WARL re-clamp on SEW/LMUL
      change), register-form vsetvl, the runtime-VLEN IME helper
-     `@vsetvl_ime_reg<mode>', and asm clobbers.
-     A more precise classification (e.g. recognise that a vsetvli with
-     unchanged SEW/LMUL is not a kill) requires predecessor knowledge
-     and is left for commit 4.  */
+     `@vsetvl_ime_reg<mode>', and asm clobbers.  */
   df_ref def;
   for (def = DF_INSN_DEFS (rinsn); def; def = DF_REF_NEXT_LOC (def))
     if (DF_REF_REGNO (def) == VTYPE_REGNUM)
@@ -1381,9 +1357,7 @@ insn_uses_lambda_p (rtx_insn *rinsn)
 /* Forward CFG dataflow for the lambda lattice.
 
    Computes a per-block entry `lambda_state' via a worklist iteration
-   to fixpoint over the four-state lattice
-   (NOT_TOUCHED / USE_ONLY / DEFINED(N) / KILLED) merged at CFG joins
-   by `lambda_state::merge'.  The transfer function within a block is
+   to fixpoint, merged at CFG joins by `lambda_state::merge'.  The transfer function within a block is
    `classify_lambda_effect' applied to each insn in order.
 
    Two consumers:
@@ -1397,10 +1371,8 @@ insn_uses_lambda_p (rtx_insn *rinsn)
 	 redundant; collected into M_DEAD_INSTALLS for removal by the
 	 pass.
 
-   The lattice height is finite (4 kinds * 8 possible log2 values for
-   DEFINED ≈ 11 distinct points) so the worklist iteration is bounded.
-   In practice fixpoint is reached in 1-2 sweeps for typical control
-   flow.
+   The lattice is finite, so the iteration terminates; typical control
+   flow needs one or two sweeps.
 
    Gated by `-mtrack-user-lambda' (default on).  */
 
@@ -1736,10 +1708,7 @@ private:
   ime_vtype_req m_ime_req;
   ime_demand_type m_ime_demand;
 
-  /* Per-insn classification of vtype.lambda effect.  See the
-     `lambda_state' header comment near `classify_lambda_effect'.
-     Populated by `parse_insn'; consumed by lambda-aware optimisations
-     introduced in later commits of this series.  */
+  /* The effect of the instruction on vtype.lambda, set by `parse_insn'.  */
   lambda_state m_lambda;
 
 public:
@@ -2469,15 +2438,10 @@ compute_static_vtype_without_lambda (const vsetvl_info &info, int xlen)
 }
 
 /* Return a const_int rtx holding the full vtype value for an IME
-   instruction, or NULL_RTX if the value cannot be computed at compile
-   time (runtime lambda dispatch required -- NYI).
-
-   The vsetvl pass runs post-reload and cannot create fresh pseudos,
-   so the IME setup pattern (@vsetvl_ime<mode>) takes a const_int
-   vtype operand and synthesises the load in its own asm template.
-   This helper's job is to compute that constant.  Runtime lambda
-   support will be added once we have a post-reload-safe way to emit
-   the csrr/ctz sequence.  */
+   instruction with a static lambda, for the vtype operand of
+   `@vsetvl_ime<mode>', whose template loads it.  Return NULL_RTX after
+   reporting an error if the lambda is invalid or not allowed, and for a
+   runtime lambda, whose vtype the expander computes.  */
 
 static rtx
 emit_ime_vtype_build (const vsetvl_info &info)
@@ -5344,9 +5308,9 @@ find_lambda_use_consumer (rtx_insn *placeholder)
 			  static (SEW/LMUL/ta/ma) bits, then vsetvls.
 
    The placeholder's own (SEW, LMUL, ta, ma) is the intrinsic
-   expander's arbitrary `e8,mfN' choice (see the comment at
-   `expand_select_vl' in riscv-v.cc:4574 -- "since vsetvl only demand
-   ratio, we let VSETVL PASS to optimize it").  Using those bits here
+   expander's arbitrary `e8,mfN' choice (see `expand_select_vl', which
+   leaves the choice to this pass because the placeholder only demands
+   the ratio).  Using those bits here
    would emit a preserve_lambda with the wrong SEW reaching the
    downstream lambda-USE consumer -- which for IME tile load/store
    ops causes the hardware to compute the in-register stride against
@@ -5354,9 +5318,8 @@ find_lambda_use_consumer (rtx_insn *placeholder)
 
    So instead we derive (SEW, LMUL, ta, ma) from the downstream
    CONSUMER's mode and attributes -- that is the vtype the consumer
-   actually demands.  Combined with `parse_insn's decoding of
-   preserve_lambda's vtype operand (Commit 2 of this series), the
-   LCM then sees this rewritten preserve_lambda as an available
+   actually demands.  As `parse_insn' decodes preserve_lambda's vtype
+   operand, the LCM then sees this rewritten preserve_lambda as an available
    vtype source for the consumer and elides any redundant second
    lambda-preserving emission.
 
