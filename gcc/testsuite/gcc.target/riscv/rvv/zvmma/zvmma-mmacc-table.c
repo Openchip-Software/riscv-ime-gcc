@@ -5,6 +5,30 @@
 typedef __SIZE_TYPE__ size_t;
 #pragma riscv intrinsic "vector"
 
+vfloat16m1_t
+vfmmacc_fp16_f16_bf16 (vfloat16m1_t vd, vfloat16m1_t vs1, vbfloat16m1_t vs2, size_t vl)
+{
+  return __riscv_vfmmacc_vv_f16m1_f16m1_bf16m1 (vd, vs1, vs2, vl);
+}
+
+vfloat16m1_t
+vfmmacc_fp16_bf16_f16 (vfloat16m1_t vd, vbfloat16m1_t vs1, vfloat16m1_t vs2, size_t vl)
+{
+  return __riscv_vfmmacc_vv_f16m1_bf16m1_f16m1 (vd, vs1, vs2, vl);
+}
+
+vbfloat16m1_t
+vfmmacc_bf16_f16_bf16 (vbfloat16m1_t vd, vfloat16m1_t vs1, vbfloat16m1_t vs2, size_t vl)
+{
+  return __riscv_vfmmacc_vv_bf16m1_f16m1_bf16m1 (vd, vs1, vs2, vl);
+}
+
+vbfloat16m1_t
+vfmmacc_bf16_bf16_f16 (vbfloat16m1_t vd, vbfloat16m1_t vs1, vfloat16m1_t vs2, size_t vl)
+{
+  return __riscv_vfmmacc_vv_bf16m1_bf16m1_f16m1 (vd, vs1, vs2, vl);
+}
+
 vfloat8e4m3m1_t
 vfmmacc_f8e4m3_f8e4m3_f8e4m3 (vfloat8e4m3m1_t vd, vfloat8e4m3m1_t vs1, vfloat8e4m3m1_t vs2, size_t vl)
 {
@@ -75,6 +99,18 @@ vfloat32m1_t
 vfwmmacc_bf16 (vfloat32m1_t vd, vbfloat16m1_t vs1, vbfloat16m1_t vs2, size_t vl)
 {
   return __riscv_vfwmmacc_vv_f32m1_bf16m1 (vd, vs1, vs2, vl);
+}
+
+vfloat32m1_t
+vfwmmacc_f16_bf16 (vfloat32m1_t vd, vfloat16m1_t vs1, vbfloat16m1_t vs2, size_t vl)
+{
+  return __riscv_vfwmmacc_vv_f32m1_f16m1_bf16m1 (vd, vs1, vs2, vl);
+}
+
+vfloat32m1_t
+vfwmmacc_bf16_f16 (vfloat32m1_t vd, vbfloat16m1_t vs1, vfloat16m1_t vs2, size_t vl)
+{
+  return __riscv_vfwmmacc_vv_f32m1_bf16m1_f16m1 (vd, vs1, vs2, vl);
 }
 
 vfloat64m1_t
@@ -153,6 +189,18 @@ vfloat64m1_t
 vfqmmacc_bf16 (vfloat64m1_t vd, vbfloat16m1_t vs1, vbfloat16m1_t vs2, size_t vl)
 {
   return __riscv_vfqmmacc_vv_f64m1_bf16m1 (vd, vs1, vs2, vl);
+}
+
+vfloat64m1_t
+vfqmmacc_f16_bf16 (vfloat64m1_t vd, vfloat16m1_t vs1, vbfloat16m1_t vs2, size_t vl)
+{
+  return __riscv_vfqmmacc_vv_f64m1_f16m1_bf16m1 (vd, vs1, vs2, vl);
+}
+
+vfloat64m1_t
+vfqmmacc_bf16_f16 (vfloat64m1_t vd, vbfloat16m1_t vs1, vfloat16m1_t vs2, size_t vl)
+{
+  return __riscv_vfqmmacc_vv_f64m1_bf16m1_f16m1 (vd, vs1, vs2, vl);
 }
 
 vfloat32m1_t

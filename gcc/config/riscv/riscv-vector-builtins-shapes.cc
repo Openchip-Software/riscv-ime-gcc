@@ -1560,12 +1560,27 @@ ime_format (vector_type_index type, bool mx)
 }
 
 /* Return the Zvvm extension of the multiply-accumulate with inputs of
-   type A and an accumulator of type C, microscaled with block size BS
-   if BS is nonzero.  */
+   types A and B and an accumulator of type C, microscaled with block
+   size BS if BS is nonzero.  */
 static required_ext
-ime_mm_required_ext (vector_type_index a, vector_type_index c, int bs)
+ime_mm_required_ext (vector_type_index a, vector_type_index b,
+		     vector_type_index c, int bs)
 {
   riscv_zvvm_format fa = ime_format (a, bs), fc = ime_format (c, false);
+  /* Mixed FP16 and BF16 inputs require the extensions of both.  */
+  if (ime_format (b, bs) != fa)
+    switch (fc)
+      {
+      case ZVVM_FMT_FP16:
+      case ZVVM_FMT_BF16:
+	return ZVVFP16_BF16MM_EXT;
+      case ZVVM_FMT_FP32:
+	return ZVVFP16_BF16FP32MM_EXT;
+      case ZVVM_FMT_FP64:
+	return ZVVFP16_BF16FP64MM_EXT;
+      default:
+	gcc_unreachable ();
+      }
 #define ZVV_IMM(NAME, UPPER, A, C, ZVE)					\
   if (!bs && fa == ZVVM_FMT_##A && fc == ZVVM_FMT_##C)			\
     return UPPER##_EXT;
@@ -1622,6 +1637,8 @@ struct ime_mmacc_def : public build_base
 	  required_ext required
 	    = ime_mm_required_ext (ime_input_type (function_instance,
 						   ops.args[1]),
+				   ime_input_type (function_instance,
+						   ops.args[2]),
 				   ops.types[vec_type_idx].index,
 				   bs ? atoi (bs + 3) : 0);
 	  b.add_overloaded_function (function_instance, *group.shape,

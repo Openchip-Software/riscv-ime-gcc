@@ -2355,6 +2355,19 @@ riscv_zvvm_fp_mm_p (int a, machine_mode mode, int bs)
   return riscv_zvvm_mm_p (a < 0 ? c : (riscv_zvvm_format) a, c, bs);
 }
 
+/* Return true if the Zvvm FP multiply-accumulate with mixed FP16 and
+   BF16 inputs and an accumulator of mode MODE is enabled: the
+   extensions of both input formats, which have their own accumulator
+   formats without widening, are.  */
+
+bool
+riscv_zvvm_fp16_bf16_mm_p (machine_mode mode)
+{
+  bool w1 = GET_MODE_UNIT_BITSIZE (mode) == 16;
+  return (riscv_zvvm_fp_mm_p (ZVVM_FMT_FP16, w1 ? HFmode : mode, 0)
+	  && riscv_zvvm_fp_mm_p (ZVVM_FMT_BF16, w1 ? BFmode : mode, 0));
+}
+
 /* Return true if mode is the RVV enabled tuple mode.  */
 
 bool

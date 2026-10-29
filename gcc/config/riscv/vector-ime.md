@@ -44,6 +44,15 @@
 
   ;; Zvvfmm - FP matrix multiply-accumulate
   UNSPEC_VFMMACC			;; vfmmacc.vv (W=1, same-format FP)
+  ;; Mixed FP16 x BF16 inputs.  Naming: <acc>_<vs1>_<vs2>.
+  UNSPEC_VFMMACC_FP16_F16_BF16
+  UNSPEC_VFMMACC_FP16_BF16_F16
+  UNSPEC_VFMMACC_BF16_F16_BF16
+  UNSPEC_VFMMACC_BF16_BF16_F16
+  UNSPEC_VFWMMACC_F16_BF16		;; vfwmmacc.vv (W=2, FP16 x BF16 -> FP32)
+  UNSPEC_VFWMMACC_BF16_F16		;; vfwmmacc.vv (W=2, BF16 x FP16 -> FP32)
+  UNSPEC_VFQMMACC_F16_BF16		;; vfqmmacc.vv (W=4, FP16 x BF16 -> FP64)
+  UNSPEC_VFQMMACC_BF16_F16		;; vfqmmacc.vv (W=4, BF16 x FP16 -> FP64)
   ;; W=1 vfmmacc OFP8 -> OFP8: 8 UNSPECs covering all (acc,vs1,vs2)
   ;; altfmt combinations.  Naming: F8_<acc>_<vs1>_<vs2>.
   UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3
@@ -422,6 +431,13 @@
    UNSPEC_VF8WMMACC_F8E4M3_E5M2 UNSPEC_VF8WMMACC_F8E5M2_E4M3
    UNSPEC_VF8WMMACC_F4E2M1])
 
+;; The FP multiply-accumulates with mixed FP16 and BF16 inputs.
+(define_int_iterator IME_FP16_BF16_MMACC
+  [UNSPEC_VFMMACC_FP16_F16_BF16 UNSPEC_VFMMACC_FP16_BF16_F16
+   UNSPEC_VFMMACC_BF16_F16_BF16 UNSPEC_VFMMACC_BF16_BF16_F16
+   UNSPEC_VFWMMACC_F16_BF16 UNSPEC_VFWMMACC_BF16_F16
+   UNSPEC_VFQMMACC_F16_BF16 UNSPEC_VFQMMACC_BF16_F16])
+
 ;; The microscaled FP multiply-accumulates: one UNSPEC for each
 ;; instruction, input format and block size.
 (define_int_iterator IME_SCALED_MMACC
@@ -476,6 +492,14 @@
    (UNSPEC_V8WMMACC_S "v8wmmacc_s") (UNSPEC_V8WMMACC_U "v8wmmacc_u")
    (UNSPEC_V8WMMACC_SU "v8wmmacc_su") (UNSPEC_V8WMMACC_US "v8wmmacc_us")
    (UNSPEC_VFMMACC "vfmmacc")
+   (UNSPEC_VFMMACC_FP16_F16_BF16 "vfmmacc_fp16_f16_bf16")
+   (UNSPEC_VFMMACC_FP16_BF16_F16 "vfmmacc_fp16_bf16_f16")
+   (UNSPEC_VFMMACC_BF16_F16_BF16 "vfmmacc_bf16_f16_bf16")
+   (UNSPEC_VFMMACC_BF16_BF16_F16 "vfmmacc_bf16_bf16_f16")
+   (UNSPEC_VFWMMACC_F16_BF16 "vfwmmacc_f16_bf16")
+   (UNSPEC_VFWMMACC_BF16_F16 "vfwmmacc_bf16_f16")
+   (UNSPEC_VFQMMACC_F16_BF16 "vfqmmacc_f16_bf16")
+   (UNSPEC_VFQMMACC_BF16_F16 "vfqmmacc_bf16_f16")
    (UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "vfmmacc_f8_e4m3_e4m3_e4m3")
    (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "vfmmacc_f8_e4m3_e4m3_e5m2")
    (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "vfmmacc_f8_e4m3_e5m2_e4m3")
@@ -529,6 +553,10 @@
    (UNSPEC_VQMMACC_SU "vqmmacc") (UNSPEC_VQMMACC_US "vqmmacc")
    (UNSPEC_V8WMMACC_S "v8wmmacc") (UNSPEC_V8WMMACC_U "v8wmmacc")
    (UNSPEC_V8WMMACC_SU "v8wmmacc") (UNSPEC_V8WMMACC_US "v8wmmacc")
+   (UNSPEC_VFMMACC_FP16_F16_BF16 "vfmmacc") (UNSPEC_VFMMACC_FP16_BF16_F16 "vfmmacc")
+   (UNSPEC_VFMMACC_BF16_F16_BF16 "vfmmacc") (UNSPEC_VFMMACC_BF16_BF16_F16 "vfmmacc")
+   (UNSPEC_VFWMMACC_F16_BF16 "vfwmmacc") (UNSPEC_VFWMMACC_BF16_F16 "vfwmmacc")
+   (UNSPEC_VFQMMACC_F16_BF16 "vfqmmacc") (UNSPEC_VFQMMACC_BF16_F16 "vfqmmacc")
    (UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "vfmmacc")
    (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "vfmmacc")
    (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "vfmmacc")
@@ -594,7 +622,11 @@
 ;; ime_fp_altfmt value of the unscaled OFP8 ones, whose formats share
 ;; QImode.
 (define_int_attr ime_fp_acc
-  [(UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "QI") (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "QI")
+  [(UNSPEC_VFMMACC_FP16_F16_BF16 "HF") (UNSPEC_VFMMACC_FP16_BF16_F16 "HF")
+   (UNSPEC_VFMMACC_BF16_F16_BF16 "BF") (UNSPEC_VFMMACC_BF16_BF16_F16 "BF")
+   (UNSPEC_VFWMMACC_F16_BF16 "SF") (UNSPEC_VFWMMACC_BF16_F16 "SF")
+   (UNSPEC_VFQMMACC_F16_BF16 "DF") (UNSPEC_VFQMMACC_BF16_F16 "DF")
+   (UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "QI") (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "QI")
    (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "QI") (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2 "QI")
    (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "QI") (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "QI")
    (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "QI") (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "QI")
@@ -1101,6 +1133,35 @@
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_fp_altfmt" "<ime_fp_mmacc_altfmt>")
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
+
+;; Mixed FP16 and BF16 inputs, which require the extensions of both input
+;; formats.  The vsetvl pass sets altfmt_A and altfmt_B from the modes of
+;; the inputs.
+(define_insn "@pred_ime_mmacc_<ime_mmacc><mode>"
+  [(set (match_operand:VFMMACC_ACC 0 "register_operand" "=&vr")
+	(if_then_else:VFMMACC_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VFMMACC_ACC
+	    [(match_operand:VFMMACC_ACC 1 "register_operand" "  0")
+	     (match_operand 2 "ime_mmacc_input_operand" " vr")
+	     (match_operand 3 "ime_mmacc_input_operand" " vr")]
+	    IME_FP16_BF16_MMACC)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "GET_MODE_INNER (<MODE>mode) == <ime_fp_acc>mode
+   && riscv_zvvm_fp16_bf16_mm_p (<MODE>mode)"
+  "<ime_mmacc_insn>.vv\t%0,%2,%3"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])

@@ -145,6 +145,10 @@ enum required_ext
 #define ZVV_FMM ZVV_IMM
 #define ZVV_XMM ZVV_IMM
 #include "riscv-ext-zvv.def"
+  /* The multiply-accumulates with mixed FP16 and BF16 inputs.  */
+  ZVVFP16_BF16MM_EXT,		/* Zvvfp16mm and Zvvbf16mm */
+  ZVVFP16_BF16FP32MM_EXT,	/* Zvvfp16fp32mm and Zvvbf16fp32mm */
+  ZVVFP16_BF16FP64MM_EXT,	/* Zvvfp16fp64mm and Zvvbf16fp64mm */
   /* Please update required_ext_to_isa_name and required_extensions_specified
      when adding or removing enum values.  */
 };
@@ -246,6 +250,12 @@ static inline const char * required_ext_to_isa_name (enum required_ext required)
 #define ZVV_FMM ZVV_IMM
 #define ZVV_XMM ZVV_IMM
 #include "riscv-ext-zvv.def"
+    case ZVVFP16_BF16MM_EXT:
+      return "zvvfp16mm and zvvbf16mm";
+    case ZVVFP16_BF16FP32MM_EXT:
+      return "zvvfp16fp32mm and zvvbf16fp32mm";
+    case ZVVFP16_BF16FP64MM_EXT:
+      return "zvvfp16fp64mm and zvvbf16fp64mm";
     default:
       gcc_unreachable ();
   }
@@ -311,6 +321,12 @@ static inline bool required_extensions_specified (enum required_ext required)
 #define ZVV_FMM ZVV_IMM
 #define ZVV_XMM ZVV_IMM
 #include "riscv-ext-zvv.def"
+    case ZVVFP16_BF16MM_EXT:
+      return TARGET_ZVVFP16MM && TARGET_ZVVBF16MM;
+    case ZVVFP16_BF16FP32MM_EXT:
+      return TARGET_ZVVFP16FP32MM && TARGET_ZVVBF16FP32MM;
+    case ZVVFP16_BF16FP64MM_EXT:
+      return TARGET_ZVVFP16FP64MM && TARGET_ZVVBF16FP64MM;
     default:
       gcc_unreachable ();
   }

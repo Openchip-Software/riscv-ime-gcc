@@ -34,7 +34,8 @@ along with GCC; see the file COPYING3. If not see
    input formats share QImode, the altfmt bits.
 
    The same-format FP16, BF16, FP32 and FP64 rows of vfmmacc are a
-   single function group, vfmmacc, outside this table.
+   single function group, vfmmacc, outside this table.  The rows with
+   mixed FP16 and BF16 inputs require the extensions of both.
 
    gen-zvvm-intrinsics.py reads this file to generate the tests and to
    compare it with the encoding map of the specification.  */
@@ -48,6 +49,14 @@ along with GCC; see the file COPYING3. If not see
 #endif
 
 /* vfmmacc.vv (W=1).  */
+IME_FP_MMACC (vfmmacc_fp16_f16_bf16, vfmmacc, FP16, FP16, BF16,
+	      UNSPEC_VFMMACC_FP16_F16_BF16)
+IME_FP_MMACC (vfmmacc_fp16_bf16_f16, vfmmacc, FP16, BF16, FP16,
+	      UNSPEC_VFMMACC_FP16_BF16_F16)
+IME_FP_MMACC (vfmmacc_bf16_f16_bf16, vfmmacc, BF16, FP16, BF16,
+	      UNSPEC_VFMMACC_BF16_F16_BF16)
+IME_FP_MMACC (vfmmacc_bf16_bf16_f16, vfmmacc, BF16, BF16, FP16,
+	      UNSPEC_VFMMACC_BF16_BF16_F16)
 IME_OFP8_MMACC (vfmmacc_f8e4m3_f8e4m3_f8e4m3, vfmmacc, E4M3, E4M3, E4M3,
 		UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3)
 IME_OFP8_MMACC (vfmmacc_f8e4m3_f8e4m3_f8e5m2, vfmmacc, E4M3, E4M3, E5M2,
@@ -72,6 +81,10 @@ IME_OFP8_MMACC (vfwmmacc_f8e5m2_f4e2m1, vfwmmacc, E5M2, E2M1, E2M1,
 		UNSPEC_VFWMMACC_OFP4_E5M2)
 IME_FP_MMACC (vfwmmacc_f16, vfwmmacc, FP32, FP16, FP16, UNSPEC_VFWMMACC_F16)
 IME_FP_MMACC (vfwmmacc_bf16, vfwmmacc, FP32, BF16, BF16, UNSPEC_VFWMMACC_BF16)
+IME_FP_MMACC (vfwmmacc_f16_bf16, vfwmmacc, FP32, FP16, BF16,
+	      UNSPEC_VFWMMACC_F16_BF16)
+IME_FP_MMACC (vfwmmacc_bf16_f16, vfwmmacc, FP32, BF16, FP16,
+	      UNSPEC_VFWMMACC_BF16_F16)
 IME_FP_MMACC (vfwmmacc_f32, vfwmmacc, FP64, FP32, FP32, UNSPEC_VFWMMACC_F32)
 IME_OFP8_MMACC (vfwmmacc_fp16_f8e4m3, vfwmmacc, FP16, E4M3, E4M3,
 		UNSPEC_VFWMMACC_OFP8_FP16_E4M3)
@@ -98,6 +111,10 @@ IME_FP_MMACC (vfqmmacc_bf16_f4e2m1, vfqmmacc, BF16, E2M1, E2M1,
 IME_FP_MMACC (vfqmmacc_f16, vfqmmacc, FP64, FP16, FP16, UNSPEC_VFQMMACC_F16)
 IME_FP_MMACC (vfqmmacc_bf16, vfqmmacc, FP64, BF16, BF16,
 	      UNSPEC_VFQMMACC_BF16)
+IME_FP_MMACC (vfqmmacc_f16_bf16, vfqmmacc, FP64, FP16, BF16,
+	      UNSPEC_VFQMMACC_F16_BF16)
+IME_FP_MMACC (vfqmmacc_bf16_f16, vfqmmacc, FP64, BF16, FP16,
+	      UNSPEC_VFQMMACC_BF16_F16)
 IME_OFP8_MMACC (vfqmmacc_f8e4m3, vfqmmacc, FP32, E4M3, E4M3,
 		UNSPEC_VFQMMACC_F8E4M3)
 IME_OFP8_MMACC (vfqmmacc_f8e5m2, vfqmmacc, FP32, E5M2, E5M2,

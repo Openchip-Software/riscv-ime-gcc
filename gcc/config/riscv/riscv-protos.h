@@ -198,6 +198,7 @@ enum riscv_zvvm_format
 extern bool riscv_zvvm_acc_p (riscv_zvvm_format);
 extern bool riscv_zvvm_int_mm_p (machine_mode, int);
 extern bool riscv_zvvm_fp_mm_p (int, machine_mode, int);
+extern bool riscv_zvvm_fp16_bf16_mm_p (machine_mode);
 extern bool riscv_tuple_mode_p (machine_mode);
 extern bool riscv_vls_mode_p (machine_mode);
 extern int riscv_get_v_regno_alignment (machine_mode);
