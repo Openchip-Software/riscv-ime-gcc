@@ -1521,15 +1521,14 @@ lambda_dataflow::run ()
     return any ? acc : lambda_state ();
   };
 
-  /* Worklist: blocks whose successors must be re-examined.  Use a
-     small visited-set to avoid runaway re-adds.  Capped iteration
-     to defend against pathological CFGs.  */
+  /* Worklist: blocks whose entry state must be recomputed.  The
+     lattice is finite and the transfer functions are monotone, so this
+     reaches a fixpoint.  */
   auto_bitmap worklist;
   FOR_EACH_BB_FN (bb, cfun)
     bitmap_set_bit (worklist, bb->index);
 
-  int iter_cap = 100 * n_basic_blocks_for_fn (cfun) + 32;
-  while (!bitmap_empty_p (worklist) && iter_cap-- > 0)
+  while (!bitmap_empty_p (worklist))
     {
       int idx = bitmap_first_set_bit (worklist);
       bitmap_clear_bit (worklist, idx);
