@@ -2516,46 +2516,39 @@ ime_vsew_encoding (int sew_bits)
   return exact_log2 (sew_bits) - 3;
 }
 
-/* Compose the compile-time-known portion of the full vtype value:
-   vlmul | vsew | vta | vma | altfmt | bs | altfmt_B | altfmt_A
-   (i.e. everything except the lambda field at bits XLEN-4..XLEN-2,
-   which may need runtime computation).  */
+/* Return the vtype bits for SEW, VLMUL, TA and MA.  */
+
+static HOST_WIDE_INT
+static_vtype_bits (int sew, vlmul_type vlmul, bool ta, bool ma)
+{
+  return ((HOST_WIDE_INT) (vlmul & 0x7)
+	  | (HOST_WIDE_INT) ime_vsew_encoding (sew) << 3
+	  | (HOST_WIDE_INT) ta << 6 | (HOST_WIDE_INT) ma << 7);
+}
+
+/* Return the vtype bits for the lambda with log2 LAMBDA_LOG2.  */
+
+static HOST_WIDE_INT
+lambda_vtype_bits (int lambda_log2)
+{
+  return (HOST_WIDE_INT) (lambda_log2 + 1) << (GET_MODE_BITSIZE (Pmode) - 4);
+}
+
+/* Return the vtype of INFO without the lambda field.  For an IME
+   multiply-accumulate, the vtype LMUL is that of its inputs, not that of
+   the accumulator.  */
 
 static HOST_WIDE_INT
 compute_static_vtype_without_lambda (const vsetvl_info &info, int xlen)
 {
-  HOST_WIDE_INT val = 0;
   const ime_vtype_req &r = info.get_ime_req ();
-
-  /* The vtype LMUL field encodes the source register-group size for IME
-     mmacc instructions (i.e. the vs1/vs2 LMUL), NOT the accumulator's
-     MUL_C.  MUL_C is derived in hardware from VLEN/(SEW*lambda^2) and
-     is independent of LMUL -- see IME spec section "Integer matrix
-     multiply-accumulate".  For an intrinsic like
-     __riscv_vmmacc_vv_i32m2 with m1 sources (default LMUL=1), vtype
-     must carry LMUL=m1 even though the accumulator type is m2.  For
-     non-IME and for tile load/store, info.get_vlmul() already returns
-     the correct LMUL (the data vector's LMUL).  */
-  /* LMUL_16 is a compiler-internal value with no architectural vtype
-     encoding -- it must never reach the encoding path.  IME mmacc with
-     an m16 accumulator always uses the input LMUL (m1..m8) for
-     vtype.LMUL.  */
-  if (info.ime_required_p ())
-    {
-      gcc_assert (r.lmul != LMUL_16);
-      val |= (unsigned) r.lmul;
-    }
-  else
-    {
-      gcc_assert (info.get_vlmul () != LMUL_16);
-      val |= (unsigned) info.get_vlmul ();
-    }
-  val |= (HOST_WIDE_INT) ime_vsew_encoding (info.get_sew ()) << 3;
-  if (info.get_ta ())
-    val |= (HOST_WIDE_INT) 1 << 6;
-  if (info.get_ma ())
-    val |= (HOST_WIDE_INT) 1 << 7;
-
+  vlmul_type vlmul = (info.ime_required_p () ? (vlmul_type) r.lmul
+		      : info.get_vlmul ());
+  /* LMUL_16 has no vtype encoding; an IME multiply-accumulate with an
+     m16 accumulator uses the LMUL of its inputs.  */
+  gcc_assert (vlmul != LMUL_16);
+  HOST_WIDE_INT val = static_vtype_bits (info.get_sew (), vlmul,
+					 info.get_ta (), info.get_ma ());
   if (r.altfmt)
     val |= (HOST_WIDE_INT) 1 << 8;
   if (r.bs)
@@ -2602,9 +2595,8 @@ emit_ime_vtype_build (const vsetvl_info &info)
 	  return NULL_RTX;
 	}
       /* Static lambda: the full vtype is a compile-time constant.  */
-      int lambda_enc = r.lambda_log2 + 1;
-      static_val |= (HOST_WIDE_INT) lambda_enc << (xlen - 4);
-      return gen_int_mode (static_val, Pmode);
+      return gen_int_mode (static_val | lambda_vtype_bits (r.lambda_log2),
+			   Pmode);
     }
 
   /* Runtime lambda: the intrinsic expander (pre-reload) has already
@@ -2612,6 +2604,102 @@ emit_ime_vtype_build (const vsetvl_info &info)
      ctz + shifts + vsetvl + WARL check).  Return NULL_RTX so the
      vsetvl pass skips its own insertion for this instruction.  */
   return NULL_RTX;
+}
+
+/* Return AVL as an operand of the IME and lambda-preserving vsetvl
+   patterns, which take a register or zero: a null AVL is zero, and any
+   other constant is loaded into the prologue temporary before BEFORE
+   (the pass runs after register allocation).  */
+
+static rtx
+ime_avl_operand (rtx avl, rtx_insn *before)
+{
+  if (!avl)
+    return const0_rtx;
+  if (avl != const0_rtx && CONST_INT_P (avl))
+    {
+      rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+      emit_insn_before (gen_rtx_SET (temp, avl), before);
+      return temp;
+    }
+  return avl;
+}
+
+/* Return the vsetvl that establishes the IME vtype of INFO for CONSUMER,
+   or NULL_RTX if none is needed or it cannot be emitted.  With a static
+   lambda this is `@vsetvl_ime<mode>', whose vtype is a constant that its
+   template loads into the destination register; it is not needed when
+   the lambda is already established.  With a runtime lambda it is
+   `@vsetvl_ime_reg<mode>' with the vtype that the expander computed and
+   passed to CONSUMER in its vtype operand, and the destination is x0 so
+   as not to clobber a register.  */
+
+static rtx
+gen_ime_vsetvl (const vsetvl_info &info, rtx_insn *consumer)
+{
+  const ime_vtype_req &r = info.get_ime_req ();
+  rtx ime_pack = gen_int_mode (pack_ime_req (r), Pmode);
+  if (r.lambda_log2 == -1)
+    {
+      extract_insn_cached (consumer);
+      int idx = get_attr_ime_vtype_op_idx (consumer);
+      if (idx == INVALID_ATTRIBUTE || !REG_P (recog_data.operand[idx]))
+	return NULL_RTX;
+      rtx vtype = recog_data.operand[idx];
+      rtx dest = info.has_vl () ? info.get_vl () : gen_rtx_REG (Pmode, 0);
+      rtx avl = ime_avl_operand (info.get_avl (), consumer);
+      return gen_vsetvl_ime_reg (Pmode, dest, avl, vtype, ime_pack);
+    }
+
+  if (r.lambda_log2 >= 0
+      && lambda_already_established_p (consumer, r.lambda_log2))
+    {
+      if (dump_file)
+	fprintf (dump_file, "  Omit IME vsetvl before insn %d: lambda=%d is "
+		 "already established\n", INSN_UID (consumer),
+		 1 << r.lambda_log2);
+      return NULL_RTX;
+    }
+  rtx vtype = emit_ime_vtype_build (info);
+  if (!vtype)
+    return NULL_RTX;
+  rtx dest = (info.has_vl () ? info.get_vl ()
+	      : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM));
+  rtx avl = ime_avl_operand (info.get_avl (), consumer);
+  return gen_vsetvl_ime (Pmode, dest, avl, vtype, ime_pack);
+}
+
+/* Return a vsetvl that writes VL for AVL to DEST and sets the vtype
+   fields STATIC_VTYPE while keeping the lambda REACH, which is DEFINED or
+   DEFINED_RUNTIME, emitting any setup before BEFORE.  A plain vsetvli
+   could change the lambda.  For a known lambda this is a
+   `@vsetvl_ime<mode>' with that lambda and no IME demand; for a runtime
+   lambda, `@riscv_vsetvl_preserve_lambda<mode>' merges the static fields
+   into the current vtype.  */
+
+static rtx
+gen_lambda_preserving_vsetvl (rtx dest, rtx avl, HOST_WIDE_INT static_vtype,
+			      const lambda_state &reach, rtx_insn *before)
+{
+  avl = ime_avl_operand (avl, before);
+  /* The destination is early-clobber, so it cannot share AVL's
+     register.  */
+  if (REG_P (avl) && REG_P (dest) && REGNO (avl) == REGNO (dest))
+    {
+      rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+      emit_insn_before (gen_rtx_SET (temp, avl), before);
+      avl = temp;
+    }
+  if (reach.kind == lambda_state_kind::DEFINED)
+    return gen_vsetvl_ime (Pmode, dest, avl,
+			   gen_int_mode (static_vtype
+					 | lambda_vtype_bits (reach.known_log2),
+					 Pmode),
+			   const0_rtx);
+  gcc_assert (reach.kind == lambda_state_kind::DEFINED_RUNTIME);
+  return gen_riscv_vsetvl_preserve_lambda
+    (Pmode, dest, avl, gen_int_mode (static_vtype, Pmode),
+     gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM));
 }
 
 class vsetvl_block_info
@@ -3660,239 +3748,37 @@ private:
       }
   }
 
-  /* Emit a single register-form vsetvl instruction to establish the
-     full IME vtype.  The vtype value is passed as a const_int; the
-     @vsetvl_ime<mode> pattern expands it into a "li + vsetvl"
-     two-instruction sequence at assembly time, reusing its dest VL
-     register as the temporary for the li.  No new pseudos are
-     required, which is essential because this runs post-reload.  */
-
-  void insert_ime_vsetvl_insn (enum emit_type emit_type,
-			       const vsetvl_info &info)
-  {
-    rtx_insn *consumer = info.get_insn ()->rtl ();
-
-    /* Lambda elision (see `lambda_already_established_p').  Walk back
-       from the consumer; if a matching static DEF is reachable inside
-       this basic block with no intervening kill, the existing vtype
-       already satisfies the consumer's lambda demand and we skip the
-       auto-emission entirely.  Gated by -melide-ime-lambda (default on).  */
-    if (info.get_ime_req ().lambda_log2 >= 0
-	&& lambda_already_established_p (consumer,
-					 info.get_ime_req ().lambda_log2))
-      {
-	if (dump_file)
-	  fprintf (dump_file,
-		   "  Elide IME vsetvl insertion before insn %d: lambda=%d "
-		   "already established by a preceding DEF in the same BB\n",
-		   INSN_UID (consumer), 1 << info.get_ime_req ().lambda_log2);
-	return;
-      }
-
-    rtx avl = info.get_avl ();
-    if (!avl)
-      avl = const0_rtx;
-
-    /* Pick a destination/scratch register for the IME vsetvl insn.  The
-       @vsetvl_ime pattern reuses its dest register as the scratch for
-       the "li" that loads the vtype constant.  If the IME instruction
-       we're setting up has its own VL destination (rare -- only for
-       vsetvl intrinsics), reuse that; otherwise pick a fallback temp
-       based on which form we are about to emit (decided below).
-       Static-path `vsetvl_ime' reuses operand 0 as the temp that holds
-       the vtype constant (its asm template is "li %0,%2; vsetvl
-       %0,%z1,%0") and so requires a real writable GPR -- fall back to
-       the prologue temp.  Runtime-path `vsetvl_ime_reg' carries vtype
-       in operand 2 and the GPR write of operand 0 is unused, so use x0
-       (zero) -- this avoids clobbering a caller-saved register that
-       may have been bound by RA to one of the consumer's input
-       operands.  We pick `dest_vl' below alongside the pattern.  */
-    rtx dest_vl;
-
-    rtx_insn *rinsn = consumer;
-    rtx pat;
-    if (info.get_ime_req ().lambda_log2 == -1)
-      {
-	/* Runtime-VLEN path: read the consumer's hidden vtype-source
-	   operand (threaded through by the expander; see
-	   `apply_ime_vtype_op_p' / the `(use ...)' clause on each IME
-	   consumer pattern) and emit a register-form
-	   `vsetvl_ime_reg' that re-anchors IME vtype right before the
-	   consumer.  This works post-reload because the operand is
-	   tracked by RA: by the time we get here it has been
-	   substituted with the hard reg the allocator picked for the
-	   per-consumer full_vtype pseudo, and that hard reg is alive
-	   at the consumer (the `(use)' clause keeps it live across
-	   any spill code the pass may insert upstream).  */
-	extract_insn_cached (rinsn);
-	int idx = get_attr_ime_vtype_op_idx (rinsn);
-	if (idx == INVALID_ATTRIBUTE)
-	  return;  /* Pattern lacks the operand -- skip.  */
-	rtx fvX = recog_data.operand[idx];
-	if (!REG_P (fvX))
-	  return;  /* Static-VLEN placeholder or spilled -- skip.  */
-	dest_vl = info.has_vl () ? info.get_vl ()
-				 : gen_rtx_REG (Pmode, 0);
-	/* `vsetvl_ime_reg' has both rs1 (avl) and rs2 (vtype) in
-	   registers; there is no immediate-AVL form when vtype is in a
-	   register.  Materialise const_int AVL into the prologue temp
-	   first.  We are post-reload, so we cannot allocate a fresh
-	   pseudo; the prologue temp is the conventional choice.  */
-	if (avl != const0_rtx && CONST_INT_P (avl))
-	  {
-	    rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-	    emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
-	    avl = temp;
-	  }
-	rtx ime_pack = gen_int_mode (pack_ime_req (info.get_ime_req ()),
-				     Pmode);
-	pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX, ime_pack);
-      }
-    else
-      {
-	rtx vtype_const = emit_ime_vtype_build (info);
-	if (vtype_const == NULL_RTX)
-	  return;  /* sorry() already reported.  */
-	dest_vl = info.has_vl ()
-		    ? info.get_vl ()
-		    : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-	/* `@vsetvl_ime<mode>' takes AVL via `pmode_reg_or_0_operand'
-	   (register or const_int 0); a fused emit can arrive here
-	   with the user's compile-time AVL (e.g. from
-	   `__riscv_vsetvl_eXmY(N)' for non-zero N) as a const_int.
-	   Materialise it into the prologue temp first so the insn
-	   matches the pattern's predicate.  We are post-reload, so
-	   we cannot allocate a fresh pseudo; the prologue temp is
-	   the conventional choice.  */
-	if (avl != const0_rtx && CONST_INT_P (avl))
-	  {
-	    rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-	    emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
-	    avl = temp;
-	  }
-	rtx ime_pack = gen_int_mode (pack_ime_req (info.get_ime_req ()),
-				     Pmode);
-	pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const, ime_pack);
-      }
-    rtx_insn *inserted = NULL;
-
-    if (emit_type == EMIT_DIRECT)
-      {
-	emit_insn (pat);
-	inserted = get_last_insn ();
-      }
-    else if (emit_type == EMIT_BEFORE)
-      {
-	emit_insn_before (pat, rinsn);
-	inserted = PREV_INSN (rinsn);
-      }
-    else
-      {
-	emit_insn_after (pat, rinsn);
-	inserted = NEXT_INSN (rinsn);
-      }
-
-    if (dump_file && inserted)
-      {
-	fprintf (dump_file, "  Insert IME vsetvl insn %d:\n",
-		 INSN_UID (inserted));
-	print_rtl_single (dump_file, inserted);
-      }
-  }
-
+  /* Insert the vsetvl for INFO at EMIT_TYPE relative to its insn.  An
+     IME instruction needs an IME vsetvl.  Before an instruction that
+     uses vtype.lambda, while a lambda reaches it, a plain vsetvli could
+     change the lambda, so the vsetvl keeps it.  */
   void insert_vsetvl_insn (enum emit_type emit_type, const vsetvl_info &info)
   {
-    if (info.ime_required_p ())
-      {
-	insert_ime_vsetvl_insn (emit_type, info);
-	return;
-      }
-
     rtx_insn *rinsn = info.get_insn ()->rtl ();
-
-    /* Lambda-preserving insertion: a regular vsetvli writes vtype and
-       (per WARL) may clobber the lambda field.  If RINSN consumes
-       vtype.lambda (an IME tile load/store or mmacc reached via the
-       non-IME path) and a DEF reaches at this insertion point, emit
-       a vtype-preserving sequence instead of a plain vsetvli:
-
-	 lattice reach = DEFINED(N)
-	     `gen_vsetvl_ime' with a const_int vtype = (consumer's
-	     static SEW/LMUL/ta/ma) | (lambda field = enc(N)).  One
-	     atomic full-vtype write.
-
-	 lattice reach = DEFINED_RUNTIME
-	     `gen_riscv_vsetvl_preserve_lambda' which reads the live
-	     vtype.lambda at runtime, masks it, ORs in the consumer's
-	     static bits, and vsetvls.  Same end effect with the user's
-	     runtime-established lambda.  */
-    if (emit_type == EMIT_BEFORE
+    lambda_state reach;
+    if (!info.ime_required_p ()
+	&& emit_type == EMIT_BEFORE
 	&& riscv_track_user_lambda
 	&& insn_uses_lambda_p (rinsn))
+      reach = lambda_reach_before (rinsn);
+
+    rtx pat;
+    if (info.ime_required_p ())
       {
-	lambda_state reach = lambda_reach_before (rinsn);
-	int xlen = GET_MODE_BITSIZE (Pmode);
-	HOST_WIDE_INT static_vtype
-	  = compute_static_vtype_without_lambda (info, xlen);
-	rtx avl = info.get_avl ();
-	if (!avl)
-	  avl = const0_rtx;
-	rtx dest_vl = info.has_vl ()
-			? info.get_vl ()
-			: gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-
-	/* `@vsetvl_ime<mode>' and `@riscv_vsetvl_preserve_lambda<mode>'
-	   take AVL via `pmode_reg_or_0_operand' (register or const_int
-	   0).  A non-zero compile-time AVL -- typical when the lambda
-	   reach is being threaded into the spot of a user
-	   `__riscv_vsetvl_eXmY(N)' for non-zero N -- is rejected by the
-	   predicate and produces an unrecognizable insn (PR ICE).
-	   Materialise it into the prologue temp first.  We are
-	   post-reload, so we cannot allocate a fresh pseudo; the
-	   prologue temp is the conventional choice.  */
-	if (avl != const0_rtx && CONST_INT_P (avl))
-	  {
-	    rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-	    emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
-	    avl = temp;
-	  }
-
-	if (reach.kind == lambda_state_kind::DEFINED)
-	  {
-	    int enc = reach.known_log2 + 1;
-	    HOST_WIDE_INT vtype
-	      = static_vtype | ((HOST_WIDE_INT) enc << (xlen - 4));
-	    /* Lambda-preserving emission for a non-IME consumer: no IME
-	       demand to carry through (sew=0 sentinel decodes to "no IME
-	       demand" in parse_insn).  */
-	    rtx pat = gen_vsetvl_ime (Pmode, dest_vl, avl,
-				      gen_int_mode (vtype, Pmode),
-				      const0_rtx);
-	    emit_insn_before (pat, rinsn);
-	    if (dump_file)
-	      fprintf (dump_file,
-		       "  Insert lambda-preserving vsetvl "
-		       "(static lambda=%d) before insn %d\n",
-		       1 << reach.known_log2, INSN_UID (rinsn));
-	    return;
-	  }
-	if (reach.kind == lambda_state_kind::DEFINED_RUNTIME)
-	  {
-	    rtx scratch = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM);
-	    rtx pat = gen_riscv_vsetvl_preserve_lambda (
-	      Pmode, dest_vl, avl, gen_int_mode (static_vtype, Pmode),
-	      scratch);
-	    emit_insn_before (pat, rinsn);
-	    if (dump_file)
-	      fprintf (dump_file,
-		       "  Insert lambda-preserving vsetvl "
-		       "(runtime lambda from vtype) before insn %d\n",
-		       INSN_UID (rinsn));
-	    return;
-	  }
+	pat = gen_ime_vsetvl (info, rinsn);
+	if (!pat)
+	  return;
       }
-
-    rtx pat = info.get_vsetvl_pat ();
+    else if (reach.kind == lambda_state_kind::DEFINED
+	     || reach.kind == lambda_state_kind::DEFINED_RUNTIME)
+      pat = gen_lambda_preserving_vsetvl
+	(info.has_vl () ? info.get_vl ()
+	 : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM),
+	 info.get_avl (),
+	 compute_static_vtype_without_lambda (info, GET_MODE_BITSIZE (Pmode)),
+	 reach, rinsn);
+    else
+      pat = info.get_vsetvl_pat ();
 
     if (emit_type == EMIT_DIRECT)
       {
@@ -5492,89 +5378,15 @@ pass_vsetvl::simple_vsetvl ()
 	      const auto &info = vsetvl_info (rinsn);
 	      if (info.ime_required_p ())
 		{
-		  /* Same lambda-elision optimisation as in
-		     `pre_vsetvl::insert_ime_vsetvl_insn'.  */
-		  if (info.get_ime_req ().lambda_log2 >= 0
-		      && lambda_already_established_p (
-			   rinsn, info.get_ime_req ().lambda_log2))
+		  rtx pat = gen_ime_vsetvl (info, rinsn);
+		  if (pat)
 		    {
+		      emit_insn_before (pat, rinsn);
 		      if (dump_file)
 			fprintf (dump_file,
-				 "  Elide IME vsetvl insertion before "
-				 "insn %d: lambda=%d already established\n",
-				 INSN_UID (rinsn),
-				 1 << info.get_ime_req ().lambda_log2);
-		      continue;
+				 "  Insert IME vsetvl insn before insn %d\n",
+				 INSN_UID (rinsn));
 		    }
-		  rtx avl = info.get_avl () ? info.get_avl () : const0_rtx;
-		  /* See `pre_vsetvl::insert_ime_vsetvl_insn' for why
-		     dest_vl differs between the runtime and static paths
-		     (x0 vs prologue temp).  */
-		  rtx dest_vl;
-		  rtx pat;
-		  if (info.get_ime_req ().lambda_log2 == -1)
-		    {
-		      /* Runtime path: see comment in
-			 `pre_vsetvl::insert_ime_vsetvl_insn'.  */
-		      extract_insn_cached (rinsn);
-		      int idx = get_attr_ime_vtype_op_idx (rinsn);
-		      if (idx == INVALID_ATTRIBUTE)
-			continue;
-		      rtx fvX = recog_data.operand[idx];
-		      if (!REG_P (fvX))
-			continue;
-		      dest_vl = info.has_vl () ? info.get_vl ()
-					       : gen_rtx_REG (Pmode, 0);
-		      /* See `insert_ime_vsetvl_insn' for why we materialise
-			 a const_int AVL into the prologue temp here.  */
-		      if (avl != const0_rtx && CONST_INT_P (avl))
-			{
-			  rtx temp
-			    = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-			  emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
-			  avl = temp;
-			}
-		      {
-			rtx ime_pack
-			  = gen_int_mode (pack_ime_req (info.get_ime_req ()),
-					  Pmode);
-			pat = gen_vsetvl_ime_reg (Pmode, dest_vl, avl, fvX,
-						  ime_pack);
-		      }
-		    }
-		  else
-		    {
-		      rtx vtype_const = emit_ime_vtype_build (info);
-		      if (vtype_const == NULL_RTX)
-			continue;  /* sorry() already reported.  */
-		      dest_vl
-			= info.has_vl ()
-			    ? info.get_vl ()
-			    : gen_rtx_REG (Pmode,
-					   RISCV_PROLOGUE_TEMP_REGNUM);
-		      /* See the matching branch in `insert_ime_vsetvl_insn'
-			 for why we materialise a const_int AVL into the
-			 prologue temp here.  */
-		      if (avl != const0_rtx && CONST_INT_P (avl))
-			{
-			  rtx temp
-			    = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-			  emit_insn_before (gen_rtx_SET (temp, avl), rinsn);
-			  avl = temp;
-			}
-		      {
-			rtx ime_pack
-			  = gen_int_mode (pack_ime_req (info.get_ime_req ()),
-					  Pmode);
-			pat = gen_vsetvl_ime (Pmode, dest_vl, avl, vtype_const,
-					      ime_pack);
-		      }
-		    }
-		  emit_insn_before (pat, rinsn);
-		  if (dump_file)
-		    fprintf (dump_file,
-			     "  Insert IME vsetvl insn before insn %d\n",
-			     INSN_UID (rinsn));
 		  continue;
 		}
 	      rtx pat = info.get_vsetvl_pat ();
@@ -5734,70 +5546,14 @@ rewrite_placeholder_lambda_preserving (rtx_insn *placeholder,
   rtx dest_vl = recog_data.operand[0];
   rtx avl = recog_data.operand[1];
 
-  /* Extract (SEW, LMUL, ta, ma) from the downstream consumer's
-     attributes -- NOT from the placeholder's own operands.  */
-  int sew = (int) ::get_sew (consumer);
-  vlmul_type vlmul = ::get_vlmul (consumer);
-  bool ta = tail_agnostic_p (consumer);
-  bool ma = mask_agnostic_p (consumer);
-
-  int xlen = GET_MODE_BITSIZE (Pmode);
-  HOST_WIDE_INT static_vtype = 0;
-  static_vtype |= ((HOST_WIDE_INT) vlmul) & 0x7;
-  static_vtype |= (HOST_WIDE_INT) ime_vsew_encoding (sew) << 3;
-  if (ta)
-    static_vtype |= (HOST_WIDE_INT) 1 << 6;
-  if (ma)
-    static_vtype |= (HOST_WIDE_INT) 1 << 7;
-
-  /* The IME and preserve patterns accept only register-or-zero for AVL.
-     Materialise a const_csr immediate into the prologue temp first.  */
-  if (avl != const0_rtx && CONST_INT_P (avl))
-    {
-      rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-      emit_insn_before (gen_rtx_SET (temp, avl), placeholder);
-      avl = temp;
-    }
-
-  /* Both helper patterns declare `=&r' (early-clobber) for the dest_vl
-     output: the asm template writes the dest before reading the AVL
-     input, so dest_vl and AVL must not share a register.  Post-reload
-     RA cannot reassign for us, so when the placeholder's RA happened
-     to bind both operands to the same hard reg, copy the AVL into the
-     prologue temp first.  */
-  if (REG_P (avl) && REG_P (dest_vl) && REGNO (avl) == REGNO (dest_vl))
-    {
-      rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-      emit_insn_before (gen_rtx_SET (temp, avl), placeholder);
-      avl = temp;
-    }
-
-  rtx pat;
-  if (reach.kind == lambda_state_kind::DEFINED)
-    {
-      int enc = reach.known_log2 + 1;
-      HOST_WIDE_INT vtype
-	= static_vtype | ((HOST_WIDE_INT) enc << (xlen - 4));
-      /* Lambda-preserving emission for a non-IME consumer: pass 0 as the
-	 IME-demand operand (sew=0 sentinel decodes to "no IME demand" in
-	 parse_insn).  */
-      pat = gen_vsetvl_ime (Pmode, dest_vl, avl,
-			    gen_int_mode (vtype, Pmode),
-			    const0_rtx);
-    }
-  else
-    {
-      gcc_assert (reach.kind == lambda_state_kind::DEFINED_RUNTIME);
-      /* The preserve_lambda pattern needs a scratch GPR for the
-	 mask-build/static-bits chain.  Allocating fresh pseudos is not
-	 possible post-reload, so reuse `t1' -- distinct from dest_vl
-	 (whose RA could leave it on `t0' if we copied AVL there above)
-	 and from AVL.  */
-      rtx scratch = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM);
-      pat = gen_riscv_vsetvl_preserve_lambda (
-	Pmode, dest_vl, avl, gen_int_mode (static_vtype, Pmode), scratch);
-    }
-
+  /* The vtype fields come from the downstream consumer, not from the
+     placeholder's own operands.  */
+  HOST_WIDE_INT static_vtype
+    = static_vtype_bits (::get_sew (consumer), ::get_vlmul (consumer),
+			 tail_agnostic_p (consumer),
+			 mask_agnostic_p (consumer));
+  rtx pat = gen_lambda_preserving_vsetvl (dest_vl, avl, static_vtype, reach,
+					  placeholder);
   emit_insn_before (pat, placeholder);
   delete_insn (placeholder);
 }
