@@ -220,6 +220,7 @@ genprog+=rvv-type-indexer
 RISCV_EXT_DEFS = \
   $(srcdir)/config/riscv/riscv-ext.def \
   $(srcdir)/config/riscv/riscv-ext-corev.def \
+  $(srcdir)/config/riscv/riscv-ext-zvv.def \
   $(srcdir)/config/riscv/riscv-ext.def \
   $(srcdir)/config/riscv/riscv-ext-sifive.def \
   $(srcdir)/config/riscv/riscv-ext-thead.def \

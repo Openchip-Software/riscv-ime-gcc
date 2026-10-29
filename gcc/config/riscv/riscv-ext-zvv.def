@@ -1,0 +1,129 @@
+/* The individual Zvvm (IME) multiply-accumulate extensions for RISC-V.
+   Copyright (C) 2026 Free Software Foundation, Inc.
+
+This file is part of GCC.
+
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
+
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
+
+/* One entry per row of the IME specification's tbl-extensions and
+   tbl-mx-extensions:
+
+     ZVV_IMM (NAME, UPPER, A, C, ZVE)		integer
+     ZVV_FMM (NAME, UPPER, A, C, ZVE)		floating-point
+     ZVV_XMM (NAME, UPPER, A, C, BS, DEP, ...)	microscaling
+
+   A is the format of the inputs and C that of the accumulator: Int4 to
+   Int64, OFP4, OFP8, FP16, BF16, FP32 or FP64, prefixed with MX for the
+   microscaled inputs.  An integer or floating-point extension depends
+   on the vector extension ZVE and on Zvvmm or Zvvfmm; a microscaling
+   extension with block size BS depends on DEP and any further
+   extensions given.  By default each entry defines the extension with
+   DEFINE_RISCV_EXT.  */
+
+#ifndef ZVV_IMM
+#define ZVV_IMM(NAME, UPPER, A, C, ZVE)					\
+  DEFINE_RISCV_EXT (NAME, UPPER,					\
+    "Vector integer matrix multiply-accumulate, " #A " inputs/" #C	\
+    " accumulator", "", , ({#ZVE, "zvvmm"}), ({{1, 0}}), zvmmi,		\
+    BITMASK_NOT_YET_ALLOCATED, BITMASK_NOT_YET_ALLOCATED, 0)
+#endif
+
+#ifndef ZVV_FMM
+#define ZVV_FMM(NAME, UPPER, A, C, ZVE)					\
+  DEFINE_RISCV_EXT (NAME, UPPER,					\
+    "Vector FP matrix multiply-accumulate, " #A " inputs/" #C		\
+    " accumulator", "", , ({#ZVE, "zvvfmm"}), ({{1, 0}}),		\
+    zvmmf,								\
+    BITMASK_NOT_YET_ALLOCATED, BITMASK_NOT_YET_ALLOCATED, 0)
+#endif
+
+#ifndef ZVV_XMM
+#define ZVV_XMM(NAME, UPPER, A, C, BS, DEP, ...)			\
+  DEFINE_RISCV_EXT (NAME, UPPER,					\
+    "Vector matrix multiply-accumulate microscaling (BS=" #BS "), " #A	\
+    " inputs/" #C " accumulator", "", , ({#DEP, ##__VA_ARGS__}),	\
+    ({{1, 0}}), zvmmx,							\
+    BITMASK_NOT_YET_ALLOCATED, BITMASK_NOT_YET_ALLOCATED, 0)
+#endif
+
+ZVV_IMM (zvvi4i8mm,     ZVVI4I8MM,     Int4,  Int8,  zve32x)
+ZVV_IMM (zvvi4i16mm,    ZVVI4I16MM,    Int4,  Int16, zve32x)
+ZVV_IMM (zvvi4i32mm,    ZVVI4I32MM,    Int4,  Int32, zve32x)
+ZVV_IMM (zvvi8mm,       ZVVI8MM,       Int8,  Int8,  zve32x)
+ZVV_IMM (zvvi8i16mm,    ZVVI8I16MM,    Int8,  Int16, zve32x)
+ZVV_IMM (zvvi8i32mm,    ZVVI8I32MM,    Int8,  Int32, zve32x)
+ZVV_IMM (zvvi8i64mm,    ZVVI8I64MM,    Int8,  Int64, zve64x)
+ZVV_IMM (zvvi16mm,      ZVVI16MM,      Int16, Int16, zve32x)
+ZVV_IMM (zvvi16i32mm,   ZVVI16I32MM,   Int16, Int32, zve32x)
+ZVV_IMM (zvvi16i64mm,   ZVVI16I64MM,   Int16, Int64, zve64x)
+ZVV_IMM (zvvi32mm,      ZVVI32MM,      Int32, Int32, zve32x)
+ZVV_IMM (zvvi32i64mm,   ZVVI32I64MM,   Int32, Int64, zve64x)
+ZVV_IMM (zvvi64mm,      ZVVI64MM,      Int64, Int64, zve64x)
+
+ZVV_FMM (zvvofp4ofp8mm, ZVVOFP4OFP8MM, OFP4, OFP8, zve32f)
+ZVV_FMM (zvvofp4fp16mm, ZVVOFP4FP16MM, OFP4, FP16, zve32f)
+ZVV_FMM (zvvofp4bf16mm, ZVVOFP4BF16MM, OFP4, BF16, zve32f)
+ZVV_FMM (zvvofp4fp32mm, ZVVOFP4FP32MM, OFP4, FP32, zve32f)
+ZVV_FMM (zvvofp8mm,     ZVVOFP8MM,     OFP8, OFP8, zve32f)
+ZVV_FMM (zvvofp8fp16mm, ZVVOFP8FP16MM, OFP8, FP16, zve32f)
+ZVV_FMM (zvvofp8bf16mm, ZVVOFP8BF16MM, OFP8, BF16, zve32f)
+ZVV_FMM (zvvofp8fp32mm, ZVVOFP8FP32MM, OFP8, FP32, zve32f)
+ZVV_FMM (zvvofp8fp64mm, ZVVOFP8FP64MM, OFP8, FP64, zve64d)
+ZVV_FMM (zvvfp16mm,     ZVVFP16MM,     FP16, FP16, zve32f)
+ZVV_FMM (zvvfp16fp32mm, ZVVFP16FP32MM, FP16, FP32, zve32f)
+ZVV_FMM (zvvfp16fp64mm, ZVVFP16FP64MM, FP16, FP64, zve64d)
+ZVV_FMM (zvvbf16mm,     ZVVBF16MM,     BF16, BF16, zve32f)
+ZVV_FMM (zvvbf16fp32mm, ZVVBF16FP32MM, BF16, FP32, zve32f)
+ZVV_FMM (zvvbf16fp64mm, ZVVBF16FP64MM, BF16, FP64, zve64d)
+ZVV_FMM (zvvfp32mm,     ZVVFP32MM,     FP32, FP32, zve32f)
+ZVV_FMM (zvvfp32fp64mm, ZVVFP32FP64MM, FP32, FP64, zve64d)
+ZVV_FMM (zvvfp64mm,     ZVVFP64MM,     FP64, FP64, zve64d)
+
+ZVV_XMM (zvvxofp4ofp8mm,  ZVVXOFP4OFP8MM,  MXFP4,  OFP8, 32, zvvofp4ofp8mm)
+ZVV_XMM (zvvxofp4fp16mm,  ZVVXOFP4FP16MM,  MXFP4,  FP16, 32, zvvofp4fp16mm)
+ZVV_XMM (zvvxofp4bf16mm,  ZVVXOFP4BF16MM,  MXFP4,  BF16, 32, zvvofp4bf16mm)
+ZVV_XMM (zvvxofp4fp32mm,  ZVVXOFP4FP32MM,  MXFP4,  FP32, 32, zvvofp4fp32mm)
+ZVV_XMM (zvvxofp8mm,      ZVVXOFP8MM,      MXFP8,  OFP8, 32, zvvofp8mm)
+ZVV_XMM (zvvxofp8fp16mm,  ZVVXOFP8FP16MM,  MXFP8,  FP16, 32, zvvofp8fp16mm)
+ZVV_XMM (zvvxofp8bf16mm,  ZVVXOFP8BF16MM,  MXFP8,  BF16, 32, zvvofp8bf16mm)
+ZVV_XMM (zvvxofp8fp32mm,  ZVVXOFP8FP32MM,  MXFP8,  FP32, 32, zvvofp8fp32mm)
+ZVV_XMM (zvvxofp8fp64mm,  ZVVXOFP8FP64MM,  MXFP8,  FP64, 32, zvvofp8fp64mm)
+ZVV_XMM (zvvxi4fp16mm,    ZVVXI4FP16MM,    MXINT4, FP16, 32, zve32f, "zvvfmm")
+ZVV_XMM (zvvxi4bf16mm,    ZVVXI4BF16MM,    MXINT4, BF16, 32, zve32f, "zvvfmm")
+ZVV_XMM (zvvxi4fp32mm,    ZVVXI4FP32MM,    MXINT4, FP32, 32, zve32f, "zvvfmm")
+ZVV_XMM (zvvxi8fp16mm,    ZVVXI8FP16MM,    MXINT8, FP16, 32, zve32f, "zvvfmm")
+ZVV_XMM (zvvxi8bf16mm,    ZVVXI8BF16MM,    MXINT8, BF16, 32, zve32f, "zvvfmm")
+ZVV_XMM (zvvxi8fp32mm,    ZVVXI8FP32MM,    MXINT8, FP32, 32, zve32f, "zvvfmm")
+ZVV_XMM (zvvxi8fp64mm,    ZVVXI8FP64MM,    MXINT8, FP64, 32, zve64d, "zvvfmm")
+ZVV_XMM (zvvxnofp4ofp8mm, ZVVXNOFP4OFP8MM, MXFP4,  OFP8, 16, zvvxofp4ofp8mm)
+ZVV_XMM (zvvxnofp4fp16mm, ZVVXNOFP4FP16MM, MXFP4,  FP16, 16, zvvxofp4fp16mm)
+ZVV_XMM (zvvxnofp4bf16mm, ZVVXNOFP4BF16MM, MXFP4,  BF16, 16, zvvxofp4bf16mm)
+ZVV_XMM (zvvxnofp4fp32mm, ZVVXNOFP4FP32MM, MXFP4,  FP32, 16, zvvxofp4fp32mm)
+ZVV_XMM (zvvxnofp8mm,     ZVVXNOFP8MM,     MXFP8,  OFP8, 16, zvvxofp8mm)
+ZVV_XMM (zvvxnofp8fp16mm, ZVVXNOFP8FP16MM, MXFP8,  FP16, 16, zvvxofp8fp16mm)
+ZVV_XMM (zvvxnofp8bf16mm, ZVVXNOFP8BF16MM, MXFP8,  BF16, 16, zvvxofp8bf16mm)
+ZVV_XMM (zvvxnofp8fp32mm, ZVVXNOFP8FP32MM, MXFP8,  FP32, 16, zvvxofp8fp32mm)
+ZVV_XMM (zvvxnofp8fp64mm, ZVVXNOFP8FP64MM, MXFP8,  FP64, 16, zvvxofp8fp64mm)
+ZVV_XMM (zvvxni4fp16mm,   ZVVXNI4FP16MM,   MXINT4, FP16, 16, zvvxi4fp16mm)
+ZVV_XMM (zvvxni4bf16mm,   ZVVXNI4BF16MM,   MXINT4, BF16, 16, zvvxi4bf16mm)
+ZVV_XMM (zvvxni4fp32mm,   ZVVXNI4FP32MM,   MXINT4, FP32, 16, zvvxi4fp32mm)
+ZVV_XMM (zvvxni8fp16mm,   ZVVXNI8FP16MM,   MXINT8, FP16, 16, zvvxi8fp16mm)
+ZVV_XMM (zvvxni8bf16mm,   ZVVXNI8BF16MM,   MXINT8, BF16, 16, zvvxi8bf16mm)
+ZVV_XMM (zvvxni8fp32mm,   ZVVXNI8FP32MM,   MXINT8, FP32, 16, zvvxi8fp32mm)
+ZVV_XMM (zvvxni8fp64mm,   ZVVXNI8FP64MM,   MXINT8, FP64, 16, zvvxi8fp64mm)
+
+#undef ZVV_IMM
+#undef ZVV_FMM
+#undef ZVV_XMM
