@@ -3303,82 +3303,47 @@ public:
 
 static CONSTEXPR const ime_vlen ime_vlen_obj;
 
-/* Implements __riscv_ime_lambda(): returns the IME lambda value.
-   When VLEN is compile-time known and -mrvv-ime-lambda= has a single
-   value, returns that constant.  Otherwise computes at runtime:
-   lambda = 1 << (ctz(VLEN / 8) - log2(SEW_min * 1) ... but lambda
-   depends on the instruction's SEW and MUL_C which aren't known here.
+/* Read vtype.lambda into TARGET (Pmode), decoded to its value: the
+   encoding 0 gives 0 and N > 0 gives 1 << (N - 1).  Do nothing if
+   TARGET is null.  */
+static void
+emit_lambda_readback (rtx target)
+{
+  if (!target)
+    return;
+  machine_mode m = Pmode;
+  int xlen = GET_MODE_BITSIZE (m).to_constant ();
 
-   For a geometry-query builtin, we return VLEN-derived lambda for the
-   minimum configuration (SEW=8, MUL_C=1): lambda = sqrt(VLEN/8).
-   User code typically uses this in loop bounds where the exact lambda
-   for their SEW/MUL_C is implicit from the intrinsic they call.
+  rtx vt = gen_reg_rtx (m);
+  emit_insn (gen_read_vtype (m, vt));
+  rtx field = expand_simple_binop (m, LSHIFTRT, vt, GEN_INT (xlen - 4),
+				   NULL_RTX, 1, OPTAB_DIRECT);
+  field = expand_simple_binop (m, AND, field, GEN_INT (7),
+			       NULL_RTX, 1, OPTAB_DIRECT);
+  rtx shifted = expand_simple_binop (m, ASHIFT, const1_rtx, field,
+				     NULL_RTX, 1, OPTAB_DIRECT);
+  rtx decoded = expand_simple_binop (m, LSHIFTRT, shifted, const1_rtx,
+				     target, 1, OPTAB_DIRECT);
+  if (decoded != target)
+    emit_move_insn (target, decoded);
+}
 
-   Actually, the most useful definition is: lambda is an intrinsic
-   property of the hardware, not dependent on SEW/MUL_C.  The hardware
-   supports a SET of lambda values.  For __riscv_ime_lambda() we return
-   the maximum supported lambda: sqrt(VLEN / min_SEW) where min_SEW=8.
-   This gives the user the tile dimension for the largest possible tiles.
-
-   Simpler approach: just return sqrt(VLEN/8) = sqrt(VLEN) / sqrt(8).
-   Since VLEN is a power of 2, sqrt(VLEN) = 1 << (log2(VLEN) / 2).
-   VLEN in bits = vlenb * 8.  log2(vlenb*8) = log2(vlenb) + 3.
-   sqrt(VLEN) = 1 << ((log2(vlenb) + 3) / 2).
-
-   But this is complex.  Simplest: return vlenb, shift, ctz, shift.  */
+/* Implements __riscv_ime_lambda(): the lambda currently selected in
+   vtype, 0 if vtype is not configured.  It is read from vtype rather
+   than folded, since VLEN alone does not determine it.  */
 class ime_lambda : public function_base
 {
 public:
   bool apply_vl_p () const override { return false; }
 
+  unsigned int call_properties (const function_instance &) const override
+  {
+    return CP_READ_CSR;
+  }
+
   rtx expand (function_expander &e) const override
   {
-    machine_mode mode = GET_MODE (e.target);
-
-    if (BYTES_PER_RISCV_VECTOR.is_constant ())
-      {
-	/* Static path: compute lambda at compile time.
-	   lambda = sqrt(VLEN / 8) for the default SEW=8, MUL_C=1.
-	   More precisely: VLEN_bits = vlenb * 8; lambda_sq = VLEN_bits / 8
-	   = vlenb; lambda = sqrt(vlenb).  */
-	HOST_WIDE_INT vlenb_val = BYTES_PER_RISCV_VECTOR.to_constant ();
-	/* For the default query (SEW=8, MUL_C=1):
-	   lambda_sq = VLEN_bits / (8 * 1) = VLEN_bits / 8 = vlenb.  */
-	HOST_WIDE_INT lambda_sq = vlenb_val;
-	int log_sq = exact_log2 (lambda_sq);
-	if (log_sq >= 0 && (log_sq & 1) == 0)
-	  {
-	    int lambda = 1 << (log_sq >> 1);
-	    emit_move_insn (e.target, gen_int_mode (lambda, mode));
-	    return e.target;
-	  }
-	/* Fallback: vlenb is not a perfect square power of 2.
-	   Just compute at runtime.  */
-      }
-
-    /* Runtime path: lambda = 1 << (ctz(vlenb) / 2)
-       where vlenb = VLEN/8, and lambda_sq = vlenb (for SEW=8, MUL_C=1).  */
-    rtx vlenb = gen_reg_rtx (mode);
-    emit_move_insn (vlenb, gen_int_mode (BYTES_PER_RISCV_VECTOR, mode));
-
-    /* ctz(vlenb) = log2(lambda^2)  */
-    rtx log2_lsq = gen_reg_rtx (mode);
-    if (TARGET_64BIT)
-      emit_insn (gen_ctzdi2 (log2_lsq, vlenb));
-    else
-      emit_insn (gen_ctzsi2 (log2_lsq, vlenb));
-
-    /* log2_lsq >> 1 = log2(lambda)  */
-    rtx log2_lambda = expand_simple_binop (mode, LSHIFTRT, log2_lsq,
-					   GEN_INT (1), NULL_RTX, 1,
-					   OPTAB_DIRECT);
-
-    /* 1 << log2(lambda) = lambda  */
-    rtx lambda = expand_simple_binop (mode, ASHIFT, const1_rtx,
-				      log2_lambda, e.target, 1,
-				      OPTAB_DIRECT);
-    if (lambda != e.target)
-      emit_move_insn (e.target, lambda);
+    emit_lambda_readback (e.target);
     return e.target;
   }
 };
@@ -3387,33 +3352,27 @@ static CONSTEXPR const ime_lambda ime_lambda_obj;
 
 /* Implements __riscv_vsetlambda(size_t requested_lambda).
 
-   Two argument forms, distinguished at expand time:
+   The lambda field of vtype is rewritten with the encoding of
+   REQUESTED_LAMBDA and installed via `vsetvl x0, x0, t', which
+   preserves VL; the (possibly WARL-adjusted) lambda is then read back
+   and returned.  REQUESTED_LAMBDA is 0 or a power of two in
+   {1, 2, 4, 8, 16, 32, 64}:
 
      requested_lambda == 0
-	Read-only query.  No write to vtype.  Sequence:
-	  csrr  Rd, vtype
-	  srli  Rd, Rd, XLEN-4
-	  andi  Rd, Rd, 7
-	  sll   t,  1, Rd
-	  srli  Rd, t, 1
-	The trailing two ops decode the 3-bit encoding back to its
-	power-of-two value: enc=0 yields 0, enc=N>0 yields 1<<(N-1).
+	The encoding 0 is the preserve-or-initialize request: the
+	hardware keeps a supported current lambda or selects one.  It is
+	a write, not a pure read.
 
-     requested_lambda is a compile-time positive power of two in
-     {1, 2, 4, 8, 16, 32, 64}
-	Write-half: RMW the lambda field of vtype with the 3-bit
-	encoding, install via `vsetvl x0, x0, t' (preserves VL), then
-	emit the read-only readback+decode sequence above and return
-	the (possibly WARL-clamped) result.
+     requested_lambda is a compile-time positive power of two
+	Its encoding N, with lambda = 1 << (N - 1).
 
      anything else as a compile-time constant
 	error_at; the user wrote an out-of-range request and the
 	spec contract is to error rather than vill-clamp.
 
      runtime value
-	Not implemented in this commit -- emit a sorry().  A later
-	commit will add the branch-on-zero path (requires Zbb for the
-	encoding via ctz).
+	Encoded as 0 for zero and ctz (value) + 1 otherwise; this needs
+	Zbb for the ctz, and is a sorry () without it.
 
    Per the IME spec section "Establishing lambda from C", vtype.lambda
    is WARL; the read-only return value is the value the hardware
@@ -3450,37 +3409,6 @@ public:
       case 64: return 7;
       default: return -1;
       }
-  }
-
-  /* Emit the readback+decode sequence into TARGET (Pmode).  If TARGET
-     is null the caller is discarding the return value -- skip the
-     entire sequence; the only observable effect of vsetlambda is the
-     vtype write, which the install pattern (when emitted) provides.  */
-  static void emit_readback_decode (rtx target)
-  {
-    if (!target)
-      return;
-    machine_mode m = Pmode;
-    int xlen = GET_MODE_BITSIZE (m).to_constant ();
-
-    rtx vt = gen_reg_rtx (m);
-    emit_insn (gen_read_vtype (m, vt));
-
-    /* field = (vtype >> (xlen-4)) & 7  */
-    rtx field = expand_simple_binop (m, LSHIFTRT, vt, GEN_INT (xlen - 4),
-				     NULL_RTX, 1, OPTAB_DIRECT);
-    field = expand_simple_binop (m, AND, field, GEN_INT (7),
-				 NULL_RTX, 1, OPTAB_DIRECT);
-
-    /* decoded = (1 << field) >> 1
-       enc==0 -> 0; enc==N>0 -> 1 << (N-1).  */
-    rtx one = const1_rtx;
-    rtx shifted = expand_simple_binop (m, ASHIFT, one, field,
-				       NULL_RTX, 1, OPTAB_DIRECT);
-    rtx decoded = expand_simple_binop (m, LSHIFTRT, shifted, const1_rtx,
-				       target, 1, OPTAB_DIRECT);
-    if (decoded != target)
-      emit_move_insn (target, decoded);
   }
 
   /* Emit the vtype RMW + install sequence given an encoded lambda
@@ -3558,25 +3486,25 @@ public:
 	rtx arg_rtx = expand_normal (arg);
 	arg_rtx = force_reg (m, arg_rtx);
 
-	rtx skip_label = gen_label_rtx ();
+	/* The encoding is 0 for a zero argument, otherwise
+	   ctz (arg) + 1.  */
+	rtx enc_reg = gen_reg_rtx (m);
+	emit_move_insn (enc_reg, const0_rtx);
+	rtx zero_label = gen_label_rtx ();
 	emit_cmp_and_jump_insns (arg_rtx, const0_rtx, EQ, NULL_RTX, m, 1,
-				 skip_label);
+				 zero_label);
+	rtx ctz = expand_unop (m, ctz_optab, arg_rtx, NULL_RTX, 1);
+	gcc_assert (ctz);
+	rtx enc = expand_simple_binop (m, PLUS, ctz, const1_rtx, enc_reg, 1,
+				       OPTAB_DIRECT);
+	if (enc != enc_reg)
+	  emit_move_insn (enc_reg, enc);
+	emit_label (zero_label);
 
-	rtx ctz = gen_reg_rtx (m);
-	rtx ctz_res = expand_unop (m, ctz_optab, arg_rtx, ctz, 1);
-	gcc_assert (ctz_res);
-	if (ctz_res != ctz)
-	  emit_move_insn (ctz, ctz_res);
-	rtx enc_reg = expand_simple_binop (m, PLUS, ctz, const1_rtx,
-					   NULL_RTX, 1, OPTAB_DIRECT);
-
-	/* The install's lattice-hint operand is 0 -- the runtime
-	   value is unknown at compile time, so
-	   `classify_lambda_effect' marks the install as KILLED in
-	   the dataflow.  */
+	/* The install's metadata operand is 0: the lambda it establishes
+	   is unknown at compile time.  */
 	emit_rmw_install (enc_reg, const0_rtx);
-	emit_label (skip_label);
-	emit_readback_decode (e.target);
+	emit_lambda_readback (e.target);
 	return e.target;
       }
 
@@ -3591,14 +3519,13 @@ public:
 	return e.target;
       }
 
-    /* Write half: emit only when requested_lambda is non-zero.  The
-       compile-time-0 form is a pure read.  */
-    if (req != 0)
-      emit_rmw_install (GEN_INT (enc), GEN_INT (enc));
+    /* A zero request establishes a lambda that is unknown at compile
+       time, so its metadata operand is 0 like that of a runtime
+       argument.  */
+    emit_rmw_install (GEN_INT (enc), GEN_INT (enc));
 
-    /* Read-only half: decode the (possibly WARL-clamped) readback and
-       return it.  This is the return value of both forms.  */
-    emit_readback_decode (e.target);
+    /* Return the lambda that the hardware selected.  */
+    emit_lambda_readback (e.target);
     return e.target;
   }
 };
