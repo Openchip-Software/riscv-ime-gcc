@@ -369,8 +369,6 @@ extern const function_base *const vfmmacc;
 #include "zvvm-mmacc.def"
 extern const function_base *const vf8wmmacc_f4e2m1;
 /* Microscaled FP-input scaled variants */
-extern const function_base *const vfwmmacc_scaled_f16_bs32;
-extern const function_base *const vfwmmacc_scaled_f16_bs16;
 extern const function_base *const vfqmmacc_scaled_f8e4m3_bs32;
 extern const function_base *const vfqmmacc_scaled_f8e4m3_bs16;
 extern const function_base *const vf8wmmacc_scaled_f8e4m3_bs32;

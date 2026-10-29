@@ -3205,7 +3205,6 @@ ime_unspec_bs16_p (int unspec)
 {
   switch (unspec)
     {
-    case UNSPEC_VFWMMACC_F16_BS16:
     case UNSPEC_VFQMMACC_F8E4M3_BS16:
     case UNSPEC_VF8WMMACC_F8E4M3_BS16:
     case UNSPEC_VFWIMMACC_I8_BS16:
@@ -3250,11 +3249,6 @@ private:
 };
 
 /* FP-input scaled variant instances.  */
-static CONSTEXPR const microscaled_ime_op vfwmmacc_scaled_f16_bs32_obj
-  (UNSPEC_VFWMMACC_F16_BS32);
-static CONSTEXPR const microscaled_ime_op vfwmmacc_scaled_f16_bs16_obj
-  (UNSPEC_VFWMMACC_F16_BS16);
-
 static CONSTEXPR const microscaled_ime_op vfqmmacc_scaled_f8e4m3_bs32_obj
   (UNSPEC_VFQMMACC_F8E4M3_BS32);
 static CONSTEXPR const microscaled_ime_op vfqmmacc_scaled_f8e4m3_bs16_obj
@@ -3922,8 +3916,6 @@ BASE (vfmmacc)
 #include "zvvm-mmacc.def"
 BASE (vf8wmmacc_f4e2m1)
 /* Microscaled FP-input scaled variants */
-BASE (vfwmmacc_scaled_f16_bs32)
-BASE (vfwmmacc_scaled_f16_bs16)
 BASE (vfqmmacc_scaled_f8e4m3_bs32)
 BASE (vfqmmacc_scaled_f8e4m3_bs16)
 BASE (vf8wmmacc_scaled_f8e4m3_bs32)

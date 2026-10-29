@@ -790,13 +790,6 @@ static CONSTEXPR const rvv_arg_type_info ime_fwvss_f4e2m1_args[]
 
 /* Args for microscaled FP-input scaled variants: same as
    the non-scaled variant but with an extra vuint16m1_t scales operand.  */
-static CONSTEXPR const rvv_arg_type_info ime_scaled_fwvss_f16_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     ime_fixed_input (IME_FORMAT_FP16, 0),
-     ime_fixed_input (IME_FORMAT_FP16, 0),
-     rvv_arg_type_info (RVV_BASE_ime_scales_vector),
-     rvv_arg_type_info_end};
-
 static CONSTEXPR const rvv_arg_type_info ime_scaled_fwvss_f8e4m3_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      ime_fixed_input (IME_FORMAT_E4M3, 0),
@@ -3858,11 +3851,6 @@ static CONSTEXPR const rvv_op_info f32_ime_8wvss_f4e2m1_ops
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f4e2m1_args};
 
 /* Microscaled FP-input scaled op_info structs.  */
-
-/* vfwmmacc_scaled_f16: FP16 -> FP32 accumulator, with scales.  */
-static CONSTEXPR const rvv_op_info f32_ime_scaled_wvss_f16_ops
-  = {f32_lmul_ge1_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f16_args};
 
 /* vfqmmacc_scaled_f8e4m3: OFP8_E4M3 -> FP32 accumulator, with scales.  */
 static CONSTEXPR const rvv_op_info f32_ime_scaled_qvss_f8e4m3_ops

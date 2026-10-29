@@ -2316,9 +2316,7 @@ riscv_zvvm_mm_p (riscv_zvvm_format a, riscv_zvvm_format c, int bs)
   if (bs == BS && a == ZVVM_FMT_##A && c == ZVVM_FMT_##C)		\
     return TARGET_##UPPER;
 #include "riscv-ext-zvv.def"
-  /* The microscaled FP16-input multiply-accumulates have no extension
-     of their own; they follow the unscaled one.  */
-  return bs && riscv_zvvm_mm_p (a, c, 0);
+  return false;
 }
 
 /* Return true if the Zvvm integer multiply-accumulate with an

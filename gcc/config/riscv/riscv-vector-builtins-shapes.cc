@@ -1576,10 +1576,7 @@ ime_mm_required_ext (vector_type_index a, vector_type_index c, int bs)
   if (bs == BS && fa == ZVVM_FMT_##A && fc == ZVVM_FMT_##C)		\
     return UPPER##_EXT;
 #include "riscv-ext-zvv.def"
-  /* The microscaled FP16-input multiply-accumulates have no extension
-     of their own; gate them on that of the unscaled one.  */
-  gcc_assert (bs);
-  return ime_mm_required_ext (a, c, 0);
+  gcc_unreachable ();
 }
 
 struct ime_mmacc_def : public build_base
