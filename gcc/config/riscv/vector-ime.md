@@ -370,9 +370,8 @@
 (define_attr "ime_tile" "no,yes"
   (const_string "no"))
 
-;; Block scale size for microscaled variants.
-;; "none" means not a microscaled instruction (bs bit irrelevant).
-;; "bs16" and "bs32" set the bs vtype bit accordingly.
+;; Block size of microscaled multiply-accumulates: "bs16" sets the vtype
+;; bs bit, "bs32" clears it.  "none" means not a microscaled instruction.
 (define_attr "ime_bs" "none,bs16,bs32"
   (const_string "none"))
 

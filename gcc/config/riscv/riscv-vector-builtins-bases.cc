@@ -3197,20 +3197,20 @@ static CONSTEXPR const vf8wmmacc_f4e2m1_ime_op vf8wmmacc_f4e2m1_obj;
    function_expander::use_microscaled_insn() helper, which moves the
    scales into v0 and builds the pattern operands skipping the scales
    argument.  */
-/* Return true if the microscaled UNSPEC uses BS=32 (bs vtype bit = 1).
-   BS=16 variants have bs=0.  */
+/* Return true if the microscaled UNSPEC uses block size 16, which the
+   vtype bs bit selects when set; block size 32 has bs = 0.  */
 
 static bool
-ime_unspec_bs32_p (int unspec)
+ime_unspec_bs16_p (int unspec)
 {
   switch (unspec)
     {
-    case UNSPEC_VFWMMACC_F16_BS32:
-    case UNSPEC_VFQWMMACC_F8E4M3_BS32:
-    case UNSPEC_VF8WMMACC_F8E4M3_BS32:
-    case UNSPEC_VFWIMMACC_I8_BS32:
-    case UNSPEC_VFQWIMMACC_I8_BS32:
-    case UNSPEC_VF8WIMMACC_I8_BS32:
+    case UNSPEC_VFWMMACC_F16_BS16:
+    case UNSPEC_VFQWMMACC_F8E4M3_BS16:
+    case UNSPEC_VF8WMMACC_F8E4M3_BS16:
+    case UNSPEC_VFWIMMACC_I8_BS16:
+    case UNSPEC_VFQWIMMACC_I8_BS16:
+    case UNSPEC_VF8WIMMACC_I8_BS16:
       return true;
     default:
       return false;
@@ -3236,7 +3236,7 @@ public:
 				  /* altfmt_a = */ false,
 				  /* altfmt_b = */ false,
 				  /* altfmt = */ false,
-				  /* bs = */ ime_unspec_bs32_p (m_unspec));
+				  /* bs = */ ime_unspec_bs16_p (m_unspec));
     /* The scales argument is the second-to-last (before vl).  */
     int scales_idx = call_expr_nargs (e.exp) - 2;
     insn_code icode = code_for_pred_ime_mmacc (m_unspec, e.vector_mode ());

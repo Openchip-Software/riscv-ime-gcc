@@ -1593,7 +1593,7 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
   int sign = get_attr_ime_altfmt (rinsn) - IME_ALTFMT_SS;
   r.altfmt_a = sign & 2;
   r.altfmt_b = sign & 1;
-  r.bs = get_attr_ime_bs (rinsn) == IME_BS_BS32;
+  r.bs = get_attr_ime_bs (rinsn) == IME_BS_BS16;
 
   /* A BF16 accumulator or input selects its altfmt bit; each input is
      checked separately for mixed-format inputs.  */
