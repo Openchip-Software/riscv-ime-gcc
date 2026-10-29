@@ -2610,6 +2610,15 @@ gen_lambda_preserving_vsetvl (rtx dest, rtx avl, HOST_WIDE_INT static_vtype,
      gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM));
 }
 
+/* Return true if A and B have the same SEW, LMUL and policy.  */
+
+static bool
+same_vtype_fields_p (const vsetvl_info &a, const vsetvl_info &b)
+{
+  return (a.get_sew () == b.get_sew () && a.get_vlmul () == b.get_vlmul ()
+	  && a.get_ta () == b.get_ta () && a.get_ma () == b.get_ma ());
+}
+
 class vsetvl_block_info
 {
 public:
@@ -3720,6 +3729,31 @@ private:
       }
   }
 
+  /* Return true if every vsetvl reaching block BB has the SEW, LMUL,
+     policy and AVL of CURR and, if it is an IME vsetvl, CURR's IME
+     demand, and at least one of them is an IME vsetvl.  A plain vsetvli
+     with the same fields keeps the IME bits of vtype.  */
+  bool ime_vtype_reaches_p (const vsetvl_info &curr, unsigned int bb)
+  {
+    if (!m_vsetvl_def_in || bitmap_empty_p (m_vsetvl_def_in[bb]))
+      return false;
+    bool ime_p = false;
+    unsigned int i;
+    sbitmap_iterator sbi;
+    EXECUTE_IF_SET_IN_BITMAP (m_vsetvl_def_in[bb], 0, i, sbi)
+      {
+	const vsetvl_info &prev = *m_vsetvl_def_exprs[i];
+	if (!prev.valid_p ()
+	    || !same_vtype_fields_p (prev, curr)
+	    || !m_dem.avl_available_p (prev, curr)
+	    || (prev.ime_required_p ()
+		&& prev.get_ime_req () != curr.get_ime_req ()))
+	  return false;
+	ime_p |= prev.ime_required_p ();
+      }
+    return ime_p;
+  }
+
   void change_vsetvl_insn (const vsetvl_info &info)
   {
     /* IME setups are multi-insn sequences (constant load + register-form
@@ -3981,59 +4015,19 @@ pre_vsetvl::compute_vsetvl_def_data ()
       bitmap_set_bit (def_loc[bb->index ()],
 		      get_expr_index (m_vsetvl_def_exprs, footer_info));
 
-      /* WARL-preservation refinement on the reaching-definition kill.
-	 When the footer's basic geometry (SEW, VLMUL, ta, ma) matches an
-	 expression's basic geometry, the footer's vtype write preserves
-	 the IME-specific bits of that expression (lambda is preserved
-	 when (VLEN, SEW) still supports it; altfmt_A/B/bs are always
-	 preserved across vsetvli/vsetivli/vsetvl).  Don't kill compatible
-	 IME expressions across such a footer.  */
+      /* A footer vsetvl with the same SEW, LMUL and policy as an IME
+	 expression keeps its lambda (while VLEN and SEW still allow it) and
+	 its altfmt and bs bits, so unless the footer has a different IME
+	 demand it does not kill that expression.  */
       if (footer_info.valid_p ())
 	for (unsigned i = 0; i < m_vsetvl_def_exprs.length (); i++)
 	  {
 	    const auto &info = *m_vsetvl_def_exprs[i];
-	    if (!info.valid_p () || !info.ime_required_p ())
-	      continue;
-	    if (footer_info.get_sew () != info.get_sew ()
-		|| footer_info.get_vlmul () != info.get_vlmul ()
-		|| footer_info.get_ta () != info.get_ta ()
-		|| footer_info.get_ma () != info.get_ma ())
-	      {
-		if (dump_file && (dump_flags & TDF_DETAILS)
-		    && info.ime_required_p ())
-		  fprintf (dump_file,
-			   "    BB %u: keep kill bit %u (Expr[%u] IME) -- "
-			   "geometry mismatch with footer "
-			   "(footer SEW=%u VLMUL=%d ta=%d ma=%d vs "
-			   "Expr SEW=%u VLMUL=%d ta=%d ma=%d)\n",
-			   bb->index (), i, i,
-			   footer_info.get_sew (), footer_info.get_vlmul (),
-			   footer_info.get_ta (), footer_info.get_ma (),
-			   info.get_sew (), info.get_vlmul (),
-			   info.get_ta (), info.get_ma ());
-		continue;
-	      }
-	    /* When both sides have an IME demand, the IME tuples must
-	       also match -- otherwise the footer rewrites lambda/altfmt
-	       to a different value and the prior IME state is destroyed.  */
-	    if (footer_info.ime_required_p () && info.ime_required_p ()
-		&& !(footer_info.get_ime_req () == info.get_ime_req ()))
-	      {
-		if (dump_file && (dump_flags & TDF_DETAILS))
-		  fprintf (dump_file,
-			   "    BB %u: keep kill bit %u (Expr[%u] IME) -- "
-			   "IME tuple mismatch with footer's IME tuple\n",
-			   bb->index (), i, i);
-		continue;
-	      }
-	    if (dump_file && (dump_flags & TDF_DETAILS)
-		&& info.ime_required_p ())
-	      fprintf (dump_file,
-		       "    BB %u: clear kill bit %u (Expr[%u] IME) -- "
-		       "WARL-compatible: same SEW/VLMUL/ta/ma "
-		       "(lambda and altfmt_A/B/bs preserved)\n",
-		       bb->index (), i, i);
-	    bitmap_clear_bit (m_kill[bb->index ()], i);
+	    if (info.valid_p () && info.ime_required_p ()
+		&& same_vtype_fields_p (footer_info, info)
+		&& (!footer_info.ime_required_p ()
+		    || footer_info.get_ime_req () == info.get_ime_req ()))
+	      bitmap_clear_bit (m_kill[bb->index ()], i);
 	  }
     }
 
@@ -4944,94 +4938,18 @@ pre_vsetvl::emit_vsetvl ()
 		}
 	      else
 		{
-		  /* WARL-aware skip for IME consumers: if the reaching
-		     def set at this BB contains an expression that
-		     satisfies curr_info's IME demand AND every other
-		     reaching def is a basic vsetvl at compatible
-		     geometry (so its write preserves the IME bits via
-		     WARL), no fresh IME vsetvl needs to be emitted.  */
-		  bool reach_satisfies = false;
-		  /* The def_in bitmap only reflects state at BB ENTRY.
-		     If a vsetvl-emitting local_info precedes curr_info
-		     in the same BB, IT determines the state at
-		     curr_info's position, not def_in.  Restrict the skip
-		     to the case where curr_info IS the BB entry info --
-		     then def_in is the actual reaching state.  A more
-		     general position-aware analysis would also catch
-		     skip opportunities where every intervening local_info
-		     is itself a propagating WARL-compatible vsetvl;
-		     keeping it conservative for now until validated.  */
+		  /* An IME instruction at the start of its block needs no
+		     vsetvl if the vtype reaching the block satisfies it;
+		     the reaching definitions describe only the block
+		     entry.  */
 		  if (curr_info.ime_required_p ()
 		      && !prior_emission_in_bb
-		      && m_vsetvl_def_in
-		      && !bitmap_empty_p (m_vsetvl_def_in[bb->index ()]))
-		    {
-		      bool any_ime_satisfies = false;
-		      bool all_compatible = true;
-		      unsigned int expr_index;
-		      sbitmap_iterator sbi;
-		      EXECUTE_IF_SET_IN_BITMAP (m_vsetvl_def_in[bb->index ()],
-						0, expr_index, sbi)
-			{
-			  vsetvl_info &prev
-			    = *m_vsetvl_def_exprs[expr_index];
-			  if (!prev.valid_p ()
-			      || prev.get_sew () != curr_info.get_sew ()
-			      || prev.get_vlmul () != curr_info.get_vlmul ()
-			      || prev.get_ta () != curr_info.get_ta ()
-			      || prev.get_ma () != curr_info.get_ma ())
-			    {
-			      if (dump_file && (dump_flags & TDF_DETAILS))
-				fprintf (dump_file,
-					 "\n  Skip rejected (insn %d): Expr[%u] "
-					 "geometry mismatch\n",
-					 insn->uid (), expr_index);
-			      all_compatible = false;
-			      break;
-			    }
-			  /* AVL must also match: skipping the consumer's
-			     vsetvl means VL stays at whatever the last
-			     reaching def wrote.  If prev's AVL differs
-			     from curr_info's, VL after the skip is wrong
-			     for the consumer.  avl_available_p handles
-			     imm-vs-imm, reg-vs-reg and VLMAX rules.  */
-			  if (!m_dem.avl_available_p (prev, curr_info))
-			    {
-			      if (dump_file && (dump_flags & TDF_DETAILS))
-				fprintf (dump_file,
-					 "\n  Skip rejected (insn %d): Expr[%u] "
-					 "AVL not available\n",
-					 insn->uid (), expr_index);
-			      all_compatible = false;
-			      break;
-			    }
-			  if (prev.ime_required_p ())
-			    {
-			      if (!(prev.get_ime_req ()
-				    == curr_info.get_ime_req ()))
-				{
-				  if (dump_file && (dump_flags & TDF_DETAILS))
-				    fprintf (dump_file,
-					     "\n  Skip rejected (insn %d): "
-					     "Expr[%u] IME tuple mismatch\n",
-					     insn->uid (), expr_index);
-				  all_compatible = false;
-				  break;
-				}
-			      any_ime_satisfies = true;
-			    }
-			}
-		      reach_satisfies
-			= all_compatible && any_ime_satisfies;
-		    }
-
-		  if (reach_satisfies)
+		      && ime_vtype_reaches_p (curr_info, bb->index ()))
 		    {
 		      if (dump_file)
 			fprintf (dump_file,
-				 "\n  Skip vsetvl emit before insn %d: "
-				 "reaching IME def + WARL-compatible "
-				 "preservers satisfy demand\n",
+				 "\n  Omit vsetvl before insn %d: the reaching "
+				 "vsetvls satisfy its IME demand\n",
 				 insn->uid ());
 		    }
 		  else
