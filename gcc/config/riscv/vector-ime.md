@@ -409,329 +409,152 @@
 (define_attr "ime_vtype_op_idx" ""
   (const_int INVALID_ATTRIBUTE))
 
-(define_int_iterator VMMACC_SU
-  [UNSPEC_VMMACC_S UNSPEC_VMMACC_U UNSPEC_VMMACC_SU UNSPEC_VMMACC_US])
+;; The IME integer matrix multiply-accumulates: one UNSPEC for each
+;; instruction and signedness of the A and B inputs.
+(define_int_iterator IME_INT_MMACC
+  [UNSPEC_VMMACC_S   UNSPEC_VMMACC_U   UNSPEC_VMMACC_SU   UNSPEC_VMMACC_US
+   UNSPEC_VWMMACC_S  UNSPEC_VWMMACC_U  UNSPEC_VWMMACC_SU  UNSPEC_VWMMACC_US
+   UNSPEC_VQWMMACC_S UNSPEC_VQWMMACC_U UNSPEC_VQWMMACC_SU UNSPEC_VQWMMACC_US
+   UNSPEC_V8WMMACC_S UNSPEC_V8WMMACC_U UNSPEC_V8WMMACC_SU UNSPEC_V8WMMACC_US])
 
-(define_int_attr vmmacc_su_name [(UNSPEC_VMMACC_S "_s")
-				 (UNSPEC_VMMACC_U "_u")
-				 (UNSPEC_VMMACC_SU "_su")
-				 (UNSPEC_VMMACC_US "_us")])
+;; The same-format vfmmacc (FP16, BF16, FP32 and FP64).
+(define_int_iterator IME_VFMMACC [UNSPEC_VFMMACC])
 
-(define_int_attr vmmacc_altfmt [(UNSPEC_VMMACC_S "ss")
-				(UNSPEC_VMMACC_U "uu")
-				(UNSPEC_VMMACC_SU "su")
-				(UNSPEC_VMMACC_US "us")])
-
-(define_int_iterator VWMMACC_SUSUUS
-  [UNSPEC_VWMMACC_S UNSPEC_VWMMACC_U UNSPEC_VWMMACC_SU UNSPEC_VWMMACC_US])
-
-(define_int_attr vwmmacc_su_name [(UNSPEC_VWMMACC_S  "_s")
-				  (UNSPEC_VWMMACC_U  "_u")
-				  (UNSPEC_VWMMACC_SU "_su")
-				  (UNSPEC_VWMMACC_US "_us")])
-
-(define_int_attr vwmmacc_altfmt [(UNSPEC_VWMMACC_S  "ss")
-				 (UNSPEC_VWMMACC_U  "uu")
-				 (UNSPEC_VWMMACC_SU "su")
-				 (UNSPEC_VWMMACC_US "us")])
-
-(define_int_iterator VQWMMACC_SUSUUS
-  [UNSPEC_VQWMMACC_S UNSPEC_VQWMMACC_U UNSPEC_VQWMMACC_SU UNSPEC_VQWMMACC_US])
-
-(define_int_attr vqwmmacc_su_name [(UNSPEC_VQWMMACC_S  "_s")
-				   (UNSPEC_VQWMMACC_U  "_u")
-				   (UNSPEC_VQWMMACC_SU "_su")
-				   (UNSPEC_VQWMMACC_US "_us")])
-
-(define_int_attr vqwmmacc_altfmt [(UNSPEC_VQWMMACC_S  "ss")
-				  (UNSPEC_VQWMMACC_U  "uu")
-				  (UNSPEC_VQWMMACC_SU "su")
-				  (UNSPEC_VQWMMACC_US "us")])
-
-(define_int_iterator V8WMMACC_SUSUUS
-  [UNSPEC_V8WMMACC_S UNSPEC_V8WMMACC_U UNSPEC_V8WMMACC_SU UNSPEC_V8WMMACC_US])
-
-(define_int_attr v8wmmacc_su_name [(UNSPEC_V8WMMACC_S  "_s")
-				   (UNSPEC_V8WMMACC_U  "_u")
-				   (UNSPEC_V8WMMACC_SU "_su")
-				   (UNSPEC_V8WMMACC_US "_us")])
-
-(define_int_attr v8wmmacc_altfmt [(UNSPEC_V8WMMACC_S  "ss")
-				  (UNSPEC_V8WMMACC_U  "uu")
-				  (UNSPEC_V8WMMACC_SU "su")
-				  (UNSPEC_V8WMMACC_US "us")])
-
-;; Accumulator modes for the W=2 widening integer matrix
-;; multiply-accumulate (vwmmacc.vv).  The input modes are half the
-;; accumulator SEW at LMUL=1 (see VI_TRUNC_LMUL1 below).  Fractional
-;; accumulator LMULs are omitted for now; they correspond to
-;; MUL_C < 1 configurations that only arise on unusual (VLEN, lambda)
-;; targets.
-(define_mode_iterator VWMMACC_ACC [RVVM8HI RVVM4HI RVVM2HI RVVM1HI
-				   RVVM8SI RVVM4SI RVVM2SI RVVM1SI
-				   RVVM8DI RVVM4DI RVVM2DI RVVM1DI
-				   ;; IME m16 acc variants.
-				   RVVM16HI RVVM16SI RVVM16DI])
-
-;; Map each VWMMACC_ACC accumulator mode to the LMUL=1 form at half its
-;; SEW: the mode used for vs1 / vs2 operands.
-(define_mode_attr VI_TRUNC_LMUL1 [(RVVM8HI "RVVM1QI") (RVVM4HI "RVVM1QI")
-				  (RVVM2HI "RVVM1QI") (RVVM1HI "RVVM1QI")
-				  (RVVM8SI "RVVM1HI") (RVVM4SI "RVVM1HI")
-				  (RVVM2SI "RVVM1HI") (RVVM1SI "RVVM1HI")
-				  (RVVM8DI "RVVM1SI") (RVVM4DI "RVVM1SI")
-				  (RVVM2DI "RVVM1SI") (RVVM1DI "RVVM1SI")
-				  ;; m16 acc -> LMUL=1 input.
-				  (RVVM16HI "RVVM1QI")
-				  (RVVM16SI "RVVM1HI")
-				  (RVVM16DI "RVVM1SI")])
-
-;; Accumulator modes for W=4 (vqwmmacc.vv).  Inputs are SEW/4 at LMUL=1.
-;; Only SI and DI accumulators have a valid quad-truncated integer type
-;; (QI and HI respectively).
-(define_mode_iterator VQWMMACC_ACC [RVVM8SI RVVM4SI RVVM2SI RVVM1SI
-				    RVVM8DI RVVM4DI RVVM2DI RVVM1DI
-				    ;; IME m16 acc variants.
-				    RVVM16SI RVVM16DI])
-
-(define_mode_attr VI_QUAD_TRUNC_LMUL1 [(RVVM8SI "RVVM1QI") (RVVM4SI "RVVM1QI")
-				       (RVVM2SI "RVVM1QI") (RVVM1SI "RVVM1QI")
-				       (RVVM8DI "RVVM1HI") (RVVM4DI "RVVM1HI")
-				       (RVVM2DI "RVVM1HI") (RVVM1DI "RVVM1HI")
-				       ;; m16 acc -> LMUL=1 input (SEW/4).
-				       (RVVM16SI "RVVM1QI")
-				       (RVVM16DI "RVVM1HI")])
-
-;; Accumulator modes for W=8 (v8wmmacc.vv).  Inputs are SEW/8 at LMUL=1.
-;; Only DI accumulators have a valid oct-truncated integer type (QI).
-(define_mode_iterator V8WMMACC_ACC [RVVM8DI RVVM4DI RVVM2DI RVVM1DI
-				    ;; IME m16 acc variant.
-				    RVVM16DI])
-
-(define_mode_attr VI_OCT_TRUNC_LMUL1 [(RVVM8DI "RVVM1QI") (RVVM4DI "RVVM1QI")
-				      (RVVM2DI "RVVM1QI") (RVVM1DI "RVVM1QI")
-				      ;; m16 acc -> LMUL=1 input (SEW/8).
-				      (RVVM16DI "RVVM1QI")])
-
-;; Source-LMUL mode_attrs for the W=2 widening mmacc _lm{N} variants.
-;; Each maps an accumulator mode to its narrower-SEW (SEW/2) sibling at
-;; LMUL=N (independent of MUL_C).  Mirrors VI_TRUNC_LMUL1 but the
-;; destination's LMUL is N rather than 1.
-(define_mode_attr VI_TRUNC_LMUL2 [(RVVM8HI "RVVM2QI") (RVVM4HI "RVVM2QI")
-				  (RVVM2HI "RVVM2QI") (RVVM1HI "RVVM2QI")
-				  (RVVM8SI "RVVM2HI") (RVVM4SI "RVVM2HI")
-				  (RVVM2SI "RVVM2HI") (RVVM1SI "RVVM2HI")
-				  (RVVM8DI "RVVM2SI") (RVVM4DI "RVVM2SI")
-				  (RVVM2DI "RVVM2SI") (RVVM1DI "RVVM2SI")
-				  ;; m16 acc -> LMUL=2 input (SEW/2).
-				  (RVVM16HI "RVVM2QI")
-				  (RVVM16SI "RVVM2HI")
-				  (RVVM16DI "RVVM2SI")])
-
-(define_mode_attr VI_TRUNC_LMUL4 [(RVVM8HI "RVVM4QI") (RVVM4HI "RVVM4QI")
-				  (RVVM2HI "RVVM4QI") (RVVM1HI "RVVM4QI")
-				  (RVVM8SI "RVVM4HI") (RVVM4SI "RVVM4HI")
-				  (RVVM2SI "RVVM4HI") (RVVM1SI "RVVM4HI")
-				  (RVVM8DI "RVVM4SI") (RVVM4DI "RVVM4SI")
-				  (RVVM2DI "RVVM4SI") (RVVM1DI "RVVM4SI")
-				  ;; m16 acc -> LMUL=4 input (SEW/2).
-				  (RVVM16HI "RVVM4QI")
-				  (RVVM16SI "RVVM4HI")
-				  (RVVM16DI "RVVM4SI")])
-
-(define_mode_attr VI_TRUNC_LMUL8 [(RVVM8HI "RVVM8QI") (RVVM4HI "RVVM8QI")
-				  (RVVM2HI "RVVM8QI") (RVVM1HI "RVVM8QI")
-				  (RVVM8SI "RVVM8HI") (RVVM4SI "RVVM8HI")
-				  (RVVM2SI "RVVM8HI") (RVVM1SI "RVVM8HI")
-				  (RVVM8DI "RVVM8SI") (RVVM4DI "RVVM8SI")
-				  (RVVM2DI "RVVM8SI") (RVVM1DI "RVVM8SI")
-				  ;; m16 acc -> LMUL=8 input (SEW/2).
-				  (RVVM16HI "RVVM8QI")
-				  (RVVM16SI "RVVM8HI")
-				  (RVVM16DI "RVVM8SI")])
-
-;; W=4 (vqwmmacc.vv) source-LMUL mode_attrs.  Mirrors
-;; VI_QUAD_TRUNC_LMUL1 but the destination's LMUL is N.
-(define_mode_attr VI_QUAD_TRUNC_LMUL2 [(RVVM8SI "RVVM2QI") (RVVM4SI "RVVM2QI")
-				       (RVVM2SI "RVVM2QI") (RVVM1SI "RVVM2QI")
-				       (RVVM8DI "RVVM2HI") (RVVM4DI "RVVM2HI")
-				       (RVVM2DI "RVVM2HI") (RVVM1DI "RVVM2HI")
-				       ;; m16 acc -> LMUL=2 input (SEW/4).
-				       (RVVM16SI "RVVM2QI")
-				       (RVVM16DI "RVVM2HI")])
-
-(define_mode_attr VI_QUAD_TRUNC_LMUL4 [(RVVM8SI "RVVM4QI") (RVVM4SI "RVVM4QI")
-				       (RVVM2SI "RVVM4QI") (RVVM1SI "RVVM4QI")
-				       (RVVM8DI "RVVM4HI") (RVVM4DI "RVVM4HI")
-				       (RVVM2DI "RVVM4HI") (RVVM1DI "RVVM4HI")
-				       ;; m16 acc -> LMUL=4 input (SEW/4).
-				       (RVVM16SI "RVVM4QI")
-				       (RVVM16DI "RVVM4HI")])
-
-(define_mode_attr VI_QUAD_TRUNC_LMUL8 [(RVVM8SI "RVVM8QI") (RVVM4SI "RVVM8QI")
-				       (RVVM2SI "RVVM8QI") (RVVM1SI "RVVM8QI")
-				       (RVVM8DI "RVVM8HI") (RVVM4DI "RVVM8HI")
-				       (RVVM2DI "RVVM8HI") (RVVM1DI "RVVM8HI")
-				       ;; m16 acc -> LMUL=8 input (SEW/4).
-				       (RVVM16SI "RVVM8QI")
-				       (RVVM16DI "RVVM8HI")])
-
-;; W=8 (v8wmmacc.vv) source-LMUL mode_attrs.  Mirrors
-;; VI_OCT_TRUNC_LMUL1 but the destination's LMUL is N.  Only DI
-;; accumulators are valid (QI input only).
-(define_mode_attr VI_OCT_TRUNC_LMUL2 [(RVVM8DI "RVVM2QI") (RVVM4DI "RVVM2QI")
-				      (RVVM2DI "RVVM2QI") (RVVM1DI "RVVM2QI")
-				      ;; m16 acc -> LMUL=2 input (SEW/8).
-				      (RVVM16DI "RVVM2QI")])
-
-(define_mode_attr VI_OCT_TRUNC_LMUL4 [(RVVM8DI "RVVM4QI") (RVVM4DI "RVVM4QI")
-				      (RVVM2DI "RVVM4QI") (RVVM1DI "RVVM4QI")
-				      ;; m16 acc -> LMUL=4 input (SEW/8).
-				      (RVVM16DI "RVVM4QI")])
-
-(define_mode_attr VI_OCT_TRUNC_LMUL8 [(RVVM8DI "RVVM8QI") (RVVM4DI "RVVM8QI")
-				      (RVVM2DI "RVVM8QI") (RVVM1DI "RVVM8QI")
-				      ;; m16 acc -> LMUL=8 input (SEW/8).
-				      (RVVM16DI "RVVM8QI")])
-
-;; ---------------------------------------------------------------------------
-;; FP mode iterators and int iterators for Zvvfmm
-;; ---------------------------------------------------------------------------
-
-;; FP accumulator modes at LMUL >= 1 for vfmmacc (W=1, same-format).
-;; Includes HF, BF, SF, DF.
-(define_mode_iterator VFMMACC_ACC
-  [(RVVM1HF "TARGET_ZVFH") (RVVM2HF "TARGET_ZVFH")
-   (RVVM4HF "TARGET_ZVFH") (RVVM8HF "TARGET_ZVFH")
-   (RVVM1BF "TARGET_VECTOR_ELEN_BF_16") (RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
-   (RVVM4BF "TARGET_VECTOR_ELEN_BF_16") (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")
-   RVVM1SF RVVM2SF RVVM4SF RVVM8SF
-   (RVVM1DF "TARGET_VECTOR_ELEN_64") (RVVM2DF "TARGET_VECTOR_ELEN_64")
-   (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")
-   ;; IME m16 acc variants.
-   (RVVM16HF "TARGET_ZVFH")
-   (RVVM16BF "TARGET_VECTOR_ELEN_BF_16")
-   RVVM16SF
-   (RVVM16DF "TARGET_VECTOR_ELEN_64")])
-
-;; Map VFMMACC_ACC modes to their LMUL=1 counterpart (same SEW).
-;; V_LMUL1 does not cover BF modes, so we define a local attr.
-(define_mode_attr VF_LMUL1
-  [(RVVM1HF "RVVM1HF") (RVVM2HF "RVVM1HF")
-   (RVVM4HF "RVVM1HF") (RVVM8HF "RVVM1HF")
-   (RVVM1BF "RVVM1BF") (RVVM2BF "RVVM1BF")
-   (RVVM4BF "RVVM1BF") (RVVM8BF "RVVM1BF")
-   (RVVM1SF "RVVM1SF") (RVVM2SF "RVVM1SF")
-   (RVVM4SF "RVVM1SF") (RVVM8SF "RVVM1SF")
-   (RVVM1DF "RVVM1DF") (RVVM2DF "RVVM1DF")
-   (RVVM4DF "RVVM1DF") (RVVM8DF "RVVM1DF")
-   ;; m16 acc -> LMUL=1 input (same SEW).
-   (RVVM16HF "RVVM1HF") (RVVM16BF "RVVM1BF")
-   (RVVM16SF "RVVM1SF") (RVVM16DF "RVVM1DF")])
-
-;; FP32 accumulator modes at LMUL >= 1 (for W=2 FP16/BF16, W=4 OFP8).
-(define_mode_iterator VF32_ACC [RVVM1SF RVVM2SF RVVM4SF RVVM8SF
-				;; IME m16 acc variant.
-				RVVM16SF])
-
-;; OFP8 accumulator modes for W=1 vfmmacc OFP8 -> OFP8.  Both E4M3 and
-;; E5M2 share QImode; the acc format is selected by the
-;; ime_fp_altfmt attribute on each pattern.
-(define_mode_iterator VFMMACC_OFP8_ACC [RVVM1QI RVVM2QI RVVM4QI RVVM8QI
-					;; IME m16 acc variant.
-					RVVM16QI])
-
-;; FP64 accumulator modes at LMUL >= 1 (for W=2 FP32, W=4 FP16/BF16, W=8 OFP8).
-(define_mode_iterator VF64_ACC
-  [(RVVM1DF "TARGET_VECTOR_ELEN_64") (RVVM2DF "TARGET_VECTOR_ELEN_64")
-   (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")
-   ;; IME m16 acc variant.
-   (RVVM16DF "TARGET_VECTOR_ELEN_64")])
-
-;; Int iterator for vfqwmmacc OFP8 variants (E4M3/E5M2 vs1 x E4M3/E5M2
-;; vs2 -> FP32).  Acc is FP32 which has no altfmt freedom; the third
-;; token of the ime_fp_altfmt encoding is therefore always e4m3 (= 0).
-;; Four entries cover the 2x2 cross-product of input formats.
-(define_int_iterator VFQWMMACC_OFP8
-  [UNSPEC_VFQWMMACC_F8E4M3 UNSPEC_VFQWMMACC_F8E5M2
-   UNSPEC_VFQWMMACC_F8E4M3_E5M2 UNSPEC_VFQWMMACC_F8E5M2_E4M3])
-
-(define_int_attr vfqwmmacc_ofp8_name
-  [(UNSPEC_VFQWMMACC_F8E4M3      "_f8e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2      "_f8e5m2")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "_f8e4m3_f8e5m2")
-   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "_f8e5m2_f8e4m3")])
-
-(define_int_attr vfqwmmacc_ofp8_altfmt
-  [(UNSPEC_VFQWMMACC_F8E4M3      "e4m3_e4m3_e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2      "e5m2_e5m2_e4m3")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")])
-
-;; The vs1 / vs2 input modes vary per variant; map the UNSPEC to the
-;; element format of each input so the pattern can pick the right
-;; match_operand inner mode.  Both inputs share RVVM*QI at the GCC
-;; level (OFP8 storage is QImode); the ime_fp_altfmt attribute is the
-;; only thing telling them apart at the vsetvl pass.
-(define_int_attr vfqwmmacc_ofp8_vs1
-  [(UNSPEC_VFQWMMACC_F8E4M3      "e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2      "e5m2")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "e5m2")])
-
-(define_int_attr vfqwmmacc_ofp8_vs2
-  [(UNSPEC_VFQWMMACC_F8E4M3      "e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2      "e5m2")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "e5m2")
-   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "e4m3")])
-
-;; Int iterator for vf8wmmacc OFP8 variants (W=8, FP64 acc).  Same
-;; 2x2 input cross-product as vfqwmmacc.
-(define_int_iterator VF8WMMACC_OFP8
-  [UNSPEC_VF8WMMACC_F8E4M3 UNSPEC_VF8WMMACC_F8E5M2
-   UNSPEC_VF8WMMACC_F8E4M3_E5M2 UNSPEC_VF8WMMACC_F8E5M2_E4M3])
-
-(define_int_attr vf8wmmacc_ofp8_name
-  [(UNSPEC_VF8WMMACC_F8E4M3      "_f8e4m3")
-   (UNSPEC_VF8WMMACC_F8E5M2      "_f8e5m2")
-   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "_f8e4m3_f8e5m2")
-   (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "_f8e5m2_f8e4m3")])
-
-(define_int_attr vf8wmmacc_ofp8_altfmt
-  [(UNSPEC_VF8WMMACC_F8E4M3      "e4m3_e4m3_e4m3")
-   (UNSPEC_VF8WMMACC_F8E5M2      "e5m2_e5m2_e4m3")
-   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
-   (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")])
-
-;; W=1 vfmmacc OFP8 -> OFP8: 8 UNSPECs covering the full
-;; (altfmt_A, altfmt_B, altfmt) cube.  All 8 share a single MD pattern
-;; template; the int iterator drives the per-instance UNSPEC and the
-;; matching ime_fp_altfmt enumerator.  Acc mode is RVVM1QI in stage 3a
-;; (MVP); m2/m4/m8 acc is a follow-up that requires registering more
-;; OFP8 vector types.
-(define_int_iterator VFMMACC_OFP8
+;; The other IME FP matrix multiply-accumulates: one UNSPEC for each
+;; combination of accumulator and input formats.
+(define_int_iterator IME_FP_MMACC
   [UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2
    UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2
    UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2
-   UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2])
+   UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2
+   UNSPEC_VFWMMACC_F16 UNSPEC_VFWMMACC_BF16 UNSPEC_VFWMMACC_F32
+   UNSPEC_VFWMMACC_OFP8_FP16_E4M3 UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2
+   UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 UNSPEC_VFWMMACC_OFP8_FP16_E5M2
+   UNSPEC_VFWMMACC_OFP8_BF16_E4M3 UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2
+   UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 UNSPEC_VFWMMACC_OFP8_BF16_E5M2
+   UNSPEC_VFQWMMACC_F16 UNSPEC_VFQWMMACC_BF16
+   UNSPEC_VFQWMMACC_F8E4M3 UNSPEC_VFQWMMACC_F8E5M2
+   UNSPEC_VFQWMMACC_F8E4M3_E5M2 UNSPEC_VFQWMMACC_F8E5M2_E4M3
+   UNSPEC_VF8WMMACC_F8E4M3 UNSPEC_VF8WMMACC_F8E5M2
+   UNSPEC_VF8WMMACC_F8E4M3_E5M2 UNSPEC_VF8WMMACC_F8E5M2_E4M3])
 
-;; Suffix order on the user-visible intrinsic name is acc_vs1_vs2;
-;; the int_attr below mirrors it for the MD pattern name (the "acc"
-;; token here also picks the C return type via the type set).
-(define_int_attr vfmmacc_ofp8_name
-  [(UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "_f8e4m3_f8e4m3_f8e4m3")
-   (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "_f8e4m3_f8e4m3_f8e5m2")
-   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "_f8e4m3_f8e5m2_f8e4m3")
-   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2 "_f8e4m3_f8e5m2_f8e5m2")
-   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "_f8e5m2_f8e4m3_f8e4m3")
-   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "_f8e5m2_f8e4m3_f8e5m2")
-   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "_f8e5m2_f8e5m2_f8e4m3")
-   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "_f8e5m2_f8e5m2_f8e5m2")])
+;; The pattern name and the instruction of each multiply-accumulate.
+(define_int_attr ime_mmacc
+  [(UNSPEC_VMMACC_S "vmmacc_s") (UNSPEC_VMMACC_U "vmmacc_u")
+   (UNSPEC_VMMACC_SU "vmmacc_su") (UNSPEC_VMMACC_US "vmmacc_us")
+   (UNSPEC_VWMMACC_S "vwmmacc_s") (UNSPEC_VWMMACC_U "vwmmacc_u")
+   (UNSPEC_VWMMACC_SU "vwmmacc_su") (UNSPEC_VWMMACC_US "vwmmacc_us")
+   (UNSPEC_VQWMMACC_S "vqwmmacc_s") (UNSPEC_VQWMMACC_U "vqwmmacc_u")
+   (UNSPEC_VQWMMACC_SU "vqwmmacc_su") (UNSPEC_VQWMMACC_US "vqwmmacc_us")
+   (UNSPEC_V8WMMACC_S "v8wmmacc_s") (UNSPEC_V8WMMACC_U "v8wmmacc_u")
+   (UNSPEC_V8WMMACC_SU "v8wmmacc_su") (UNSPEC_V8WMMACC_US "v8wmmacc_us")
+   (UNSPEC_VFMMACC "vfmmacc")
+   (UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "vfmmacc_f8_e4m3_e4m3_e4m3")
+   (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "vfmmacc_f8_e4m3_e4m3_e5m2")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "vfmmacc_f8_e4m3_e5m2_e4m3")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2 "vfmmacc_f8_e4m3_e5m2_e5m2")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "vfmmacc_f8_e5m2_e4m3_e4m3")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "vfmmacc_f8_e5m2_e4m3_e5m2")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "vfmmacc_f8_e5m2_e5m2_e4m3")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "vfmmacc_f8_e5m2_e5m2_e5m2")
+   (UNSPEC_VFWMMACC_F16 "vfwmmacc_f16") (UNSPEC_VFWMMACC_BF16 "vfwmmacc_bf16")
+   (UNSPEC_VFWMMACC_F32 "vfwmmacc_f32")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3 "vfwmmacc_ofp8_fp16_e4m3")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2 "vfwmmacc_ofp8_fp16_e4m3_e5m2")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "vfwmmacc_ofp8_fp16_e5m2_e4m3")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2 "vfwmmacc_ofp8_fp16_e5m2")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3 "vfwmmacc_ofp8_bf16_e4m3")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "vfwmmacc_ofp8_bf16_e4m3_e5m2")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "vfwmmacc_ofp8_bf16_e5m2_e4m3")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "vfwmmacc_ofp8_bf16_e5m2")
+   (UNSPEC_VFQWMMACC_F16 "vfqwmmacc_f16")
+   (UNSPEC_VFQWMMACC_BF16 "vfqwmmacc_bf16")
+   (UNSPEC_VFQWMMACC_F8E4M3 "vfqwmmacc_f8e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2 "vfqwmmacc_f8e5m2")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "vfqwmmacc_f8e4m3_e5m2")
+   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "vfqwmmacc_f8e5m2_e4m3")
+   (UNSPEC_VF8WMMACC_F8E4M3 "vf8wmmacc_f8e4m3")
+   (UNSPEC_VF8WMMACC_F8E5M2 "vf8wmmacc_f8e5m2")
+   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "vf8wmmacc_f8e4m3_e5m2")
+   (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "vf8wmmacc_f8e5m2_e4m3")])
 
-;; The ime_fp_altfmt encoding follows the (altfmt_A, altfmt_B, altfmt)
-;; order: vs1, vs2, acc.  The UNSPEC name is acc_vs1_vs2; rewrite it
-;; into vs1_vs2_acc here.  Each token is e4m3 (= 0) or e5m2 (= 1).
-(define_int_attr vfmmacc_ofp8_altfmt
+(define_int_attr ime_mmacc_insn
+  [(UNSPEC_VMMACC_S "vmmacc") (UNSPEC_VMMACC_U "vmmacc")
+   (UNSPEC_VMMACC_SU "vmmacc") (UNSPEC_VMMACC_US "vmmacc")
+   (UNSPEC_VWMMACC_S "vwmmacc") (UNSPEC_VWMMACC_U "vwmmacc")
+   (UNSPEC_VWMMACC_SU "vwmmacc") (UNSPEC_VWMMACC_US "vwmmacc")
+   (UNSPEC_VQWMMACC_S "vqwmmacc") (UNSPEC_VQWMMACC_U "vqwmmacc")
+   (UNSPEC_VQWMMACC_SU "vqwmmacc") (UNSPEC_VQWMMACC_US "vqwmmacc")
+   (UNSPEC_V8WMMACC_S "v8wmmacc") (UNSPEC_V8WMMACC_U "v8wmmacc")
+   (UNSPEC_V8WMMACC_SU "v8wmmacc") (UNSPEC_V8WMMACC_US "v8wmmacc")
+   (UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "vfmmacc")
+   (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "vfmmacc")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "vfmmacc")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2 "vfmmacc")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "vfmmacc")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "vfmmacc")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "vfmmacc")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "vfmmacc")
+   (UNSPEC_VFWMMACC_F16 "vfwmmacc") (UNSPEC_VFWMMACC_BF16 "vfwmmacc")
+   (UNSPEC_VFWMMACC_F32 "vfwmmacc")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3 "vfwmmacc")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2 "vfwmmacc")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "vfwmmacc")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2 "vfwmmacc")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3 "vfwmmacc")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "vfwmmacc")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "vfwmmacc")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "vfwmmacc")
+   (UNSPEC_VFQWMMACC_F16 "vfqwmmacc") (UNSPEC_VFQWMMACC_BF16 "vfqwmmacc")
+   (UNSPEC_VFQWMMACC_F8E4M3 "vfqwmmacc") (UNSPEC_VFQWMMACC_F8E5M2 "vfqwmmacc")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "vfqwmmacc")
+   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "vfqwmmacc")
+   (UNSPEC_VF8WMMACC_F8E4M3 "vf8wmmacc") (UNSPEC_VF8WMMACC_F8E5M2 "vf8wmmacc")
+   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "vf8wmmacc")
+   (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "vf8wmmacc")])
+
+;; The widening factor W of each integer multiply-accumulate and the
+;; signedness of its inputs, as the ime_altfmt value.
+(define_int_attr ime_int_w
+  [(UNSPEC_VMMACC_S "1") (UNSPEC_VMMACC_U "1")
+   (UNSPEC_VMMACC_SU "1") (UNSPEC_VMMACC_US "1")
+   (UNSPEC_VWMMACC_S "2") (UNSPEC_VWMMACC_U "2")
+   (UNSPEC_VWMMACC_SU "2") (UNSPEC_VWMMACC_US "2")
+   (UNSPEC_VQWMMACC_S "4") (UNSPEC_VQWMMACC_U "4")
+   (UNSPEC_VQWMMACC_SU "4") (UNSPEC_VQWMMACC_US "4")
+   (UNSPEC_V8WMMACC_S "8") (UNSPEC_V8WMMACC_U "8")
+   (UNSPEC_V8WMMACC_SU "8") (UNSPEC_V8WMMACC_US "8")])
+
+(define_int_attr ime_int_altfmt
+  [(UNSPEC_VMMACC_S "ss") (UNSPEC_VMMACC_U "uu")
+   (UNSPEC_VMMACC_SU "su") (UNSPEC_VMMACC_US "us")
+   (UNSPEC_VWMMACC_S "ss") (UNSPEC_VWMMACC_U "uu")
+   (UNSPEC_VWMMACC_SU "su") (UNSPEC_VWMMACC_US "us")
+   (UNSPEC_VQWMMACC_S "ss") (UNSPEC_VQWMMACC_U "uu")
+   (UNSPEC_VQWMMACC_SU "su") (UNSPEC_VQWMMACC_US "us")
+   (UNSPEC_V8WMMACC_S "ss") (UNSPEC_V8WMMACC_U "uu")
+   (UNSPEC_V8WMMACC_SU "su") (UNSPEC_V8WMMACC_US "us")])
+
+;; The accumulator element mode of each FP multiply-accumulate, and the
+;; ime_fp_altfmt value of the OFP8 ones, whose formats share QImode.
+(define_int_attr ime_fp_acc
+  [(UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "QI") (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "QI")
+   (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "QI") (UNSPEC_VFMMACC_F8_E4M3_E5M2_E5M2 "QI")
+   (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "QI") (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "QI")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "QI") (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "QI")
+   (UNSPEC_VFWMMACC_F16 "SF") (UNSPEC_VFWMMACC_BF16 "SF")
+   (UNSPEC_VFWMMACC_F32 "DF")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3 "HF") (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2 "HF")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "HF") (UNSPEC_VFWMMACC_OFP8_FP16_E5M2 "HF")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3 "BF") (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "BF")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "BF") (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "BF")
+   (UNSPEC_VFQWMMACC_F16 "DF") (UNSPEC_VFQWMMACC_BF16 "DF")
+   (UNSPEC_VFQWMMACC_F8E4M3 "SF") (UNSPEC_VFQWMMACC_F8E5M2 "SF")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "SF") (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "SF")
+   (UNSPEC_VF8WMMACC_F8E4M3 "DF") (UNSPEC_VF8WMMACC_F8E5M2 "DF")
+   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "DF") (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "DF")])
+
+(define_int_attr ime_fp_mmacc_altfmt
   [(UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "e4m3_e4m3_e4m3")
    (UNSPEC_VFMMACC_F8_E4M3_E4M3_E5M2 "e4m3_e5m2_e4m3")
    (UNSPEC_VFMMACC_F8_E4M3_E5M2_E4M3 "e5m2_e4m3_e4m3")
@@ -739,60 +562,60 @@
    (UNSPEC_VFMMACC_F8_E5M2_E4M3_E4M3 "e4m3_e4m3_e5m2")
    (UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2 "e4m3_e5m2_e5m2")
    (UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3 "e5m2_e4m3_e5m2")
-   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "e5m2_e5m2_e5m2")])
-
-;; W=2 vfwmmacc OFP8 -> fp16 / bf16: separate int iterators per acc
-;; format so the mode iterator's acc type matches the encoded altfmt
-;; bit.  Each iterator has 4 entries (the (vs1, vs2) input cube at the
-;; selected acc altfmt).
-(define_int_iterator VFWMMACC_OFP8_FP16
-  [UNSPEC_VFWMMACC_OFP8_FP16_E4M3      UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2
-   UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 UNSPEC_VFWMMACC_OFP8_FP16_E5M2])
-
-(define_int_iterator VFWMMACC_OFP8_BF16
-  [UNSPEC_VFWMMACC_OFP8_BF16_E4M3      UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2
-   UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 UNSPEC_VFWMMACC_OFP8_BF16_E5M2])
-
-(define_int_attr vfwmmacc_ofp8_fp16_name
-  [(UNSPEC_VFWMMACC_OFP8_FP16_E4M3      "_f8e4m3")
-   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2 "_f8e4m3_f8e5m2")
-   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "_f8e5m2_f8e4m3")
-   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2      "_f8e5m2")])
-
-(define_int_attr vfwmmacc_ofp8_bf16_name
-  [(UNSPEC_VFWMMACC_OFP8_BF16_E4M3      "_f8e4m3")
-   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "_f8e4m3_f8e5m2")
-   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "_f8e5m2_f8e4m3")
-   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2      "_f8e5m2")])
-
-;; ime_fp_altfmt mapping per UNSPEC: vs1, vs2, acc tokens.  acc is
-;; e4m3 (= 0 = fp16) for FP16 UNSPECs and e5m2 (= 1 = bf16) for BF16
-;; UNSPECs.
-(define_int_attr vfwmmacc_ofp8_fp16_altfmt
-  [(UNSPEC_VFWMMACC_OFP8_FP16_E4M3      "e4m3_e4m3_e4m3")
+   (UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2 "e5m2_e5m2_e5m2")
+   (UNSPEC_VFWMMACC_F16 "none") (UNSPEC_VFWMMACC_BF16 "none")
+   (UNSPEC_VFWMMACC_F32 "none")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E4M3 "e4m3_e4m3_e4m3")
    (UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2 "e4m3_e5m2_e4m3")
    (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "e5m2_e4m3_e4m3")
-   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2      "e5m2_e5m2_e4m3")])
-
-(define_int_attr vfwmmacc_ofp8_bf16_altfmt
-  [(UNSPEC_VFWMMACC_OFP8_BF16_E4M3      "e4m3_e4m3_e5m2")
+   (UNSPEC_VFWMMACC_OFP8_FP16_E5M2 "e5m2_e5m2_e4m3")
+   (UNSPEC_VFWMMACC_OFP8_BF16_E4M3 "e4m3_e4m3_e5m2")
    (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "e4m3_e5m2_e5m2")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "e5m2_e4m3_e5m2")
-   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2      "e5m2_e5m2_e5m2")])
+   (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "e5m2_e5m2_e5m2")
+   (UNSPEC_VFQWMMACC_F16 "none") (UNSPEC_VFQWMMACC_BF16 "none")
+   (UNSPEC_VFQWMMACC_F8E4M3 "e4m3_e4m3_e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2 "e5m2_e5m2_e4m3")
+   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
+   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")
+   (UNSPEC_VF8WMMACC_F8E4M3 "e4m3_e4m3_e4m3")
+   (UNSPEC_VF8WMMACC_F8E5M2 "e5m2_e5m2_e4m3")
+   (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
+   (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")])
 
-;; Acc mode iterators for the W=2 OFP8 -> fp16 / bf16 patterns.  HF and
-;; BF are kept separate so each pattern's acc altfmt bit is unambiguous.
-(define_mode_iterator VFW_OFP8_FP16_ACC
+;; Integer accumulator modes.  Fractional LMULs are not IME accumulators.
+(define_mode_iterator IME_INT_ACC
+  [RVVM1QI RVVM2QI RVVM4QI RVVM8QI RVVM16QI
+   RVVM1HI RVVM2HI RVVM4HI RVVM8HI RVVM16HI
+   RVVM1SI RVVM2SI RVVM4SI RVVM8SI RVVM16SI
+   (RVVM1DI "TARGET_VECTOR_ELEN_64") (RVVM2DI "TARGET_VECTOR_ELEN_64")
+   (RVVM4DI "TARGET_VECTOR_ELEN_64") (RVVM8DI "TARGET_VECTOR_ELEN_64")
+   (RVVM16DI "TARGET_VECTOR_ELEN_64")])
+
+;; FP16, BF16, FP32 and FP64 accumulator modes.
+(define_mode_iterator VFMMACC_ACC
   [(RVVM1HF "TARGET_ZVFH") (RVVM2HF "TARGET_ZVFH")
    (RVVM4HF "TARGET_ZVFH") (RVVM8HF "TARGET_ZVFH")
-   ;; IME m16 acc variant.
-   (RVVM16HF "TARGET_ZVFH")])
-
-(define_mode_iterator VFW_OFP8_BF16_ACC
-  [(RVVM1BF "TARGET_VECTOR_ELEN_BF_16") (RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
+   (RVVM16HF "TARGET_ZVFH")
+   (RVVM1BF "TARGET_VECTOR_ELEN_BF_16") (RVVM2BF "TARGET_VECTOR_ELEN_BF_16")
    (RVVM4BF "TARGET_VECTOR_ELEN_BF_16") (RVVM8BF "TARGET_VECTOR_ELEN_BF_16")
-   ;; IME m16 acc variant.
-   (RVVM16BF "TARGET_VECTOR_ELEN_BF_16")])
+   (RVVM16BF "TARGET_VECTOR_ELEN_BF_16")
+   RVVM1SF RVVM2SF RVVM4SF RVVM8SF RVVM16SF
+   (RVVM1DF "TARGET_VECTOR_ELEN_64") (RVVM2DF "TARGET_VECTOR_ELEN_64")
+   (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")
+   (RVVM16DF "TARGET_VECTOR_ELEN_64")])
+
+;; FP accumulator modes, including the OFP8 ones, which are QImode.
+(define_mode_iterator IME_FP_ACC
+  [VFMMACC_ACC RVVM1QI RVVM2QI RVVM4QI RVVM8QI RVVM16QI])
+
+;; FP32 and FP64 accumulator modes.
+(define_mode_iterator VF32_ACC [RVVM1SF RVVM2SF RVVM4SF RVVM8SF RVVM16SF])
+
+(define_mode_iterator VF64_ACC
+  [(RVVM1DF "TARGET_VECTOR_ELEN_64") (RVVM2DF "TARGET_VECTOR_ELEN_64")
+   (RVVM4DF "TARGET_VECTOR_ELEN_64") (RVVM8DF "TARGET_VECTOR_ELEN_64")
+   (RVVM16DF "TARGET_VECTOR_ELEN_64")])
 
 ;; Element modes at LMUL >= 1 for the tile load/store patterns.  The
 ;; IME spec admits LMUL in {1, 2, 4, 8}; fractional LMULs are not
@@ -1022,500 +845,42 @@
    (set_attr "mode" "<MODE>")])
 
 ;; ---------------------------------------------------------------------------
-;; Zvvmm - Vector integer matrix multiply-accumulate, W=1 (no widening)
+;; Zvvmm - integer matrix multiply-accumulate (vmmacc.vv, vwmmacc.vv,
+;; vqwmmacc.vv and v8wmmacc.vv)
 ;; ---------------------------------------------------------------------------
 ;;
-;; vmmacc.vv vd, vs1, vs2 performs an accumulator-style multiply-accumulate:
-;;
-;;     vd += matmul (vs1, vs2)
-;;
-;; The accumulator vd has SEW bit elements and uses MUL_C registers (encoded
-;; by the register group size of vd in the C intrinsic type).  The inputs
-;; vs1/vs2 have the same SEW as the accumulator but use their own LMUL,
-;; independent of MUL_C.  This pattern handles the spec-default LMUL=1
-;; variant; _lm{N} variants where vs1/vs2 use LMUL=N at the same SEW are
-;; expanded by the `@pred_vmmacc<vmmacc_su_name>_lm{2,4,8}<mode>'
-;; siblings below.
-;;
-;; Signed (UNSPEC_VMMACC_S) and unsigned (UNSPEC_VMMACC_U) emit the same
-;; vmmacc.vv instruction; the distinction lives entirely in the vtype
-;; altfmt_A / altfmt_B bits that the vsetvl pass establishes from the
-;; ime_altfmt attribute.
+;; vd += matmul (vs1, vs2).  The accumulator vd has SEW-bit elements and
+;; MUL_C registers: the mode of the pattern.  The inputs have SEW/W-bit
+;; elements and an LMUL of 1, 2, 4 or 8 that is independent of MUL_C.
+;; Their operands have no mode, so that one pattern covers every input
+;; LMUL; the vsetvl pass reads the input LMUL and W from the mode of
+;; operand 2.  The UNSPEC selects the instruction and the signedness of
+;; the inputs, which the vsetvl pass sets in altfmt_A and altfmt_B from
+;; the ime_altfmt attribute.
 ;;
 ;; No mask, no merge operand: IME multiply-accumulate instructions do not
 ;; support element-level masking or tail policies in the standard RVV sense.
-(define_insn "@pred_vmmacc<vmmacc_su_name><mode>"
-  [(set (match_operand:VI 0 "register_operand" "=&vr")
-	(if_then_else:VI
+(define_insn "@pred_ime_mmacc_<ime_mmacc><mode>"
+  [(set (match_operand:IME_INT_ACC 0 "register_operand" "=&vr")
+	(if_then_else:IME_INT_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
 	     (match_operand 5 "const_int_operand"     "  i")
 	     (match_operand 6 "const_int_operand"     "  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VI
-	    [(match_operand:VI         1 "register_operand" "  0")
-	     (match_operand:<V_LMUL1>  2 "register_operand" " vr")
-	     (match_operand:<V_LMUL1>  3 "register_operand" " vr")] VMMACC_SU)
+	  (unspec:IME_INT_ACC
+	    [(match_operand:IME_INT_ACC 1 "register_operand" "  0")
+	     (match_operand 2 "ime_mmacc_input_operand" " vr")
+	     (match_operand 3 "ime_mmacc_input_operand" " vr")]
+	    IME_INT_MMACC)
 	  (match_dup 1)))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vmmacc.vv\t%0,%2,%3"
+  "TARGET_ZVVMM && GET_MODE_UNIT_BITSIZE (<MODE>mode) >= 8 * <ime_int_w>"
+  "<ime_mmacc_insn>.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; Source-LMUL mode_attrs for the W=1 mmacc _lm{N} variants.  Each maps
-;; an accumulator mode (any SEW × any MUL_C) to its same-SEW sibling at
-;; LMUL=N.  Defined per-LMUL so we can reuse VI as the iterator.
-(define_mode_attr V_LMUL2 [
-  (RVVM8QI "RVVM2QI") (RVVM4QI "RVVM2QI") (RVVM2QI "RVVM2QI") (RVVM1QI "RVVM2QI")
-  (RVVMF2QI "RVVM2QI") (RVVMF4QI "RVVM2QI") (RVVMF8QI "RVVM2QI")
-  (RVVM8HI "RVVM2HI") (RVVM4HI "RVVM2HI") (RVVM2HI "RVVM2HI") (RVVM1HI "RVVM2HI")
-  (RVVMF2HI "RVVM2HI") (RVVMF4HI "RVVM2HI")
-  (RVVM8SI "RVVM2SI") (RVVM4SI "RVVM2SI") (RVVM2SI "RVVM2SI") (RVVM1SI "RVVM2SI")
-  (RVVMF2SI "RVVM2SI")
-  (RVVM8DI "RVVM2DI") (RVVM4DI "RVVM2DI") (RVVM2DI "RVVM2DI") (RVVM1DI "RVVM2DI")
-  (RVVM8HF "RVVM2HF") (RVVM4HF "RVVM2HF") (RVVM2HF "RVVM2HF") (RVVM1HF "RVVM2HF")
-  (RVVM8BF "RVVM2BF") (RVVM4BF "RVVM2BF") (RVVM2BF "RVVM2BF") (RVVM1BF "RVVM2BF")
-  (RVVM8SF "RVVM2SF") (RVVM4SF "RVVM2SF") (RVVM2SF "RVVM2SF") (RVVM1SF "RVVM2SF")
-  (RVVM8DF "RVVM2DF") (RVVM4DF "RVVM2DF") (RVVM2DF "RVVM2DF") (RVVM1DF "RVVM2DF")
-  ;; IME m16 acc -> LMUL=2 source at same SEW.
-  (RVVM16QI "RVVM2QI") (RVVM16HI "RVVM2HI") (RVVM16BF "RVVM2BF")
-  (RVVM16HF "RVVM2HF") (RVVM16SI "RVVM2SI") (RVVM16SF "RVVM2SF")
-  (RVVM16DI "RVVM2DI") (RVVM16DF "RVVM2DF")
-])
-
-(define_mode_attr V_LMUL4 [
-  (RVVM8QI "RVVM4QI") (RVVM4QI "RVVM4QI") (RVVM2QI "RVVM4QI") (RVVM1QI "RVVM4QI")
-  (RVVMF2QI "RVVM4QI") (RVVMF4QI "RVVM4QI") (RVVMF8QI "RVVM4QI")
-  (RVVM8HI "RVVM4HI") (RVVM4HI "RVVM4HI") (RVVM2HI "RVVM4HI") (RVVM1HI "RVVM4HI")
-  (RVVMF2HI "RVVM4HI") (RVVMF4HI "RVVM4HI")
-  (RVVM8SI "RVVM4SI") (RVVM4SI "RVVM4SI") (RVVM2SI "RVVM4SI") (RVVM1SI "RVVM4SI")
-  (RVVMF2SI "RVVM4SI")
-  (RVVM8DI "RVVM4DI") (RVVM4DI "RVVM4DI") (RVVM2DI "RVVM4DI") (RVVM1DI "RVVM4DI")
-  (RVVM8HF "RVVM4HF") (RVVM4HF "RVVM4HF") (RVVM2HF "RVVM4HF") (RVVM1HF "RVVM4HF")
-  (RVVM8BF "RVVM4BF") (RVVM4BF "RVVM4BF") (RVVM2BF "RVVM4BF") (RVVM1BF "RVVM4BF")
-  (RVVM8SF "RVVM4SF") (RVVM4SF "RVVM4SF") (RVVM2SF "RVVM4SF") (RVVM1SF "RVVM4SF")
-  (RVVM8DF "RVVM4DF") (RVVM4DF "RVVM4DF") (RVVM2DF "RVVM4DF") (RVVM1DF "RVVM4DF")
-  ;; IME m16 acc -> LMUL=4 source at same SEW.
-  (RVVM16QI "RVVM4QI") (RVVM16HI "RVVM4HI") (RVVM16BF "RVVM4BF")
-  (RVVM16HF "RVVM4HF") (RVVM16SI "RVVM4SI") (RVVM16SF "RVVM4SF")
-  (RVVM16DI "RVVM4DI") (RVVM16DF "RVVM4DF")
-])
-
-(define_mode_attr V_LMUL8 [
-  (RVVM8QI "RVVM8QI") (RVVM4QI "RVVM8QI") (RVVM2QI "RVVM8QI") (RVVM1QI "RVVM8QI")
-  (RVVMF2QI "RVVM8QI") (RVVMF4QI "RVVM8QI") (RVVMF8QI "RVVM8QI")
-  (RVVM8HI "RVVM8HI") (RVVM4HI "RVVM8HI") (RVVM2HI "RVVM8HI") (RVVM1HI "RVVM8HI")
-  (RVVMF2HI "RVVM8HI") (RVVMF4HI "RVVM8HI")
-  (RVVM8SI "RVVM8SI") (RVVM4SI "RVVM8SI") (RVVM2SI "RVVM8SI") (RVVM1SI "RVVM8SI")
-  (RVVMF2SI "RVVM8SI")
-  (RVVM8DI "RVVM8DI") (RVVM4DI "RVVM8DI") (RVVM2DI "RVVM8DI") (RVVM1DI "RVVM8DI")
-  (RVVM8HF "RVVM8HF") (RVVM4HF "RVVM8HF") (RVVM2HF "RVVM8HF") (RVVM1HF "RVVM8HF")
-  (RVVM8BF "RVVM8BF") (RVVM4BF "RVVM8BF") (RVVM2BF "RVVM8BF") (RVVM1BF "RVVM8BF")
-  (RVVM8SF "RVVM8SF") (RVVM4SF "RVVM8SF") (RVVM2SF "RVVM8SF") (RVVM1SF "RVVM8SF")
-  (RVVM8DF "RVVM8DF") (RVVM4DF "RVVM8DF") (RVVM2DF "RVVM8DF") (RVVM1DF "RVVM8DF")
-  ;; IME m16 acc -> LMUL=8 source at same SEW.
-  (RVVM16QI "RVVM8QI") (RVVM16HI "RVVM8HI") (RVVM16BF "RVVM8BF")
-  (RVVM16HF "RVVM8HF") (RVVM16SI "RVVM8SI") (RVVM16SF "RVVM8SF")
-  (RVVM16DI "RVVM8DI") (RVVM16DF "RVVM8DF")
-])
-
-;; W=1 mmacc with vs1/vs2 at LMUL=2.  Same accumulator iterator (VI) and
-;; signed/unsigned dispatch (VMMACC_SU) as the default LMUL=1 pattern;
-;; only the source mode changes from <V_LMUL1> to <V_LMUL2>.
-(define_insn "@pred_vmmacc<vmmacc_su_name>_lm2<mode>"
-  [(set (match_operand:VI 0 "register_operand" "=&vr")
-	(if_then_else:VI
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VI
-	    [(match_operand:VI         1 "register_operand" "  0")
-	     (match_operand:<V_LMUL2>  2 "register_operand" " vr")
-	     (match_operand:<V_LMUL2>  3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=1 mmacc with vs1/vs2 at LMUL=4.
-(define_insn "@pred_vmmacc<vmmacc_su_name>_lm4<mode>"
-  [(set (match_operand:VI 0 "register_operand" "=&vr")
-	(if_then_else:VI
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VI
-	    [(match_operand:VI         1 "register_operand" "  0")
-	     (match_operand:<V_LMUL4>  2 "register_operand" " vr")
-	     (match_operand:<V_LMUL4>  3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=1 mmacc with vs1/vs2 at LMUL=8.
-(define_insn "@pred_vmmacc<vmmacc_su_name>_lm8<mode>"
-  [(set (match_operand:VI 0 "register_operand" "=&vr")
-	(if_then_else:VI
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VI
-	    [(match_operand:VI         1 "register_operand" "  0")
-	     (match_operand:<V_LMUL8>  2 "register_operand" " vr")
-	     (match_operand:<V_LMUL8>  3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; ---------------------------------------------------------------------------
-;; Zvvmm - W=1 vmmacc with m16 accumulator
-;; ---------------------------------------------------------------------------
-;;
-;; Same instruction as `@pred_vmmacc<vmmacc_su_name><mode>' but with the
-;; accumulator at the IME `m16' register-group multiplier.  Modelled with
-;; a dedicated mode iterator so we can keep `VI' clean of m16 (and thus
-;; standard-RVV ops inexpressible on m16).
-;;
-;; Operand layout, attributes, and asm template are identical to the
-;; m1..m8 versions; only the destination iterator changes.
-(define_mode_iterator VMMACC_M16_ACC [RVVM16QI RVVM16HI RVVM16SI RVVM16DI])
-
-(define_insn "@pred_vmmacc<vmmacc_su_name>_m16<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VMMACC_M16_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VMMACC_M16_ACC
-	    [(match_operand:VMMACC_M16_ACC 1 "register_operand" "  0")
-	     (match_operand:<V_LMUL1>      2 "register_operand" " vr")
-	     (match_operand:<V_LMUL1>      3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-(define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm2<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VMMACC_M16_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VMMACC_M16_ACC
-	    [(match_operand:VMMACC_M16_ACC 1 "register_operand" "  0")
-	     (match_operand:<V_LMUL2>      2 "register_operand" " vr")
-	     (match_operand:<V_LMUL2>      3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-(define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm4<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VMMACC_M16_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VMMACC_M16_ACC
-	    [(match_operand:VMMACC_M16_ACC 1 "register_operand" "  0")
-	     (match_operand:<V_LMUL4>      2 "register_operand" " vr")
-	     (match_operand:<V_LMUL4>      3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-(define_insn "@pred_vmmacc<vmmacc_su_name>_m16_lm8<mode>"
-  [(set (match_operand:VMMACC_M16_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VMMACC_M16_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VMMACC_M16_ACC
-	    [(match_operand:VMMACC_M16_ACC 1 "register_operand" "  0")
-	     (match_operand:<V_LMUL8>      2 "register_operand" " vr")
-	     (match_operand:<V_LMUL8>      3 "register_operand" " vr")] VMMACC_SU)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; ---------------------------------------------------------------------------
-;; Zvvmm - Vector integer matrix multiply-accumulate, W=2 (vwmmacc.vv)
-;; ---------------------------------------------------------------------------
-;;
-;; vwmmacc.vv vd, vs1, vs2 -- accumulator at SEW, inputs at SEW/2 and LMUL=1
-;; (independent of MUL_C).  Four sign combinations (ss / uu / su / us) share
-;; the same assembly mnemonic; the distinction lives in vtype altfmt_A and
-;; altfmt_B, which the vsetvl pass reads from the ime_altfmt attribute.
-(define_insn "@pred_vwmmacc<vwmmacc_su_name><mode>"
-  [(set (match_operand:VWMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VWMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VWMMACC_ACC
-	    [(match_operand:VWMMACC_ACC 1 "register_operand"      "  0")
-	     (match_operand:<VI_TRUNC_LMUL1> 2 "register_operand" " vr")
-	     (match_operand:<VI_TRUNC_LMUL1> 3 "register_operand" " vr")]
-	    VWMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vwmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=2 widening vwmmacc with vs1/vs2 at LMUL=2.  Same accumulator
-;; iterator (VWMMACC_ACC) and signed/unsigned dispatch (VWMMACC_SUSUUS)
-;; as the default LMUL=1 pattern; only the source mode changes from
-;; <VI_TRUNC_LMUL1> to <VI_TRUNC_LMUL2>.
-(define_insn "@pred_vwmmacc<vwmmacc_su_name>_lm2<mode>"
-  [(set (match_operand:VWMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VWMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VWMMACC_ACC
-	    [(match_operand:VWMMACC_ACC 1 "register_operand"      "  0")
-	     (match_operand:<VI_TRUNC_LMUL2> 2 "register_operand" " vr")
-	     (match_operand:<VI_TRUNC_LMUL2> 3 "register_operand" " vr")]
-	    VWMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vwmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=2 widening vwmmacc with vs1/vs2 at LMUL=4.
-(define_insn "@pred_vwmmacc<vwmmacc_su_name>_lm4<mode>"
-  [(set (match_operand:VWMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VWMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VWMMACC_ACC
-	    [(match_operand:VWMMACC_ACC 1 "register_operand"      "  0")
-	     (match_operand:<VI_TRUNC_LMUL4> 2 "register_operand" " vr")
-	     (match_operand:<VI_TRUNC_LMUL4> 3 "register_operand" " vr")]
-	    VWMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vwmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=2 widening vwmmacc with vs1/vs2 at LMUL=8.
-(define_insn "@pred_vwmmacc<vwmmacc_su_name>_lm8<mode>"
-  [(set (match_operand:VWMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VWMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VWMMACC_ACC
-	    [(match_operand:VWMMACC_ACC 1 "register_operand"      "  0")
-	     (match_operand:<VI_TRUNC_LMUL8> 2 "register_operand" " vr")
-	     (match_operand:<VI_TRUNC_LMUL8> 3 "register_operand" " vr")]
-	    VWMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vwmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; ---------------------------------------------------------------------------
-;; Zvvmm - Vector integer matrix multiply-accumulate, W=4 (vqwmmacc.vv)
-;; ---------------------------------------------------------------------------
-;;
-;; vqwmmacc.vv vd, vs1, vs2 -- accumulator at SEW, inputs at SEW/4 and
-;; LMUL=1.  Four sign combinations share the same assembly mnemonic;
-;; altfmt_A / altfmt_B in vtype encode the per-side signedness.
-(define_insn "@pred_vqwmmacc<vqwmmacc_su_name><mode>"
-  [(set (match_operand:VQWMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VQWMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VQWMMACC_ACC
-	    [(match_operand:VQWMMACC_ACC 1 "register_operand"           "  0")
-	     (match_operand:<VI_QUAD_TRUNC_LMUL1> 2 "register_operand" " vr")
-	     (match_operand:<VI_QUAD_TRUNC_LMUL1> 3 "register_operand" " vr")]
-	    VQWMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vqwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vqwmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=4 widening vqwmmacc with vs1/vs2 at LMUL=2.
-(define_insn "@pred_vqwmmacc<vqwmmacc_su_name>_lm2<mode>"
-  [(set (match_operand:VQWMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VQWMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VQWMMACC_ACC
-	    [(match_operand:VQWMMACC_ACC 1 "register_operand"           "  0")
-	     (match_operand:<VI_QUAD_TRUNC_LMUL2> 2 "register_operand" " vr")
-	     (match_operand:<VI_QUAD_TRUNC_LMUL2> 3 "register_operand" " vr")]
-	    VQWMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vqwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vqwmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=4 widening vqwmmacc with vs1/vs2 at LMUL=4.
-(define_insn "@pred_vqwmmacc<vqwmmacc_su_name>_lm4<mode>"
-  [(set (match_operand:VQWMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VQWMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VQWMMACC_ACC
-	    [(match_operand:VQWMMACC_ACC 1 "register_operand"           "  0")
-	     (match_operand:<VI_QUAD_TRUNC_LMUL4> 2 "register_operand" " vr")
-	     (match_operand:<VI_QUAD_TRUNC_LMUL4> 3 "register_operand" " vr")]
-	    VQWMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vqwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vqwmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=4 widening vqwmmacc with vs1/vs2 at LMUL=8.
-(define_insn "@pred_vqwmmacc<vqwmmacc_su_name>_lm8<mode>"
-  [(set (match_operand:VQWMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VQWMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VQWMMACC_ACC
-	    [(match_operand:VQWMMACC_ACC 1 "register_operand"           "  0")
-	     (match_operand:<VI_QUAD_TRUNC_LMUL8> 2 "register_operand" " vr")
-	     (match_operand:<VI_QUAD_TRUNC_LMUL8> 3 "register_operand" " vr")]
-	    VQWMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "vqwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<vqwmmacc_altfmt>")
+   (set_attr "ime_altfmt" "<ime_int_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")])
 
@@ -1606,117 +971,18 @@
    (set (attr "avl_type_idx") (const_int 5))])
 
 ;; ---------------------------------------------------------------------------
-;; Zvvmm - Vector integer matrix multiply-accumulate, W=8 (v8wmmacc.vv)
-;; ---------------------------------------------------------------------------
-
-(define_insn "@pred_v8wmmacc<v8wmmacc_su_name><mode>"
-  [(set (match_operand:V8WMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:V8WMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:V8WMMACC_ACC
-	    [(match_operand:V8WMMACC_ACC 1 "register_operand"          "  0")
-	     (match_operand:<VI_OCT_TRUNC_LMUL1> 2 "register_operand" " vr")
-	     (match_operand:<VI_OCT_TRUNC_LMUL1> 3 "register_operand" " vr")]
-	    V8WMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "v8wmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<v8wmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=8 widening v8wmmacc with vs1/vs2 at LMUL=2.
-(define_insn "@pred_v8wmmacc<v8wmmacc_su_name>_lm2<mode>"
-  [(set (match_operand:V8WMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:V8WMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:V8WMMACC_ACC
-	    [(match_operand:V8WMMACC_ACC 1 "register_operand"          "  0")
-	     (match_operand:<VI_OCT_TRUNC_LMUL2> 2 "register_operand" " vr")
-	     (match_operand:<VI_OCT_TRUNC_LMUL2> 3 "register_operand" " vr")]
-	    V8WMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "v8wmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<v8wmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=8 widening v8wmmacc with vs1/vs2 at LMUL=4.
-(define_insn "@pred_v8wmmacc<v8wmmacc_su_name>_lm4<mode>"
-  [(set (match_operand:V8WMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:V8WMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:V8WMMACC_ACC
-	    [(match_operand:V8WMMACC_ACC 1 "register_operand"          "  0")
-	     (match_operand:<VI_OCT_TRUNC_LMUL4> 2 "register_operand" " vr")
-	     (match_operand:<VI_OCT_TRUNC_LMUL4> 3 "register_operand" " vr")]
-	    V8WMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "v8wmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<v8wmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; W=8 widening v8wmmacc with vs1/vs2 at LMUL=8.
-(define_insn "@pred_v8wmmacc<v8wmmacc_su_name>_lm8<mode>"
-  [(set (match_operand:V8WMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:V8WMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:V8WMMACC_ACC
-	    [(match_operand:V8WMMACC_ACC 1 "register_operand"          "  0")
-	     (match_operand:<VI_OCT_TRUNC_LMUL8> 2 "register_operand" " vr")
-	     (match_operand:<VI_OCT_TRUNC_LMUL8> 3 "register_operand" " vr")]
-	    V8WMMACC_SUSUUS)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVMM"
-  "v8wmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "<v8wmmacc_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")])
-
-;; ---------------------------------------------------------------------------
-;; Zvvfmm - FP matrix multiply-accumulate, W=1 (vfmmacc.vv)
+;; Zvvfmm - FP matrix multiply-accumulate (vfmmacc.vv, vfwmmacc.vv,
+;; vfqwmmacc.vv and vf8wmmacc.vv)
 ;; ---------------------------------------------------------------------------
 ;;
-;; vfmmacc.vv vd, vs1, vs2 -- FP accumulator-style multiply-accumulate:
-;;   vd += matmul (vs1, vs2)
-;; Accumulator and inputs share the same FP type (HF, BF, SF, DF).
-;; Inputs always at LMUL=1.
-(define_insn "@pred_vfmmacc<mode>"
+;; As for the integer instructions, the input operands have no mode and
+;; the vsetvl pass reads the input LMUL and W from operand 2.  It sets
+;; altfmt_A, altfmt_B and altfmt for the BF16 inputs and accumulators
+;; from their modes, and for the OFP8 formats, which share QImode, from
+;; the ime_fp_altfmt attribute.
+
+;; vfmmacc.vv with accumulator and inputs of the same format.
+(define_insn "@pred_ime_mmacc_<ime_mmacc><mode>"
   [(set (match_operand:VFMMACC_ACC 0 "register_operand" "=&vr")
 	(if_then_else:VFMMACC_ACC
 	  (unspec:<VM>
@@ -1727,26 +993,25 @@
 	     (reg:SI VTYPE_REGNUM)
 	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VFMMACC_ACC
-	    [(match_operand:VFMMACC_ACC    1 "register_operand" "  0")
-	     (match_operand:<VF_LMUL1>     2 "register_operand" " vr")
-	     (match_operand:<VF_LMUL1>     3 "register_operand" " vr")]
-	    UNSPEC_VFMMACC)
+	    [(match_operand:VFMMACC_ACC 1 "register_operand" "  0")
+	     (match_operand 2 "ime_mmacc_input_operand" " vr")
+	     (match_operand 3 "ime_mmacc_input_operand" " vr")]
+	    IME_VFMMACC)
 	  (match_dup 1)))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
   "TARGET_ZVVFMM"
   "vfmmacc.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
-;; vfmmacc with vs1/vs2 at LMUL=2 (same SEW as accumulator).  Same as
-;; @pred_vfmmacc but the source operand mode comes from <V_LMUL2>.
-(define_insn "@pred_vfmmacc_lm2<mode>"
-  [(set (match_operand:VFMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VFMMACC_ACC
+;; The other formats; the UNSPEC selects the instruction and the
+;; accumulator element mode.
+(define_insn "@pred_ime_mmacc_<ime_mmacc><mode>"
+  [(set (match_operand:IME_FP_ACC 0 "register_operand" "=&vr")
+	(if_then_else:IME_FP_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
 	     (match_operand 5 "const_int_operand"     "  i")
@@ -1754,377 +1019,20 @@
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)
 	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VFMMACC_ACC
-	    [(match_operand:VFMMACC_ACC    1 "register_operand" "  0")
-	     (match_operand:<V_LMUL2>      2 "register_operand" " vr")
-	     (match_operand:<V_LMUL2>      3 "register_operand" " vr")]
-	    UNSPEC_VFMMACC)
+	  (unspec:IME_FP_ACC
+	    [(match_operand:IME_FP_ACC 1 "register_operand" "  0")
+	     (match_operand 2 "ime_mmacc_input_operand" " vr")
+	     (match_operand 3 "ime_mmacc_input_operand" " vr")]
+	    IME_FP_MMACC)
 	  (match_dup 1)))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfmmacc.vv\t%0,%2,%3"
+  "TARGET_ZVVFMM && GET_MODE_INNER (<MODE>mode) == <ime_fp_acc>mode"
+  "<ime_mmacc_insn>.vv\t%0,%2,%3"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
+   (set_attr "ime_fp_altfmt" "<ime_fp_mmacc_altfmt>")
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; vfmmacc with vs1/vs2 at LMUL=4.
-(define_insn "@pred_vfmmacc_lm4<mode>"
-  [(set (match_operand:VFMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VFMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VFMMACC_ACC
-	    [(match_operand:VFMMACC_ACC    1 "register_operand" "  0")
-	     (match_operand:<V_LMUL4>      2 "register_operand" " vr")
-	     (match_operand:<V_LMUL4>      3 "register_operand" " vr")]
-	    UNSPEC_VFMMACC)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; vfmmacc with vs1/vs2 at LMUL=8.
-(define_insn "@pred_vfmmacc_lm8<mode>"
-  [(set (match_operand:VFMMACC_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VFMMACC_ACC
-	  (unspec:<VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VFMMACC_ACC
-	    [(match_operand:VFMMACC_ACC    1 "register_operand" "  0")
-	     (match_operand:<V_LMUL8>      2 "register_operand" " vr")
-	     (match_operand:<V_LMUL8>      3 "register_operand" " vr")]
-	    UNSPEC_VFMMACC)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; The input modes of the IME FP multiply-accumulates at LMUL 1, 2, 4 and
-;; 8, and the _lm{N} name suffix of each.
-(define_mode_iterator IME_IN_HF [RVVM1HF RVVM2HF RVVM4HF RVVM8HF])
-(define_mode_iterator IME_IN_BF [RVVM1BF RVVM2BF RVVM4BF RVVM8BF])
-(define_mode_iterator IME_IN_SF [RVVM1SF RVVM2SF RVVM4SF RVVM8SF])
-(define_mode_iterator IME_IN_QI [RVVM1QI RVVM2QI RVVM4QI RVVM8QI])
-(define_mode_attr ime_in_lm
-  [(RVVM1HF "") (RVVM2HF "_lm2") (RVVM4HF "_lm4") (RVVM8HF "_lm8")
-   (RVVM1BF "") (RVVM2BF "_lm2") (RVVM4BF "_lm4") (RVVM8BF "_lm8")
-   (RVVM1SF "") (RVVM2SF "_lm2") (RVVM4SF "_lm4") (RVVM8SF "_lm8")
-   (RVVM1QI "") (RVVM2QI "_lm2") (RVVM4QI "_lm4") (RVVM8QI "_lm8")])
-
-;; vfmmacc.vv (W=1) OFP8 -> OFP8: 8 variants over the (acc, vs1, vs2)
-;; altfmt cube.  All inputs and the accumulator share RVVM*QI mode at
-;; the GCC level; the per-instance UNSPEC and the ime_fp_altfmt
-;; attribute distinguish them at the vsetvl pass.
-(define_insn "@pred_vfmmacc_ofp8<vfmmacc_ofp8_name><IME_IN_QI:ime_in_lm><VFMMACC_OFP8_ACC:mode>"
-  [(set (match_operand:VFMMACC_OFP8_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VFMMACC_OFP8_ACC
-	  (unspec:<VFMMACC_OFP8_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VFMMACC_OFP8_ACC
-	    [(match_operand:VFMMACC_OFP8_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_QI          2 "register_operand" " vr")
-	     (match_operand:IME_IN_QI          3 "register_operand" " vr")]
-	    VFMMACC_OFP8)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_fp_altfmt" "<vfmmacc_ofp8_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VFMMACC_OFP8_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; ---------------------------------------------------------------------------
-;; Zvvfmm - FP matrix multiply-accumulate, W=2 (vfwmmacc.vv)
-;; ---------------------------------------------------------------------------
-
-;; vfwmmacc FP16 -> FP32
-(define_insn "@pred_vfwmmacc_f16<IME_IN_HF:ime_in_lm><VF32_ACC:mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VF32_ACC
-	  (unspec:<VF32_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VF32_ACC
-	    [(match_operand:VF32_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_HF  2 "register_operand" " vr")
-	     (match_operand:IME_IN_HF  3 "register_operand" " vr")]
-	    UNSPEC_VFWMMACC_F16)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VF32_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; vfwmmacc BF16 -> FP32
-(define_insn "@pred_vfwmmacc_bf16<IME_IN_BF:ime_in_lm><VF32_ACC:mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VF32_ACC
-	  (unspec:<VF32_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VF32_ACC
-	    [(match_operand:VF32_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_BF  2 "register_operand" " vr")
-	     (match_operand:IME_IN_BF  3 "register_operand" " vr")]
-	    UNSPEC_VFWMMACC_BF16)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VF32_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; vfwmmacc OFP8 -> FP16: 4 input combinations, acc altfmt = 0
-;; (selects fp16 over bf16 at SEW=16).
-(define_insn "@pred_vfwmmacc_ofp8_fp16<vfwmmacc_ofp8_fp16_name><IME_IN_QI:ime_in_lm><VFW_OFP8_FP16_ACC:mode>"
-  [(set (match_operand:VFW_OFP8_FP16_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VFW_OFP8_FP16_ACC
-	  (unspec:<VFW_OFP8_FP16_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VFW_OFP8_FP16_ACC
-	    [(match_operand:VFW_OFP8_FP16_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_QI           2 "register_operand" " vr")
-	     (match_operand:IME_IN_QI           3 "register_operand" " vr")]
-	    VFWMMACC_OFP8_FP16)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_fp_altfmt" "<vfwmmacc_ofp8_fp16_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VFW_OFP8_FP16_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; vfwmmacc OFP8 -> BF16: 4 input combinations, acc altfmt = 1.
-(define_insn "@pred_vfwmmacc_ofp8_bf16<vfwmmacc_ofp8_bf16_name><IME_IN_QI:ime_in_lm><VFW_OFP8_BF16_ACC:mode>"
-  [(set (match_operand:VFW_OFP8_BF16_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VFW_OFP8_BF16_ACC
-	  (unspec:<VFW_OFP8_BF16_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VFW_OFP8_BF16_ACC
-	    [(match_operand:VFW_OFP8_BF16_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_QI           2 "register_operand" " vr")
-	     (match_operand:IME_IN_QI           3 "register_operand" " vr")]
-	    VFWMMACC_OFP8_BF16)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_fp_altfmt" "<vfwmmacc_ofp8_bf16_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VFW_OFP8_BF16_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; vfwmmacc FP32 -> FP64
-(define_insn "@pred_vfwmmacc_f32<IME_IN_SF:ime_in_lm><VF64_ACC:mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VF64_ACC
-	  (unspec:<VF64_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VF64_ACC
-	    [(match_operand:VF64_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_SF  2 "register_operand" " vr")
-	     (match_operand:IME_IN_SF  3 "register_operand" " vr")]
-	    UNSPEC_VFWMMACC_F32)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VF64_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; ---------------------------------------------------------------------------
-;; Zvvfmm - FP matrix multiply-accumulate, W=4 (vfqwmmacc.vv)
-;; ---------------------------------------------------------------------------
-
-;; vfqwmmacc FP16 -> FP64
-(define_insn "@pred_vfqwmmacc_f16<IME_IN_HF:ime_in_lm><VF64_ACC:mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VF64_ACC
-	  (unspec:<VF64_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VF64_ACC
-	    [(match_operand:VF64_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_HF  2 "register_operand" " vr")
-	     (match_operand:IME_IN_HF  3 "register_operand" " vr")]
-	    UNSPEC_VFQWMMACC_F16)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfqwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VF64_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; vfqwmmacc BF16 -> FP64
-(define_insn "@pred_vfqwmmacc_bf16<IME_IN_BF:ime_in_lm><VF64_ACC:mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VF64_ACC
-	  (unspec:<VF64_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VF64_ACC
-	    [(match_operand:VF64_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_BF  2 "register_operand" " vr")
-	     (match_operand:IME_IN_BF  3 "register_operand" " vr")]
-	    UNSPEC_VFQWMMACC_BF16)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfqwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VF64_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; vfqwmmacc OFP8 (E4M3/E5M2) -> FP32: two variants via int iterator.
-(define_insn "@pred_vfqwmmacc_ofp8<vfqwmmacc_ofp8_name><IME_IN_QI:ime_in_lm><VF32_ACC:mode>"
-  [(set (match_operand:VF32_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VF32_ACC
-	  (unspec:<VF32_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VF32_ACC
-	    [(match_operand:VF32_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_QI  2 "register_operand" " vr")
-	     (match_operand:IME_IN_QI  3 "register_operand" " vr")]
-	    VFQWMMACC_OFP8)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vfqwmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_fp_altfmt" "<vfqwmmacc_ofp8_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VF32_ACC:MODE>")
-   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
-
-;; ---------------------------------------------------------------------------
-;; Zvvfmm - FP matrix multiply-accumulate, W=8 (vf8wmmacc.vv)
-;; ---------------------------------------------------------------------------
-
-;; vf8wmmacc OFP8 (E4M3/E5M2) -> FP64: two variants via int iterator.
-(define_insn "@pred_vf8wmmacc_ofp8<vf8wmmacc_ofp8_name><IME_IN_QI:ime_in_lm><VF64_ACC:mode>"
-  [(set (match_operand:VF64_ACC 0 "register_operand" "=&vr")
-	(if_then_else:VF64_ACC
-	  (unspec:<VF64_ACC:VM>
-	    [(match_operand 4 "vector_length_operand" " rK")
-	     (match_operand 5 "const_int_operand"     "  i")
-	     (match_operand 6 "const_int_operand"     "  i")
-	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)
-	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
-	  (unspec:VF64_ACC
-	    [(match_operand:VF64_ACC 1 "register_operand" "  0")
-	     (match_operand:IME_IN_QI  2 "register_operand" " vr")
-	     (match_operand:IME_IN_QI  3 "register_operand" " vr")]
-	    VF8WMMACC_OFP8)
-	  (match_dup 1)))
-   (use (match_operand 7 "vtype_op_operand" "rJ"))]
-  "TARGET_ZVVFMM"
-  "vf8wmmacc.vv\t%0,%2,%3"
-  [(set_attr "type" "vmmacc")
-   (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_altfmt" "ss")
-   (set_attr "ime_fp_altfmt" "<vf8wmmacc_ofp8_altfmt>")
-   (set_attr "ime_vtype_op_idx" "7")
-   (set_attr "mode" "<VF64_ACC:MODE>")
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; vf8wmmacc OFP4_E2M1 -> FP32

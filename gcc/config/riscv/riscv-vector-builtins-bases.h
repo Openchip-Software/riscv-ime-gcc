@@ -363,9 +363,9 @@ extern const function_base *const v8wmmacc;
 /* Zvvmm widening m16 accumulator (#489).  */
 /* Zvvfmm */
 extern const function_base *const vfmmacc;
-#define IME_FP_MMACC(NAME, INSN, C, A, B, PATTERN)			\
+#define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   extern const function_base *const NAME;
-#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC, PATTERN)		\
+#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   extern const function_base *const NAME;
 #include "zvvm-mmacc.def"
 /* W=1 OFP8 `_lm{N}' source-LMUL siblings (B.2).  */

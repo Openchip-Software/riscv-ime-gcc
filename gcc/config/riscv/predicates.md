@@ -655,6 +655,13 @@
   (ior (match_operand 0 "const_0_operand")
        (match_operand 0 "pmode_register_operand")))
 
+;; Predicate for the inputs of the IME multiply-accumulate patterns,
+;; which have no mode so that one pattern covers every input LMUL:
+;; a register of any vector mode.
+(define_special_predicate "ime_mmacc_input_operand"
+  (and (match_test "VECTOR_MODE_P (GET_MODE (op))")
+       (match_operand 0 "register_operand")))
+
 ;; [1, 2, 4, 8] means strided load/store with stride == element width
 (define_special_predicate "vector_eew8_stride_operand"
   (ior (match_operand 0 "pmode_register_operand")

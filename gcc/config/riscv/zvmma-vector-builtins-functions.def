@@ -59,9 +59,9 @@ DEF_RVV_FUNCTION (v8wmmacc, ime_int_mmacc, none_tu_preds, i_ime_8wvss_ops)
    FP16, BF16, FP32 and FP64 vfmmacc, they come from zvvm-mmacc.def.  */
 #define REQUIRED_EXTENSIONS ZVVFMM_EXT
 DEF_RVV_FUNCTION (vfmmacc,     ime_fp_mmacc, none_tu_preds, f_ime_vss_ops)
-#define IME_FP_MMACC(NAME, INSN, C, A, B, PATTERN)			\
+#define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   DEF_RVV_FUNCTION (NAME, ime_fp_mmacc, none_tu_preds, NAME##_ime_ops)
-#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC, PATTERN)		\
+#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   DEF_RVV_FUNCTION (NAME, ime_fp_mmacc, none_tu_preds, NAME##_ime_ops)
 #include "zvvm-mmacc.def"
 /* IME FP / OFP8 `pair' / `unpair' primitives at m16.  Mirror the

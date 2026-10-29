@@ -3719,9 +3719,9 @@ static const rvv_type_info f8e5m2_lmul1_ops[]
   static CONSTEXPR const rvv_op_info NAME##_ime_ops			\
     = {IME_ACC_TYPES_##C, OP_TYPE_vv, rvv_arg_type_info (RVV_BASE_vector), \
        NAME##_ime_args};
-#define IME_FP_MMACC(NAME, INSN, C, A, B, PATTERN)			\
+#define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   IME_MMACC_OPS (NAME, C, A, B)
-#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC, PATTERN)		\
+#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   IME_MMACC_OPS (NAME, C, A, B)
 #include "zvvm-mmacc.def"
 #undef IME_MMACC_OPS

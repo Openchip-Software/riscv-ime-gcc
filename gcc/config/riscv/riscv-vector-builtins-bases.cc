@@ -3003,20 +3003,12 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 /* IME integer matrix multiply-accumulate: vmmacc.vv, vwmmacc.vv,
    vqwmmacc.vv and v8wmmacc.vv.  One object covers every variant of an
    instruction.  The input signedness picks the UNSPEC, which the vsetvl
-   pass reads to set altfmt_A/altfmt_B; the input LMUL and an m16
-   accumulator pick the pattern.  No mask/merge/policy operands.  */
+   pass reads to set altfmt_A/altfmt_B.  No mask/merge/policy operands.  */
 class ime_int_mmacc_op : public function_base
 {
 public:
-  typedef insn_code (*code_for_fn) (int, machine_mode);
-
-  CONSTEXPR ime_int_mmacc_op (int ss, int uu, int su, int us,
-			      code_for_fn lm1, code_for_fn lm2,
-			      code_for_fn lm4, code_for_fn lm8,
-			      code_for_fn m16_lm1, code_for_fn m16_lm2,
-			      code_for_fn m16_lm4, code_for_fn m16_lm8)
-    : m_unspecs {ss, uu, su, us},
-      m_code_for {{lm1, lm2, lm4, lm8}, {m16_lm1, m16_lm2, m16_lm4, m16_lm8}}
+  CONSTEXPR ime_int_mmacc_op (int ss, int uu, int su, int us)
+    : m_unspecs {ss, uu, su, us}
   {}
 
   bool apply_mask_policy_p () const override { return false; }
@@ -3029,7 +3021,6 @@ public:
     ime_int_input in;
     gcc_assert (ime_int_mmacc_input (e, &in));
     int unspec = m_unspecs[in.sign];
-    bool m16 = get_vlmul (e.vector_mode ()) == LMUL_16;
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  /* is_tile_op = */ false,
 				  ime_unspec_altfmt_a (unspec),
@@ -3037,45 +3028,25 @@ public:
 				  /* altfmt = */ false,
 				  /* bs = */ false);
     rtx result
-      = e.use_exact_insn (m_code_for[m16][in.lm_log2] (unspec,
-							e.vector_mode ()));
+      = e.use_exact_insn (code_for_pred_ime_mmacc (unspec, e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
   }
 
 private:
   int m_unspecs[4];
-  code_for_fn m_code_for[2][4];
 };
 
-/* vmmacc has separate patterns for m16 accumulators; the widening
-   instructions' patterns include the m16 modes.  */
 static CONSTEXPR const ime_int_mmacc_op vmmacc_obj
-  (UNSPEC_VMMACC_S, UNSPEC_VMMACC_U, UNSPEC_VMMACC_SU, UNSPEC_VMMACC_US,
-   code_for_pred_vmmacc, code_for_pred_vmmacc_lm2,
-   code_for_pred_vmmacc_lm4, code_for_pred_vmmacc_lm8,
-   code_for_pred_vmmacc_m16, code_for_pred_vmmacc_m16_lm2,
-   code_for_pred_vmmacc_m16_lm4, code_for_pred_vmmacc_m16_lm8);
+  (UNSPEC_VMMACC_S, UNSPEC_VMMACC_U, UNSPEC_VMMACC_SU, UNSPEC_VMMACC_US);
 static CONSTEXPR const ime_int_mmacc_op vwmmacc_obj
-  (UNSPEC_VWMMACC_S, UNSPEC_VWMMACC_U, UNSPEC_VWMMACC_SU, UNSPEC_VWMMACC_US,
-   code_for_pred_vwmmacc, code_for_pred_vwmmacc_lm2,
-   code_for_pred_vwmmacc_lm4, code_for_pred_vwmmacc_lm8,
-   code_for_pred_vwmmacc, code_for_pred_vwmmacc_lm2,
-   code_for_pred_vwmmacc_lm4, code_for_pred_vwmmacc_lm8);
+  (UNSPEC_VWMMACC_S, UNSPEC_VWMMACC_U, UNSPEC_VWMMACC_SU, UNSPEC_VWMMACC_US);
 static CONSTEXPR const ime_int_mmacc_op vqwmmacc_obj
   (UNSPEC_VQWMMACC_S, UNSPEC_VQWMMACC_U, UNSPEC_VQWMMACC_SU,
-   UNSPEC_VQWMMACC_US,
-   code_for_pred_vqwmmacc, code_for_pred_vqwmmacc_lm2,
-   code_for_pred_vqwmmacc_lm4, code_for_pred_vqwmmacc_lm8,
-   code_for_pred_vqwmmacc, code_for_pred_vqwmmacc_lm2,
-   code_for_pred_vqwmmacc_lm4, code_for_pred_vqwmmacc_lm8);
+   UNSPEC_VQWMMACC_US);
 static CONSTEXPR const ime_int_mmacc_op v8wmmacc_obj
   (UNSPEC_V8WMMACC_S, UNSPEC_V8WMMACC_U, UNSPEC_V8WMMACC_SU,
-   UNSPEC_V8WMMACC_US,
-   code_for_pred_v8wmmacc, code_for_pred_v8wmmacc_lm2,
-   code_for_pred_v8wmmacc_lm4, code_for_pred_v8wmmacc_lm8,
-   code_for_pred_v8wmmacc, code_for_pred_v8wmmacc_lm2,
-   code_for_pred_v8wmmacc_lm4, code_for_pred_v8wmmacc_lm8);
+   UNSPEC_V8WMMACC_US);
 
 /* IME pair / unpair primitive bases.
 
@@ -3143,34 +3114,15 @@ static CONSTEXPR const ime_vpair     ime_vpair_obj;
 
 /* IME FP matrix multiply-accumulate (vfmmacc.vv, vfwmmacc.vv,
    vfqwmmacc.vv and vf8wmmacc.vv) for one combination of accumulator
-   and input formats.  One object covers the forms with input LMUL 1, 2,
-   4 and 8 and with m1..m8 and m16 accumulators.  The OFP8 formats share
-   QImode, so their patterns and the altfmt bits are selected by an
+   and input formats, selected by UNSPEC.  One object covers the forms
+   with input LMUL 1, 2, 4 and 8 and with m1..m8 and m16 accumulators.
+   The OFP8 formats share QImode, so their altfmt bits come from the
    UNSPEC and they have no overloaded forms.  */
 class ime_fp_mmacc_op : public function_base
 {
 public:
-  typedef insn_code (*code_for_fn) (machine_mode);
-  typedef insn_code (*code_for_in_fn) (machine_mode, machine_mode);
-  typedef insn_code (*code_for_unspec_fn) (int, machine_mode, machine_mode);
-
-  /* One pattern per input LMUL, indexed by the accumulator mode.  */
-  CONSTEXPR ime_fp_mmacc_op (code_for_fn lm1, code_for_fn lm2,
-			     code_for_fn lm4, code_for_fn lm8)
-    : m_unspec (-1), m_code_for {lm1, lm2, lm4, lm8}, m_code_for_in (nullptr),
-      m_code_for_unspec (nullptr)
-  {}
-
-  /* One pattern indexed by the input and accumulator modes.  */
-  CONSTEXPR ime_fp_mmacc_op (code_for_in_fn code_for)
-    : m_unspec (-1), m_code_for {nullptr, nullptr, nullptr, nullptr},
-      m_code_for_in (code_for), m_code_for_unspec (nullptr)
-  {}
-
-  /* One pattern indexed by UNSPEC and the input and accumulator modes.  */
-  CONSTEXPR ime_fp_mmacc_op (int unspec, code_for_unspec_fn code_for)
-    : m_unspec (unspec), m_code_for {nullptr, nullptr, nullptr, nullptr},
-      m_code_for_in (nullptr), m_code_for_unspec (code_for)
+  CONSTEXPR ime_fp_mmacc_op (int unspec, bool ofp8)
+    : m_unspec (unspec), m_ofp8 (ofp8)
   {}
 
   bool apply_mask_policy_p () const override { return false; }
@@ -3179,51 +3131,36 @@ public:
   bool apply_ime_vtype_op_p () const override { return true; }
   bool can_be_overloaded_p (enum predication_type_index) const override
   {
-    return m_unspec < 0;
+    return !m_ofp8;
   }
 
   rtx expand (function_expander &e) const override
   {
     ime_ofp8_altfmt af = {false, false, false};
-    if (m_unspec >= 0)
+    if (m_ofp8)
       af = ime_unspec_ofp8_altfmt (m_unspec);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  /* is_tile_op = */ false,
 				  af.a, af.b, af.val,
 				  /* bs = */ false);
-    machine_mode in_mode = e.arg_mode (1);
-    insn_code icode;
-    if (m_code_for_unspec)
-      icode = m_code_for_unspec (m_unspec, in_mode, e.vector_mode ());
-    else if (m_code_for_in)
-      icode = m_code_for_in (in_mode, e.vector_mode ());
-    else
-      {
-	unsigned lm_log2 = get_vlmul (in_mode);
-	gcc_assert (lm_log2 <= LMUL_8);
-	icode = m_code_for[lm_log2] (e.vector_mode ());
-      }
-    rtx result = e.use_exact_insn (icode);
+    rtx result
+      = e.use_exact_insn (code_for_pred_ime_mmacc (m_unspec,
+						    e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
   }
 
 private:
   int m_unspec;
-  code_for_fn m_code_for[4];
-  code_for_in_fn m_code_for_in;
-  code_for_unspec_fn m_code_for_unspec;
+  bool m_ofp8;
 };
 
-static CONSTEXPR const ime_fp_mmacc_op vfmmacc_obj
-  (code_for_pred_vfmmacc, code_for_pred_vfmmacc_lm2, code_for_pred_vfmmacc_lm4,
-   code_for_pred_vfmmacc_lm8);
+static CONSTEXPR const ime_fp_mmacc_op vfmmacc_obj (UNSPEC_VFMMACC, false);
 
-#define IME_FP_MMACC(NAME, INSN, C, A, B, PATTERN)			\
-  static CONSTEXPR const ime_fp_mmacc_op NAME##_obj (code_for_pred_##PATTERN);
-#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC, PATTERN)		\
-  static CONSTEXPR const ime_fp_mmacc_op NAME##_obj			\
-    (UNSPEC, code_for_pred_##PATTERN);
+#define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
+  static CONSTEXPR const ime_fp_mmacc_op NAME##_obj (UNSPEC, false);
+#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
+  static CONSTEXPR const ime_fp_mmacc_op NAME##_obj (UNSPEC, true);
 #include "zvvm-mmacc.def"
 
 class vf8wmmacc_f4e2m1_ime_op : public function_base
@@ -4050,8 +3987,8 @@ BASE (v8wmmacc)
 /* Zvvmm widening m16 accumulator (#489).  */
 /* Zvvfmm */
 BASE (vfmmacc)
-#define IME_FP_MMACC(NAME, INSN, C, A, B, PATTERN) BASE (NAME)
-#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC, PATTERN) BASE (NAME)
+#define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
+#define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
 #include "zvvm-mmacc.def"
 /* W=1 OFP8 `_lm{N}' source-LMUL siblings (B.2).  */
 /* IME m16 acc (W=1 FP / OFP8).  */
