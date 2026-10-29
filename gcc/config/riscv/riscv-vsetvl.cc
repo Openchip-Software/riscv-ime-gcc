@@ -1476,13 +1476,8 @@ insn_uses_lambda_p (rtx_insn *rinsn)
     return false;
   if (recog_memoized (rinsn) < 0)
     return false;
-  if (get_attr_requires_ime_vtype (rinsn) == REQUIRES_IME_VTYPE_YES)
-    return true;
-  enum attr_type t = get_attr_type (rinsn);
-  /* vlds/vsts are strided load/store -- the IME tile load/store ops
-     are encoded as these types.  Strict gating: only treat them as
-     lambda consumers when emitted by the IME tile builtins.  */
-  return t == TYPE_VLDS || t == TYPE_VSTS;
+  return (get_attr_requires_ime_vtype (rinsn) == REQUIRES_IME_VTYPE_YES
+	  || get_attr_ime_tile (rinsn) == IME_TILE_YES);
 }
 
 /* Forward CFG dataflow for the lambda lattice.
@@ -1725,9 +1720,7 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
      the vtype LMUL field separately, not folded into lambda.
      The mmacc family uses the data register's LMUL as MUL_C because
      its vd really is the accumulator register group.  */
-  enum attr_type t = get_attr_type (rinsn);
-  bool is_tile = (t == TYPE_VLDS || t == TYPE_VSTS);
-  if (is_tile)
+  if (get_attr_ime_tile (rinsn) == IME_TILE_YES)
     r.mul_c = riscv_vector::LMUL_1;
   else
     r.mul_c = get_vlmul (acc_mode);
@@ -2631,9 +2624,8 @@ public:
 	   Force exact (SEW, LMUL) demand for these ops instead of the
 	   default ratio-only demand that get_attr_ratio's mode-based
 	   default would otherwise produce.  */
-	bool ime_tile_op_p = (get_attr_type (insn->rtl ()) == TYPE_VLDS
-			      || get_attr_type (insn->rtl ()) == TYPE_VSTS)
-			     && insn_uses_lambda_p (insn->rtl ());
+	bool ime_tile_op_p
+	  = get_attr_ime_tile (insn->rtl ()) == IME_TILE_YES;
 
 	if (!ime_tile_op_p
 	    && get_attr_ratio (insn->rtl ()) != INVALID_ATTRIBUTE)

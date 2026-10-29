@@ -364,6 +364,12 @@
    e5m2_e5m2_e4m3, e5m2_e5m2_e5m2"
   (const_string "none"))
 
+;; Whether the instruction is an IME tile load or store.  These read
+;; vtype.lambda but have the same type (vlds/vsts) as the ordinary
+;; strided loads and stores.
+(define_attr "ime_tile" "no,yes"
+  (const_string "no"))
+
 ;; Block scale size for microscaled variants.
 ;; "none" means not a microscaled instruction (bs bit irrelevant).
 ;; "bs16" and "bs32" set the bs vtype bit accordingly.
@@ -982,6 +988,7 @@
 	    ? "<ime_tile>.v\t%0,%3,%4,L%9%p1" : "<ime_tile>.v\t%0,%3,%4%p1");
   }
   [(set_attr "type" "vlds")
+   (set_attr "ime_tile" "yes")
    (set_attr "mode" "<MODE>")
    (set (attr "sew")
 	(symbol_ref "INTVAL (operands[10]) ? INTVAL (operands[10])
@@ -1013,6 +1020,7 @@
 	    ? "<ime_tile>.v\t%3,%0,%2,L%6%p1" : "<ime_tile>.v\t%3,%0,%2%p1");
   }
   [(set_attr "type" "vsts")
+   (set_attr "ime_tile" "yes")
    (set_attr "mode" "<MODE>")
    (set (attr "sew")
 	(symbol_ref "INTVAL (operands[7]) ? INTVAL (operands[7])
