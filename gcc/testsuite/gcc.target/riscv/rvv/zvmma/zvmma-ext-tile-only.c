@@ -14,5 +14,5 @@ size_t h (void) { return __riscv_ime_vlen (); }
 vint32m1_t
 i8i32 (vint32m1_t vd, vint8m1_t a, vint8m1_t b, size_t vl)
 {
-  return __riscv_vqwmmacc_vv_i32m1 (vd, a, b, vl); /* { dg-error "requires the 'zvvi8i32mm' ISA extension" } */
+  return __riscv_vqmmacc_vv_i32m1 (vd, a, b, vl); /* { dg-error "requires the 'zvvi8i32mm' ISA extension" } */
 }

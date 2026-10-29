@@ -37,23 +37,23 @@ wmmacc_us_i32m2_lm8 (vint32m2_t vd, vuint16m8_t a, vint16m8_t b, size_t vl)
   return __riscv_vwmmacc_vv_i32m2_us_lm8 (vd, a, b, vl);
 }
 
-/* W=4 widening (vqwmmacc.vv): i32 acc, i8 inputs.  */
+/* W=4 widening (vqmmacc.vv): i32 acc, i8 inputs.  */
 vint32m2_t
-qwmmacc_s_i32m2_lm2 (vint32m2_t vd, vint8m2_t a, vint8m2_t b, size_t vl)
+qmmacc_s_i32m2_lm2 (vint32m2_t vd, vint8m2_t a, vint8m2_t b, size_t vl)
 {
-  return __riscv_vqwmmacc_vv_i32m2_lm2 (vd, a, b, vl);
+  return __riscv_vqmmacc_vv_i32m2_lm2 (vd, a, b, vl);
 }
 
 vuint32m2_t
-qwmmacc_u_u32m2_lm4 (vuint32m2_t vd, vuint8m4_t a, vuint8m4_t b, size_t vl)
+qmmacc_u_u32m2_lm4 (vuint32m2_t vd, vuint8m4_t a, vuint8m4_t b, size_t vl)
 {
-  return __riscv_vqwmmacc_vv_u32m2_lm4 (vd, a, b, vl);
+  return __riscv_vqmmacc_vv_u32m2_lm4 (vd, a, b, vl);
 }
 
 vint32m2_t
-qwmmacc_us_i32m2_lm8 (vint32m2_t vd, vuint8m8_t a, vint8m8_t b, size_t vl)
+qmmacc_us_i32m2_lm8 (vint32m2_t vd, vuint8m8_t a, vint8m8_t b, size_t vl)
 {
-  return __riscv_vqwmmacc_vv_i32m2_us_lm8 (vd, a, b, vl);
+  return __riscv_vqmmacc_vv_i32m2_us_lm8 (vd, a, b, vl);
 }
 
 /* W=8 widening (v8wmmacc.vv): i64 acc, i8 inputs.  */
@@ -70,5 +70,5 @@ v8wmmacc_su_i64m4_lm4 (vint64m4_t vd, vint8m4_t a, vuint8m4_t b, size_t vl)
 }
 
 /* { dg-final { scan-assembler-times {\tvwmmacc\.vv\t}  4 } } */
-/* { dg-final { scan-assembler-times {\tvqwmmacc\.vv\t} 3 } } */
+/* { dg-final { scan-assembler-times {\tvqmmacc\.vv\t} 3 } } */
 /* { dg-final { scan-assembler-times {\tv8wmmacc\.vv\t} 2 } } */

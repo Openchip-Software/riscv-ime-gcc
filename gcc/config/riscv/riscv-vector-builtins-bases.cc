@@ -2808,8 +2808,8 @@ ime_unspec_altfmt_a (int unspec)
     case UNSPEC_VMMACC_US:
     case UNSPEC_VWMMACC_U:
     case UNSPEC_VWMMACC_US:
-    case UNSPEC_VQWMMACC_U:
-    case UNSPEC_VQWMMACC_US:
+    case UNSPEC_VQMMACC_U:
+    case UNSPEC_VQMMACC_US:
     case UNSPEC_V8WMMACC_U:
     case UNSPEC_V8WMMACC_US:
       return true;
@@ -2829,8 +2829,8 @@ ime_unspec_altfmt_b (int unspec)
     case UNSPEC_VMMACC_SU:
     case UNSPEC_VWMMACC_U:
     case UNSPEC_VWMMACC_SU:
-    case UNSPEC_VQWMMACC_U:
-    case UNSPEC_VQWMMACC_SU:
+    case UNSPEC_VQMMACC_U:
+    case UNSPEC_VQMMACC_SU:
     case UNSPEC_V8WMMACC_U:
     case UNSPEC_V8WMMACC_SU:
       return true;
@@ -2882,10 +2882,10 @@ ime_unspec_ofp8_altfmt (int unspec)
     case UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3: return { true,  false, true };
     case UNSPEC_VFWMMACC_OFP8_BF16_E5M2:      return { true,  true,  true };
     /* W=4 / W=8 OFP8 (acc altfmt fixed at 0 for SEW>=32).  */
-    case UNSPEC_VFQWMMACC_F8E4M3:      return { false, false, false };
-    case UNSPEC_VFQWMMACC_F8E5M2:      return { true,  true,  false };
-    case UNSPEC_VFQWMMACC_F8E4M3_E5M2: return { false, true,  false };
-    case UNSPEC_VFQWMMACC_F8E5M2_E4M3: return { true,  false, false };
+    case UNSPEC_VFQMMACC_F8E4M3:       return { false, false, false };
+    case UNSPEC_VFQMMACC_F8E5M2:       return { true,  true,  false };
+    case UNSPEC_VFQMMACC_F8E4M3_E5M2:  return { false, true,  false };
+    case UNSPEC_VFQMMACC_F8E5M2_E4M3:  return { true,  false, false };
     case UNSPEC_VF8WMMACC_F8E4M3:      return { false, false, false };
     case UNSPEC_VF8WMMACC_F8E5M2:      return { true,  true,  false };
     case UNSPEC_VF8WMMACC_F8E4M3_E5M2: return { false, true,  false };
@@ -3001,7 +3001,7 @@ maybe_emit_ime_runtime_vtype (function_expander &e,
 }
 
 /* IME integer matrix multiply-accumulate: vmmacc.vv, vwmmacc.vv,
-   vqwmmacc.vv and v8wmmacc.vv.  One object covers every variant of an
+   vqmmacc.vv and v8wmmacc.vv.  One object covers every variant of an
    instruction.  The input signedness picks the UNSPEC, which the vsetvl
    pass reads to set altfmt_A/altfmt_B.  No mask/merge/policy operands.  */
 class ime_int_mmacc_op : public function_base
@@ -3041,9 +3041,9 @@ static CONSTEXPR const ime_int_mmacc_op vmmacc_obj
   (UNSPEC_VMMACC_S, UNSPEC_VMMACC_U, UNSPEC_VMMACC_SU, UNSPEC_VMMACC_US);
 static CONSTEXPR const ime_int_mmacc_op vwmmacc_obj
   (UNSPEC_VWMMACC_S, UNSPEC_VWMMACC_U, UNSPEC_VWMMACC_SU, UNSPEC_VWMMACC_US);
-static CONSTEXPR const ime_int_mmacc_op vqwmmacc_obj
-  (UNSPEC_VQWMMACC_S, UNSPEC_VQWMMACC_U, UNSPEC_VQWMMACC_SU,
-   UNSPEC_VQWMMACC_US);
+static CONSTEXPR const ime_int_mmacc_op vqmmacc_obj
+  (UNSPEC_VQMMACC_S, UNSPEC_VQMMACC_U, UNSPEC_VQMMACC_SU,
+   UNSPEC_VQMMACC_US);
 static CONSTEXPR const ime_int_mmacc_op v8wmmacc_obj
   (UNSPEC_V8WMMACC_S, UNSPEC_V8WMMACC_U, UNSPEC_V8WMMACC_SU,
    UNSPEC_V8WMMACC_US);
@@ -3113,7 +3113,7 @@ static CONSTEXPR const ime_vpair     ime_vpair_obj;
 
 
 /* IME FP matrix multiply-accumulate (vfmmacc.vv, vfwmmacc.vv,
-   vfqwmmacc.vv and vf8wmmacc.vv) for one combination of accumulator
+   vfqmmacc.vv and vf8wmmacc.vv) for one combination of accumulator
    and input formats, selected by UNSPEC.  One object covers the forms
    with input LMUL 1, 2, 4 and 8 and with m1..m8 and m16 accumulators.
    The OFP8 formats share QImode, so their altfmt bits come from the
@@ -3206,10 +3206,10 @@ ime_unspec_bs16_p (int unspec)
   switch (unspec)
     {
     case UNSPEC_VFWMMACC_F16_BS16:
-    case UNSPEC_VFQWMMACC_F8E4M3_BS16:
+    case UNSPEC_VFQMMACC_F8E4M3_BS16:
     case UNSPEC_VF8WMMACC_F8E4M3_BS16:
     case UNSPEC_VFWIMMACC_I8_BS16:
-    case UNSPEC_VFQWIMMACC_I8_BS16:
+    case UNSPEC_VFQIMMACC_I8_BS16:
     case UNSPEC_VF8WIMMACC_I8_BS16:
       return true;
     default:
@@ -3255,10 +3255,10 @@ static CONSTEXPR const microscaled_ime_op vfwmmacc_scaled_f16_bs32_obj
 static CONSTEXPR const microscaled_ime_op vfwmmacc_scaled_f16_bs16_obj
   (UNSPEC_VFWMMACC_F16_BS16);
 
-static CONSTEXPR const microscaled_ime_op vfqwmmacc_scaled_f8e4m3_bs32_obj
-  (UNSPEC_VFQWMMACC_F8E4M3_BS32);
-static CONSTEXPR const microscaled_ime_op vfqwmmacc_scaled_f8e4m3_bs16_obj
-  (UNSPEC_VFQWMMACC_F8E4M3_BS16);
+static CONSTEXPR const microscaled_ime_op vfqmmacc_scaled_f8e4m3_bs32_obj
+  (UNSPEC_VFQMMACC_F8E4M3_BS32);
+static CONSTEXPR const microscaled_ime_op vfqmmacc_scaled_f8e4m3_bs16_obj
+  (UNSPEC_VFQMMACC_F8E4M3_BS16);
 
 static CONSTEXPR const microscaled_ime_op vf8wmmacc_scaled_f8e4m3_bs32_obj
   (UNSPEC_VF8WMMACC_F8E4M3_BS32);
@@ -3271,10 +3271,10 @@ static CONSTEXPR const microscaled_ime_op vfwimmacc_i8_bs32_obj
 static CONSTEXPR const microscaled_ime_op vfwimmacc_i8_bs16_obj
   (UNSPEC_VFWIMMACC_I8_BS16);
 
-static CONSTEXPR const microscaled_ime_op vfqwimmacc_i8_bs32_obj
-  (UNSPEC_VFQWIMMACC_I8_BS32);
-static CONSTEXPR const microscaled_ime_op vfqwimmacc_i8_bs16_obj
-  (UNSPEC_VFQWIMMACC_I8_BS16);
+static CONSTEXPR const microscaled_ime_op vfqimmacc_i8_bs32_obj
+  (UNSPEC_VFQIMMACC_I8_BS32);
+static CONSTEXPR const microscaled_ime_op vfqimmacc_i8_bs16_obj
+  (UNSPEC_VFQIMMACC_I8_BS16);
 
 static CONSTEXPR const microscaled_ime_op vf8wimmacc_i8_bs32_obj
   (UNSPEC_VF8WIMMACC_I8_BS32);
@@ -3913,7 +3913,7 @@ BASE (ime_vunpairlo)
 BASE (ime_vunpairhi)
 BASE (ime_vpair)
 BASE (vwmmacc)
-BASE (vqwmmacc)
+BASE (vqmmacc)
 BASE (v8wmmacc)
 /* Zvvfmm */
 BASE (vfmmacc)
@@ -3924,15 +3924,15 @@ BASE (vf8wmmacc_f4e2m1)
 /* Microscaled FP-input scaled variants */
 BASE (vfwmmacc_scaled_f16_bs32)
 BASE (vfwmmacc_scaled_f16_bs16)
-BASE (vfqwmmacc_scaled_f8e4m3_bs32)
-BASE (vfqwmmacc_scaled_f8e4m3_bs16)
+BASE (vfqmmacc_scaled_f8e4m3_bs32)
+BASE (vfqmmacc_scaled_f8e4m3_bs16)
 BASE (vf8wmmacc_scaled_f8e4m3_bs32)
 BASE (vf8wmmacc_scaled_f8e4m3_bs16)
 /* Microscaled integer-input variants */
 BASE (vfwimmacc_i8_bs32)
 BASE (vfwimmacc_i8_bs16)
-BASE (vfqwimmacc_i8_bs32)
-BASE (vfqwimmacc_i8_bs16)
+BASE (vfqimmacc_i8_bs32)
+BASE (vfqimmacc_i8_bs16)
 BASE (vf8wimmacc_i8_bs32)
 BASE (vf8wimmacc_i8_bs16)
 BASE (ime_vlen)

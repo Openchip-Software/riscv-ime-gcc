@@ -86,18 +86,18 @@ IME_OFP8_MMACC (vfwmmacc_bf16_f8e5m2_f8e4m3, vfwmmacc, BF16, E5M2, E4M3,
 IME_OFP8_MMACC (vfwmmacc_bf16_f8e5m2, vfwmmacc, BF16, E5M2, E5M2,
 		UNSPEC_VFWMMACC_OFP8_BF16_E5M2)
 
-/* vfqwmmacc.vv (W=4).  */
-IME_FP_MMACC (vfqwmmacc_f16, vfqwmmacc, FP64, FP16, FP16, UNSPEC_VFQWMMACC_F16)
-IME_FP_MMACC (vfqwmmacc_bf16, vfqwmmacc, FP64, BF16, BF16,
-	      UNSPEC_VFQWMMACC_BF16)
-IME_OFP8_MMACC (vfqwmmacc_f8e4m3, vfqwmmacc, FP32, E4M3, E4M3,
-		UNSPEC_VFQWMMACC_F8E4M3)
-IME_OFP8_MMACC (vfqwmmacc_f8e5m2, vfqwmmacc, FP32, E5M2, E5M2,
-		UNSPEC_VFQWMMACC_F8E5M2)
-IME_OFP8_MMACC (vfqwmmacc_f8e4m3_f8e5m2, vfqwmmacc, FP32, E4M3, E5M2,
-		UNSPEC_VFQWMMACC_F8E4M3_E5M2)
-IME_OFP8_MMACC (vfqwmmacc_f8e5m2_f8e4m3, vfqwmmacc, FP32, E5M2, E4M3,
-		UNSPEC_VFQWMMACC_F8E5M2_E4M3)
+/* vfqmmacc.vv (W=4).  */
+IME_FP_MMACC (vfqmmacc_f16, vfqmmacc, FP64, FP16, FP16, UNSPEC_VFQMMACC_F16)
+IME_FP_MMACC (vfqmmacc_bf16, vfqmmacc, FP64, BF16, BF16,
+	      UNSPEC_VFQMMACC_BF16)
+IME_OFP8_MMACC (vfqmmacc_f8e4m3, vfqmmacc, FP32, E4M3, E4M3,
+		UNSPEC_VFQMMACC_F8E4M3)
+IME_OFP8_MMACC (vfqmmacc_f8e5m2, vfqmmacc, FP32, E5M2, E5M2,
+		UNSPEC_VFQMMACC_F8E5M2)
+IME_OFP8_MMACC (vfqmmacc_f8e4m3_f8e5m2, vfqmmacc, FP32, E4M3, E5M2,
+		UNSPEC_VFQMMACC_F8E4M3_E5M2)
+IME_OFP8_MMACC (vfqmmacc_f8e5m2_f8e4m3, vfqmmacc, FP32, E5M2, E4M3,
+		UNSPEC_VFQMMACC_F8E5M2_E4M3)
 
 /* vf8wmmacc.vv (W=8).  */
 IME_OFP8_MMACC (vf8wmmacc_f8e4m3, vf8wmmacc, FP64, E4M3, E4M3,

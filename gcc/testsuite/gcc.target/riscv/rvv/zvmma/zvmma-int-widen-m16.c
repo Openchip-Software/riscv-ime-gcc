@@ -2,7 +2,7 @@
 /* { dg-options "-march=rv64gcv_zvmma_zvvfmm_zbb_zvfh_zvfbfmin -mabi=lp64d -O3" } */
 
 /* Regression test for Zvvmm widening m16 accumulator mmacc (#489).
-   Exercises vwmmacc (W=2), vqwmmacc (W=4), and v8wmmacc (W=8) at the
+   Exercises vwmmacc (W=2), vqmmacc (W=4), and v8wmmacc (W=8) at the
    m16 accumulator across the four sign combinations and default /
    _lm{2,4,8} source-LMUL siblings.
 
@@ -46,12 +46,12 @@ w2_us_m16_lm8 (vint32m8_t lo, vint32m8_t hi,
   return __riscv_ime_vunpairhi_i32m16 (acc);
 }
 
-/* W=4 (vqwmmacc) m16 acc.  */
+/* W=4 (vqmmacc) m16 acc.  */
 vint32m8_t
 w4_s_m16 (vint32m8_t lo, vint32m8_t hi, vint8m1_t a, vint8m1_t b, size_t vl)
 {
   vint32m16_t acc = __riscv_ime_vpair_i32m16 (lo, hi);
-  acc = __riscv_vqwmmacc_vv_i32m16 (acc, a, b, vl);
+  acc = __riscv_vqmmacc_vv_i32m16 (acc, a, b, vl);
   return __riscv_ime_vunpairlo_i32m16 (acc);
 }
 vuint32m8_t
@@ -59,7 +59,7 @@ w4_u_m16_lm4 (vuint32m8_t lo, vuint32m8_t hi,
 	      vuint8m4_t a, vuint8m4_t b, size_t vl)
 {
   vuint32m16_t acc = __riscv_ime_vpair_u32m16 (lo, hi);
-  acc = __riscv_vqwmmacc_vv_u32m16_lm4 (acc, a, b, vl);
+  acc = __riscv_vqmmacc_vv_u32m16_lm4 (acc, a, b, vl);
   return __riscv_ime_vunpairlo_u32m16 (acc);
 }
 vint64m8_t
@@ -67,7 +67,7 @@ w4_su_m16_lm2 (vint64m8_t lo, vint64m8_t hi,
 	       vint16m2_t a, vuint16m2_t b, size_t vl)
 {
   vint64m16_t acc = __riscv_ime_vpair_i64m16 (lo, hi);
-  acc = __riscv_vqwmmacc_vv_i64m16_su_lm2 (acc, a, b, vl);
+  acc = __riscv_vqmmacc_vv_i64m16_su_lm2 (acc, a, b, vl);
   return __riscv_ime_vunpairhi_i64m16 (acc);
 }
 
@@ -88,7 +88,7 @@ w8_u_m16_lm8 (vuint64m8_t lo, vuint64m8_t hi,
   return __riscv_ime_vunpairhi_u64m16 (acc);
 }
 
-/* 4 vwmmacc + 3 vqwmmacc + 2 v8wmmacc.  */
+/* 4 vwmmacc + 3 vqmmacc + 2 v8wmmacc.  */
 /* { dg-final { scan-assembler-times {vwmmacc\.vv} 4 } } */
-/* { dg-final { scan-assembler-times {vqwmmacc\.vv} 3 } } */
+/* { dg-final { scan-assembler-times {vqmmacc\.vv} 3 } } */
 /* { dg-final { scan-assembler-times {v8wmmacc\.vv} 2 } } */

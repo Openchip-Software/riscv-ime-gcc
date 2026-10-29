@@ -97,7 +97,7 @@ f (vint32m1_t acc, vint8m1_t a, vint8m1_t b, vint16m2_t x, short *q,
       p[77] = 77;
       p[78] = 78;
       p[79] = 79;
-      acc = __riscv_vqwmmacc_vv_i32m1 (acc, a, b, vl);
+      acc = __riscv_vqmmacc_vv_i32m1 (acc, a, b, vl);
     }
   return acc;
 }

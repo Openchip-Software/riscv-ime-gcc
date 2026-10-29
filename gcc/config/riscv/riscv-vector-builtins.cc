@@ -767,9 +767,9 @@ static CONSTEXPR const rvv_arg_type_info ime_wvss_args[]
      ime_input (1, 0), ime_input (1, 0),
      rvv_arg_type_info_end};
 
-/* Args for the W=4 widening IME multiply-accumulate (vqwmmacc.vv).
+/* Args for the W=4 widening IME multiply-accumulate (vqmmacc.vv).
    The accumulator is at SEW with MUL_C; inputs are SEW/4 and LMUL=1.  */
-static CONSTEXPR const rvv_arg_type_info ime_qwvss_args[]
+static CONSTEXPR const rvv_arg_type_info ime_qvss_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      ime_input (2, 0), ime_input (2, 0),
      rvv_arg_type_info_end};
@@ -3563,11 +3563,11 @@ static CONSTEXPR const rvv_op_info i_ime_wvss_ops
      rvv_arg_type_info (RVV_BASE_vector),
      ime_wvss_args};
 
-/* Op-info structs for vqwmmacc.vv (W=4).  */
+/* Op-info structs for vqmmacc.vv (W=4).  */
 
-static CONSTEXPR const rvv_op_info i_ime_qwvss_ops
+static CONSTEXPR const rvv_op_info i_ime_qvss_ops
   = {i_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_qwvss_args};
+     rvv_arg_type_info (RVV_BASE_vector), ime_qvss_args};
 
 /* Type set used by the IME tile load/store: all signed and unsigned
    integer vector types at LMUL in {1, 2, 4, 8}.  Fractional LMULs
@@ -3864,8 +3864,8 @@ static CONSTEXPR const rvv_op_info f32_ime_scaled_wvss_f16_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f16_args};
 
-/* vfqwmmacc_scaled_f8e4m3: OFP8_E4M3 -> FP32 accumulator, with scales.  */
-static CONSTEXPR const rvv_op_info f32_ime_scaled_qwvss_f8e4m3_ops
+/* vfqmmacc_scaled_f8e4m3: OFP8_E4M3 -> FP32 accumulator, with scales.  */
+static CONSTEXPR const rvv_op_info f32_ime_scaled_qvss_f8e4m3_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f8e4m3_args};
 
@@ -3881,7 +3881,7 @@ static CONSTEXPR const rvv_op_info f16_ime_immacc_i8_ops
   = {f16_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_immacc_i8_args};
 
-/* vfqwimmacc_i8: Int8 -> FP32 accumulator, with scales.  */
+/* vfqimmacc_i8: Int8 -> FP32 accumulator, with scales.  */
 static CONSTEXPR const rvv_op_info f32_ime_immacc_i8_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_immacc_i8_args};

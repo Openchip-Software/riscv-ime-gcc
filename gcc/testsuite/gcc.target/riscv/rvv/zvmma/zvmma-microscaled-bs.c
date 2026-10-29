@@ -10,13 +10,13 @@ typedef __SIZE_TYPE__ size_t;
 vfloat32m2_t
 bs32 (vfloat32m2_t vd, vint8m1_t a, vint8m1_t b, vuint16m1_t sc, size_t vl)
 {
-  return __riscv_vfqwimmacc_vv_f32m2_i8m1_bs32 (vd, a, b, sc, vl);
+  return __riscv_vfqimmacc_vv_f32m2_i8m1_bs32 (vd, a, b, sc, vl);
 }
 
 vfloat32m2_t
 bs16 (vfloat32m2_t vd, vint8m1_t a, vint8m1_t b, vuint16m1_t sc, size_t vl)
 {
-  return __riscv_vfqwimmacc_vv_f32m2_i8m1_bs16 (vd, a, b, sc, vl);
+  return __riscv_vfqimmacc_vv_f32m2_i8m1_bs16 (vd, a, b, sc, vl);
 }
 
 /* At VLEN = 256 the full vtype is a constant: e32, m1, ta, ma, lambda = 2,

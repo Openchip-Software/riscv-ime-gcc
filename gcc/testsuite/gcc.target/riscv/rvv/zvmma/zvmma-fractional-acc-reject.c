@@ -25,6 +25,6 @@ f2 (vint16mf2_t vd, vint8m1_t a, vint8m1_t b, size_t vl)
 vint32mf2_t
 f3 (vint32mf2_t vd, vint8m1_t a, vint8m1_t b, size_t vl)
 {
-  return __riscv_vqwmmacc_vv_i32mf2 (vd, a, b, vl); /* { dg-error "implicit declaration" } */
+  return __riscv_vqmmacc_vv_i32mf2 (vd, a, b, vl); /* { dg-error "implicit declaration" } */
   /* { dg-error "incompatible types" "" { target *-*-* } .-1 } */
 }

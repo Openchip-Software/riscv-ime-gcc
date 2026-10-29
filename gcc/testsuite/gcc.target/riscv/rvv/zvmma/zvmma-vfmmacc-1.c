@@ -26,23 +26,23 @@ fwmmacc_f16_f32m2 (vfloat32m2_t vd, vfloat16m1_t a, vfloat16m1_t b,
   return __riscv_vfwmmacc_vv_f32m2_f16m1 (vd, a, b, vl);
 }
 
-/* vfqwmmacc.vv (W=4): OFP8_E4M3 -> FP32.
+/* vfqmmacc.vv (W=4): OFP8_E4M3 -> FP32.
    VLEN=256, SEW=32, MUL_C=2 -> lambda=2.  */
 
 vfloat32m2_t
-fqwmmacc_f8e4m3_f32m2 (vfloat32m2_t vd, vfloat8e4m3m1_t a,
+fqmmacc_f8e4m3_f32m2 (vfloat32m2_t vd, vfloat8e4m3m1_t a,
 			vfloat8e4m3m1_t b, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m2_f8e4m3m1 (vd, a, b, vl);
+  return __riscv_vfqmmacc_vv_f32m2_f8e4m3m1 (vd, a, b, vl);
 }
 
-/* vfqwmmacc.vv (W=4): OFP8_E5M2 -> FP32.  */
+/* vfqmmacc.vv (W=4): OFP8_E5M2 -> FP32.  */
 
 vfloat32m2_t
-fqwmmacc_f8e5m2_f32m2 (vfloat32m2_t vd, vfloat8e5m2m1_t a,
+fqmmacc_f8e5m2_f32m2 (vfloat32m2_t vd, vfloat8e5m2m1_t a,
 			vfloat8e5m2m1_t b, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m2_f8e5m2m1 (vd, a, b, vl);
+  return __riscv_vfqmmacc_vv_f32m2_f8e5m2m1 (vd, a, b, vl);
 }
 
 /* vf8wmmacc.vv (W=8): OFP4_E2M1 -> FP32.  */
@@ -56,5 +56,5 @@ f8wmmacc_f4e2m1_f32m2 (vfloat32m2_t vd, vfloat4e2m1m1_t a,
 
 /* { dg-final { scan-assembler-times {\tvfmmacc\.vv\t} 1 } } */
 /* { dg-final { scan-assembler-times {\tvfwmmacc\.vv\t} 1 } } */
-/* { dg-final { scan-assembler-times {\tvfqwmmacc\.vv\t} 2 } } */
+/* { dg-final { scan-assembler-times {\tvfqmmacc\.vv\t} 2 } } */
 /* { dg-final { scan-assembler-times {\tvf8wmmacc\.vv\t} 1 } } */

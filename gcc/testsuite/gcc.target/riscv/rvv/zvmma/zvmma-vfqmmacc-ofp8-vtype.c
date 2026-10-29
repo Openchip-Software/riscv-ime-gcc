@@ -13,16 +13,16 @@ typedef __SIZE_TYPE__ size_t;
 vfloat32m1_t e4m3 (vfloat32m1_t a, vfloat8e4m3m1_t s1, vfloat8e4m3m1_t s2,
 		   size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e4m3m1 (a, s1, s2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e4m3m1 (a, s1, s2, vl);
 }
 
 vfloat32m1_t e5m2 (vfloat32m1_t a, vfloat8e5m2m1_t s1, vfloat8e5m2m1_t s2,
 		   size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e5m2m1 (a, s1, s2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e5m2m1 (a, s1, s2, vl);
 }
 
-/* W=4 vfqwmmacc OFP8 -> FP32 at VLEN=512, m1.  lambda^2 = 512/(32*1)
+/* W=4 vfqmmacc OFP8 -> FP32 at VLEN=512, m1.  lambda^2 = 512/(32*1)
    = 16 (perfect square), lambda = 4 -> encoding 0b011.
    Lower static bits: SEW=32 (vsew=010) << 3 = 0x10, LMUL=m1 = 0,
    ta + ma = 0xC0.  Total static = 0xD0.

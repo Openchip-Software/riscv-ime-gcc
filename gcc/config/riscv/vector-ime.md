@@ -28,10 +28,10 @@
   UNSPEC_VWMMACC_U   ;; Zvvmm vwmmacc.vv, unsigned*unsigned (W=2, altfmt_A=1, altfmt_B=1)
   UNSPEC_VWMMACC_SU  ;; Zvvmm vwmmacc.vv, signed*unsigned  (W=2, altfmt_A=0, altfmt_B=1)
   UNSPEC_VWMMACC_US  ;; Zvvmm vwmmacc.vv, unsigned*signed  (W=2, altfmt_A=1, altfmt_B=0)
-  UNSPEC_VQWMMACC_S  ;; Zvvmm vqwmmacc.vv, signed*signed   (W=4, altfmt_A=0, altfmt_B=0)
-  UNSPEC_VQWMMACC_U  ;; Zvvmm vqwmmacc.vv, unsigned*unsigned(W=4, altfmt_A=1, altfmt_B=1)
-  UNSPEC_VQWMMACC_SU ;; Zvvmm vqwmmacc.vv, signed*unsigned (W=4, altfmt_A=0, altfmt_B=1)
-  UNSPEC_VQWMMACC_US ;; Zvvmm vqwmmacc.vv, unsigned*signed (W=4, altfmt_A=1, altfmt_B=0)
+  UNSPEC_VQMMACC_S   ;; Zvvmm vqmmacc.vv, signed*signed   (W=4, altfmt_A=0, altfmt_B=0)
+  UNSPEC_VQMMACC_U   ;; Zvvmm vqmmacc.vv, unsigned*unsigned(W=4, altfmt_A=1, altfmt_B=1)
+  UNSPEC_VQMMACC_SU  ;; Zvvmm vqmmacc.vv, signed*unsigned (W=4, altfmt_A=0, altfmt_B=1)
+  UNSPEC_VQMMACC_US  ;; Zvvmm vqmmacc.vv, unsigned*signed (W=4, altfmt_A=1, altfmt_B=0)
   UNSPEC_V8WMMACC_S  ;; Zvvmm v8wmmacc.vv, signed*signed   (W=8, altfmt_A=0, altfmt_B=0)
   UNSPEC_V8WMMACC_U  ;; Zvvmm v8wmmacc.vv, unsigned*unsigned(W=8, altfmt_A=1, altfmt_B=1)
   UNSPEC_V8WMMACC_SU ;; Zvvmm v8wmmacc.vv, signed*unsigned (W=8, altfmt_A=0, altfmt_B=1)
@@ -67,12 +67,12 @@
   UNSPEC_VFWMMACC_F16			;; vfwmmacc.vv (W=2, FP16->FP32)
   UNSPEC_VFWMMACC_BF16			;; vfwmmacc.vv (W=2, BF16->FP32)
   UNSPEC_VFWMMACC_F32			;; vfwmmacc.vv (W=2, FP32->FP64)
-  UNSPEC_VFQWMMACC_F16			;; vfqwmmacc.vv (W=4, FP16->FP64)
-  UNSPEC_VFQWMMACC_BF16		;; vfqwmmacc.vv (W=4, BF16->FP64)
-  UNSPEC_VFQWMMACC_F8E4M3		;; vfqwmmacc.vv (W=4, vs1=E4M3, vs2=E4M3 -> FP32)
-  UNSPEC_VFQWMMACC_F8E5M2		;; vfqwmmacc.vv (W=4, vs1=E5M2, vs2=E5M2 -> FP32)
-  UNSPEC_VFQWMMACC_F8E4M3_E5M2	;; vfqwmmacc.vv (W=4, vs1=E4M3, vs2=E5M2 -> FP32)
-  UNSPEC_VFQWMMACC_F8E5M2_E4M3	;; vfqwmmacc.vv (W=4, vs1=E5M2, vs2=E4M3 -> FP32)
+  UNSPEC_VFQMMACC_F16			;; vfqmmacc.vv (W=4, FP16->FP64)
+  UNSPEC_VFQMMACC_BF16		;; vfqmmacc.vv (W=4, BF16->FP64)
+  UNSPEC_VFQMMACC_F8E4M3		;; vfqmmacc.vv (W=4, vs1=E4M3, vs2=E4M3 -> FP32)
+  UNSPEC_VFQMMACC_F8E5M2		;; vfqmmacc.vv (W=4, vs1=E5M2, vs2=E5M2 -> FP32)
+  UNSPEC_VFQMMACC_F8E4M3_E5M2	;; vfqmmacc.vv (W=4, vs1=E4M3, vs2=E5M2 -> FP32)
+  UNSPEC_VFQMMACC_F8E5M2_E4M3	;; vfqmmacc.vv (W=4, vs1=E5M2, vs2=E4M3 -> FP32)
   UNSPEC_VF8WMMACC_F8E4M3		;; vf8wmmacc.vv (W=8, vs1=E4M3, vs2=E4M3 -> FP64)
   UNSPEC_VF8WMMACC_F8E5M2		;; vf8wmmacc.vv (W=8, vs1=E5M2, vs2=E5M2 -> FP64)
   UNSPEC_VF8WMMACC_F8E4M3_E5M2	;; vf8wmmacc.vv (W=8, vs1=E4M3, vs2=E5M2 -> FP64)
@@ -83,16 +83,16 @@
   ;; with the block scales in v0 and the bs vtype bit set.
   UNSPEC_VFWMMACC_F16_BS32	;; vfwmmacc.vv scaled, FP16->FP32, BS=32
   UNSPEC_VFWMMACC_F16_BS16	;; vfwmmacc.vv scaled, FP16->FP32, BS=16
-  UNSPEC_VFQWMMACC_F8E4M3_BS32	;; vfqwmmacc.vv scaled, OFP8_E4M3->FP32, BS=32
-  UNSPEC_VFQWMMACC_F8E4M3_BS16	;; vfqwmmacc.vv scaled, OFP8_E4M3->FP32, BS=16
+  UNSPEC_VFQMMACC_F8E4M3_BS32	;; vfqmmacc.vv scaled, OFP8_E4M3->FP32, BS=32
+  UNSPEC_VFQMMACC_F8E4M3_BS16	;; vfqmmacc.vv scaled, OFP8_E4M3->FP32, BS=16
   UNSPEC_VF8WMMACC_F8E4M3_BS32	;; vf8wmmacc.vv scaled, OFP8_E4M3->FP64, BS=32
   UNSPEC_VF8WMMACC_F8E4M3_BS16	;; vf8wmmacc.vv scaled, OFP8_E4M3->FP64, BS=16
 
   ;; Microscaled integer-input variants.
   UNSPEC_VFWIMMACC_I8_BS32	;; vfwimmacc.vv, Int8->FP16, BS=32
   UNSPEC_VFWIMMACC_I8_BS16	;; vfwimmacc.vv, Int8->FP16, BS=16
-  UNSPEC_VFQWIMMACC_I8_BS32	;; vfqwimmacc.vv, Int8->FP32, BS=32
-  UNSPEC_VFQWIMMACC_I8_BS16	;; vfqwimmacc.vv, Int8->FP32, BS=16
+  UNSPEC_VFQIMMACC_I8_BS32	;; vfqimmacc.vv, Int8->FP32, BS=32
+  UNSPEC_VFQIMMACC_I8_BS16	;; vfqimmacc.vv, Int8->FP32, BS=16
   UNSPEC_VF8WIMMACC_I8_BS32	;; vf8wimmacc.vv, Int8->FP64, BS=32
   UNSPEC_VF8WIMMACC_I8_BS16	;; vf8wimmacc.vv, Int8->FP64, BS=16
 
@@ -393,7 +393,7 @@
 (define_int_iterator IME_INT_MMACC
   [UNSPEC_VMMACC_S   UNSPEC_VMMACC_U   UNSPEC_VMMACC_SU   UNSPEC_VMMACC_US
    UNSPEC_VWMMACC_S  UNSPEC_VWMMACC_U  UNSPEC_VWMMACC_SU  UNSPEC_VWMMACC_US
-   UNSPEC_VQWMMACC_S UNSPEC_VQWMMACC_U UNSPEC_VQWMMACC_SU UNSPEC_VQWMMACC_US
+   UNSPEC_VQMMACC_S UNSPEC_VQMMACC_U UNSPEC_VQMMACC_SU UNSPEC_VQMMACC_US
    UNSPEC_V8WMMACC_S UNSPEC_V8WMMACC_U UNSPEC_V8WMMACC_SU UNSPEC_V8WMMACC_US])
 
 ;; The same-format vfmmacc (FP16, BF16, FP32 and FP64).
@@ -411,9 +411,9 @@
    UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 UNSPEC_VFWMMACC_OFP8_FP16_E5M2
    UNSPEC_VFWMMACC_OFP8_BF16_E4M3 UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2
    UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 UNSPEC_VFWMMACC_OFP8_BF16_E5M2
-   UNSPEC_VFQWMMACC_F16 UNSPEC_VFQWMMACC_BF16
-   UNSPEC_VFQWMMACC_F8E4M3 UNSPEC_VFQWMMACC_F8E5M2
-   UNSPEC_VFQWMMACC_F8E4M3_E5M2 UNSPEC_VFQWMMACC_F8E5M2_E4M3
+   UNSPEC_VFQMMACC_F16 UNSPEC_VFQMMACC_BF16
+   UNSPEC_VFQMMACC_F8E4M3 UNSPEC_VFQMMACC_F8E5M2
+   UNSPEC_VFQMMACC_F8E4M3_E5M2 UNSPEC_VFQMMACC_F8E5M2_E4M3
    UNSPEC_VF8WMMACC_F8E4M3 UNSPEC_VF8WMMACC_F8E5M2
    UNSPEC_VF8WMMACC_F8E4M3_E5M2 UNSPEC_VF8WMMACC_F8E5M2_E4M3])
 
@@ -421,18 +421,18 @@
 ;; instruction, input format and block size.
 (define_int_iterator IME_SCALED_MMACC
   [UNSPEC_VFWMMACC_F16_BS32 UNSPEC_VFWMMACC_F16_BS16
-   UNSPEC_VFQWMMACC_F8E4M3_BS32 UNSPEC_VFQWMMACC_F8E4M3_BS16
+   UNSPEC_VFQMMACC_F8E4M3_BS32 UNSPEC_VFQMMACC_F8E4M3_BS16
    UNSPEC_VF8WMMACC_F8E4M3_BS32 UNSPEC_VF8WMMACC_F8E4M3_BS16
    UNSPEC_VFWIMMACC_I8_BS32 UNSPEC_VFWIMMACC_I8_BS16
-   UNSPEC_VFQWIMMACC_I8_BS32 UNSPEC_VFQWIMMACC_I8_BS16
+   UNSPEC_VFQIMMACC_I8_BS32 UNSPEC_VFQIMMACC_I8_BS16
    UNSPEC_VF8WIMMACC_I8_BS32 UNSPEC_VF8WIMMACC_I8_BS16])
 
 (define_int_attr ime_scaled_bs
   [(UNSPEC_VFWMMACC_F16_BS32 "32") (UNSPEC_VFWMMACC_F16_BS16 "16")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS32 "32") (UNSPEC_VFQWMMACC_F8E4M3_BS16 "16")
+   (UNSPEC_VFQMMACC_F8E4M3_BS32 "32") (UNSPEC_VFQMMACC_F8E4M3_BS16 "16")
    (UNSPEC_VF8WMMACC_F8E4M3_BS32 "32") (UNSPEC_VF8WMMACC_F8E4M3_BS16 "16")
    (UNSPEC_VFWIMMACC_I8_BS32 "32") (UNSPEC_VFWIMMACC_I8_BS16 "16")
-   (UNSPEC_VFQWIMMACC_I8_BS32 "32") (UNSPEC_VFQWIMMACC_I8_BS16 "16")
+   (UNSPEC_VFQIMMACC_I8_BS32 "32") (UNSPEC_VFQIMMACC_I8_BS16 "16")
    (UNSPEC_VF8WIMMACC_I8_BS32 "32") (UNSPEC_VF8WIMMACC_I8_BS16 "16")])
 
 ;; The input format of each FP multiply-accumulate, as riscv_zvvm_format
@@ -448,16 +448,16 @@
    (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "OFP8") (UNSPEC_VFWMMACC_OFP8_FP16_E5M2 "OFP8")
    (UNSPEC_VFWMMACC_OFP8_BF16_E4M3 "OFP8") (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "OFP8")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "OFP8") (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "OFP8")
-   (UNSPEC_VFQWMMACC_F16 "FP16") (UNSPEC_VFQWMMACC_BF16 "BF16")
-   (UNSPEC_VFQWMMACC_F8E4M3 "OFP8") (UNSPEC_VFQWMMACC_F8E5M2 "OFP8")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "OFP8") (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "OFP8")
+   (UNSPEC_VFQMMACC_F16 "FP16") (UNSPEC_VFQMMACC_BF16 "BF16")
+   (UNSPEC_VFQMMACC_F8E4M3 "OFP8") (UNSPEC_VFQMMACC_F8E5M2 "OFP8")
+   (UNSPEC_VFQMMACC_F8E4M3_E5M2 "OFP8") (UNSPEC_VFQMMACC_F8E5M2_E4M3 "OFP8")
    (UNSPEC_VF8WMMACC_F8E4M3 "OFP8") (UNSPEC_VF8WMMACC_F8E5M2 "OFP8")
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "OFP8") (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "OFP8")
    (UNSPEC_VFWMMACC_F16_BS32 "FP16") (UNSPEC_VFWMMACC_F16_BS16 "FP16")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS32 "MXFP8") (UNSPEC_VFQWMMACC_F8E4M3_BS16 "MXFP8")
+   (UNSPEC_VFQMMACC_F8E4M3_BS32 "MXFP8") (UNSPEC_VFQMMACC_F8E4M3_BS16 "MXFP8")
    (UNSPEC_VF8WMMACC_F8E4M3_BS32 "MXFP8") (UNSPEC_VF8WMMACC_F8E4M3_BS16 "MXFP8")
    (UNSPEC_VFWIMMACC_I8_BS32 "MXINT8") (UNSPEC_VFWIMMACC_I8_BS16 "MXINT8")
-   (UNSPEC_VFQWIMMACC_I8_BS32 "MXINT8") (UNSPEC_VFQWIMMACC_I8_BS16 "MXINT8")
+   (UNSPEC_VFQIMMACC_I8_BS32 "MXINT8") (UNSPEC_VFQIMMACC_I8_BS16 "MXINT8")
    (UNSPEC_VF8WIMMACC_I8_BS32 "MXINT8") (UNSPEC_VF8WIMMACC_I8_BS16 "MXINT8")])
 
 ;; The pattern name and the instruction of each multiply-accumulate.
@@ -466,8 +466,8 @@
    (UNSPEC_VMMACC_SU "vmmacc_su") (UNSPEC_VMMACC_US "vmmacc_us")
    (UNSPEC_VWMMACC_S "vwmmacc_s") (UNSPEC_VWMMACC_U "vwmmacc_u")
    (UNSPEC_VWMMACC_SU "vwmmacc_su") (UNSPEC_VWMMACC_US "vwmmacc_us")
-   (UNSPEC_VQWMMACC_S "vqwmmacc_s") (UNSPEC_VQWMMACC_U "vqwmmacc_u")
-   (UNSPEC_VQWMMACC_SU "vqwmmacc_su") (UNSPEC_VQWMMACC_US "vqwmmacc_us")
+   (UNSPEC_VQMMACC_S "vqmmacc_s") (UNSPEC_VQMMACC_U "vqmmacc_u")
+   (UNSPEC_VQMMACC_SU "vqmmacc_su") (UNSPEC_VQMMACC_US "vqmmacc_us")
    (UNSPEC_V8WMMACC_S "v8wmmacc_s") (UNSPEC_V8WMMACC_U "v8wmmacc_u")
    (UNSPEC_V8WMMACC_SU "v8wmmacc_su") (UNSPEC_V8WMMACC_US "v8wmmacc_us")
    (UNSPEC_VFMMACC "vfmmacc")
@@ -489,26 +489,26 @@
    (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "vfwmmacc_ofp8_bf16_e4m3_e5m2")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "vfwmmacc_ofp8_bf16_e5m2_e4m3")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "vfwmmacc_ofp8_bf16_e5m2")
-   (UNSPEC_VFQWMMACC_F16 "vfqwmmacc_f16")
-   (UNSPEC_VFQWMMACC_BF16 "vfqwmmacc_bf16")
-   (UNSPEC_VFQWMMACC_F8E4M3 "vfqwmmacc_f8e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2 "vfqwmmacc_f8e5m2")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "vfqwmmacc_f8e4m3_e5m2")
-   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "vfqwmmacc_f8e5m2_e4m3")
+   (UNSPEC_VFQMMACC_F16 "vfqmmacc_f16")
+   (UNSPEC_VFQMMACC_BF16 "vfqmmacc_bf16")
+   (UNSPEC_VFQMMACC_F8E4M3 "vfqmmacc_f8e4m3")
+   (UNSPEC_VFQMMACC_F8E5M2 "vfqmmacc_f8e5m2")
+   (UNSPEC_VFQMMACC_F8E4M3_E5M2 "vfqmmacc_f8e4m3_e5m2")
+   (UNSPEC_VFQMMACC_F8E5M2_E4M3 "vfqmmacc_f8e5m2_e4m3")
    (UNSPEC_VF8WMMACC_F8E4M3 "vf8wmmacc_f8e4m3")
    (UNSPEC_VF8WMMACC_F8E5M2 "vf8wmmacc_f8e5m2")
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "vf8wmmacc_f8e4m3_e5m2")
    (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "vf8wmmacc_f8e5m2_e4m3")
    (UNSPEC_VFWMMACC_F16_BS32 "vfwmmacc_scaled_f16_bs32")
    (UNSPEC_VFWMMACC_F16_BS16 "vfwmmacc_scaled_f16_bs16")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS32 "vfqwmmacc_scaled_f8e4m3_bs32")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS16 "vfqwmmacc_scaled_f8e4m3_bs16")
+   (UNSPEC_VFQMMACC_F8E4M3_BS32 "vfqmmacc_scaled_f8e4m3_bs32")
+   (UNSPEC_VFQMMACC_F8E4M3_BS16 "vfqmmacc_scaled_f8e4m3_bs16")
    (UNSPEC_VF8WMMACC_F8E4M3_BS32 "vf8wmmacc_scaled_f8e4m3_bs32")
    (UNSPEC_VF8WMMACC_F8E4M3_BS16 "vf8wmmacc_scaled_f8e4m3_bs16")
    (UNSPEC_VFWIMMACC_I8_BS32 "vfwimmacc_i8_bs32")
    (UNSPEC_VFWIMMACC_I8_BS16 "vfwimmacc_i8_bs16")
-   (UNSPEC_VFQWIMMACC_I8_BS32 "vfqwimmacc_i8_bs32")
-   (UNSPEC_VFQWIMMACC_I8_BS16 "vfqwimmacc_i8_bs16")
+   (UNSPEC_VFQIMMACC_I8_BS32 "vfqimmacc_i8_bs32")
+   (UNSPEC_VFQIMMACC_I8_BS16 "vfqimmacc_i8_bs16")
    (UNSPEC_VF8WIMMACC_I8_BS32 "vf8wimmacc_i8_bs32")
    (UNSPEC_VF8WIMMACC_I8_BS16 "vf8wimmacc_i8_bs16")])
 
@@ -517,8 +517,8 @@
    (UNSPEC_VMMACC_SU "vmmacc") (UNSPEC_VMMACC_US "vmmacc")
    (UNSPEC_VWMMACC_S "vwmmacc") (UNSPEC_VWMMACC_U "vwmmacc")
    (UNSPEC_VWMMACC_SU "vwmmacc") (UNSPEC_VWMMACC_US "vwmmacc")
-   (UNSPEC_VQWMMACC_S "vqwmmacc") (UNSPEC_VQWMMACC_U "vqwmmacc")
-   (UNSPEC_VQWMMACC_SU "vqwmmacc") (UNSPEC_VQWMMACC_US "vqwmmacc")
+   (UNSPEC_VQMMACC_S "vqmmacc") (UNSPEC_VQMMACC_U "vqmmacc")
+   (UNSPEC_VQMMACC_SU "vqmmacc") (UNSPEC_VQMMACC_US "vqmmacc")
    (UNSPEC_V8WMMACC_S "v8wmmacc") (UNSPEC_V8WMMACC_U "v8wmmacc")
    (UNSPEC_V8WMMACC_SU "v8wmmacc") (UNSPEC_V8WMMACC_US "v8wmmacc")
    (UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "vfmmacc")
@@ -539,23 +539,23 @@
    (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "vfwmmacc")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "vfwmmacc")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "vfwmmacc")
-   (UNSPEC_VFQWMMACC_F16 "vfqwmmacc") (UNSPEC_VFQWMMACC_BF16 "vfqwmmacc")
-   (UNSPEC_VFQWMMACC_F8E4M3 "vfqwmmacc") (UNSPEC_VFQWMMACC_F8E5M2 "vfqwmmacc")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "vfqwmmacc")
-   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "vfqwmmacc")
+   (UNSPEC_VFQMMACC_F16 "vfqmmacc") (UNSPEC_VFQMMACC_BF16 "vfqmmacc")
+   (UNSPEC_VFQMMACC_F8E4M3 "vfqmmacc") (UNSPEC_VFQMMACC_F8E5M2 "vfqmmacc")
+   (UNSPEC_VFQMMACC_F8E4M3_E5M2 "vfqmmacc")
+   (UNSPEC_VFQMMACC_F8E5M2_E4M3 "vfqmmacc")
    (UNSPEC_VF8WMMACC_F8E4M3 "vf8wmmacc") (UNSPEC_VF8WMMACC_F8E5M2 "vf8wmmacc")
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "vf8wmmacc")
    (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "vf8wmmacc")
    (UNSPEC_VFWMMACC_F16_BS32 "vfwmmacc")
    (UNSPEC_VFWMMACC_F16_BS16 "vfwmmacc")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS32 "vfqwmmacc")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS16 "vfqwmmacc")
+   (UNSPEC_VFQMMACC_F8E4M3_BS32 "vfqmmacc")
+   (UNSPEC_VFQMMACC_F8E4M3_BS16 "vfqmmacc")
    (UNSPEC_VF8WMMACC_F8E4M3_BS32 "vf8wmmacc")
    (UNSPEC_VF8WMMACC_F8E4M3_BS16 "vf8wmmacc")
    (UNSPEC_VFWIMMACC_I8_BS32 "vfwimmacc")
    (UNSPEC_VFWIMMACC_I8_BS16 "vfwimmacc")
-   (UNSPEC_VFQWIMMACC_I8_BS32 "vfqwimmacc")
-   (UNSPEC_VFQWIMMACC_I8_BS16 "vfqwimmacc")
+   (UNSPEC_VFQIMMACC_I8_BS32 "vfqimmacc")
+   (UNSPEC_VFQIMMACC_I8_BS16 "vfqimmacc")
    (UNSPEC_VF8WIMMACC_I8_BS32 "vf8wimmacc")
    (UNSPEC_VF8WIMMACC_I8_BS16 "vf8wimmacc")])
 
@@ -566,8 +566,8 @@
    (UNSPEC_VMMACC_SU "1") (UNSPEC_VMMACC_US "1")
    (UNSPEC_VWMMACC_S "2") (UNSPEC_VWMMACC_U "2")
    (UNSPEC_VWMMACC_SU "2") (UNSPEC_VWMMACC_US "2")
-   (UNSPEC_VQWMMACC_S "4") (UNSPEC_VQWMMACC_U "4")
-   (UNSPEC_VQWMMACC_SU "4") (UNSPEC_VQWMMACC_US "4")
+   (UNSPEC_VQMMACC_S "4") (UNSPEC_VQMMACC_U "4")
+   (UNSPEC_VQMMACC_SU "4") (UNSPEC_VQMMACC_US "4")
    (UNSPEC_V8WMMACC_S "8") (UNSPEC_V8WMMACC_U "8")
    (UNSPEC_V8WMMACC_SU "8") (UNSPEC_V8WMMACC_US "8")])
 
@@ -576,8 +576,8 @@
    (UNSPEC_VMMACC_SU "su") (UNSPEC_VMMACC_US "us")
    (UNSPEC_VWMMACC_S "ss") (UNSPEC_VWMMACC_U "uu")
    (UNSPEC_VWMMACC_SU "su") (UNSPEC_VWMMACC_US "us")
-   (UNSPEC_VQWMMACC_S "ss") (UNSPEC_VQWMMACC_U "uu")
-   (UNSPEC_VQWMMACC_SU "su") (UNSPEC_VQWMMACC_US "us")
+   (UNSPEC_VQMMACC_S "ss") (UNSPEC_VQMMACC_U "uu")
+   (UNSPEC_VQMMACC_SU "su") (UNSPEC_VQMMACC_US "us")
    (UNSPEC_V8WMMACC_S "ss") (UNSPEC_V8WMMACC_U "uu")
    (UNSPEC_V8WMMACC_SU "su") (UNSPEC_V8WMMACC_US "us")])
 
@@ -595,21 +595,21 @@
    (UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3 "HF") (UNSPEC_VFWMMACC_OFP8_FP16_E5M2 "HF")
    (UNSPEC_VFWMMACC_OFP8_BF16_E4M3 "BF") (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "BF")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "BF") (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "BF")
-   (UNSPEC_VFQWMMACC_F16 "DF") (UNSPEC_VFQWMMACC_BF16 "DF")
-   (UNSPEC_VFQWMMACC_F8E4M3 "SF") (UNSPEC_VFQWMMACC_F8E5M2 "SF")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "SF") (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "SF")
+   (UNSPEC_VFQMMACC_F16 "DF") (UNSPEC_VFQMMACC_BF16 "DF")
+   (UNSPEC_VFQMMACC_F8E4M3 "SF") (UNSPEC_VFQMMACC_F8E5M2 "SF")
+   (UNSPEC_VFQMMACC_F8E4M3_E5M2 "SF") (UNSPEC_VFQMMACC_F8E5M2_E4M3 "SF")
    (UNSPEC_VF8WMMACC_F8E4M3 "DF") (UNSPEC_VF8WMMACC_F8E5M2 "DF")
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "DF") (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "DF")
    (UNSPEC_VFWMMACC_F16_BS32 "SF")
    (UNSPEC_VFWMMACC_F16_BS16 "SF")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS32 "SF")
-   (UNSPEC_VFQWMMACC_F8E4M3_BS16 "SF")
+   (UNSPEC_VFQMMACC_F8E4M3_BS32 "SF")
+   (UNSPEC_VFQMMACC_F8E4M3_BS16 "SF")
    (UNSPEC_VF8WMMACC_F8E4M3_BS32 "DF")
    (UNSPEC_VF8WMMACC_F8E4M3_BS16 "DF")
    (UNSPEC_VFWIMMACC_I8_BS32 "HF")
    (UNSPEC_VFWIMMACC_I8_BS16 "HF")
-   (UNSPEC_VFQWIMMACC_I8_BS32 "SF")
-   (UNSPEC_VFQWIMMACC_I8_BS16 "SF")
+   (UNSPEC_VFQIMMACC_I8_BS32 "SF")
+   (UNSPEC_VFQIMMACC_I8_BS16 "SF")
    (UNSPEC_VF8WIMMACC_I8_BS32 "DF")
    (UNSPEC_VF8WIMMACC_I8_BS16 "DF")])
 
@@ -632,11 +632,11 @@
    (UNSPEC_VFWMMACC_OFP8_BF16_E4M3_E5M2 "e4m3_e5m2_e5m2")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2_E4M3 "e5m2_e4m3_e5m2")
    (UNSPEC_VFWMMACC_OFP8_BF16_E5M2 "e5m2_e5m2_e5m2")
-   (UNSPEC_VFQWMMACC_F16 "none") (UNSPEC_VFQWMMACC_BF16 "none")
-   (UNSPEC_VFQWMMACC_F8E4M3 "e4m3_e4m3_e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2 "e5m2_e5m2_e4m3")
-   (UNSPEC_VFQWMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
-   (UNSPEC_VFQWMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")
+   (UNSPEC_VFQMMACC_F16 "none") (UNSPEC_VFQMMACC_BF16 "none")
+   (UNSPEC_VFQMMACC_F8E4M3 "e4m3_e4m3_e4m3")
+   (UNSPEC_VFQMMACC_F8E5M2 "e5m2_e5m2_e4m3")
+   (UNSPEC_VFQMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
+   (UNSPEC_VFQMMACC_F8E5M2_E4M3 "e5m2_e4m3_e4m3")
    (UNSPEC_VF8WMMACC_F8E4M3 "e4m3_e4m3_e4m3")
    (UNSPEC_VF8WMMACC_F8E5M2 "e5m2_e5m2_e4m3")
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "e4m3_e5m2_e4m3")
@@ -900,7 +900,7 @@
 
 ;; ---------------------------------------------------------------------------
 ;; Zvvmm - integer matrix multiply-accumulate (vmmacc.vv, vwmmacc.vv,
-;; vqwmmacc.vv and v8wmmacc.vv)
+;; vqmmacc.vv and v8wmmacc.vv)
 ;; ---------------------------------------------------------------------------
 ;;
 ;; vd += matmul (vs1, vs2).  The accumulator vd has SEW-bit elements and
@@ -1030,7 +1030,7 @@
 
 ;; ---------------------------------------------------------------------------
 ;; Zvvfmm - FP matrix multiply-accumulate (vfmmacc.vv, vfwmmacc.vv,
-;; vfqwmmacc.vv and vf8wmmacc.vv)
+;; vfqmmacc.vv and vf8wmmacc.vv)
 ;; ---------------------------------------------------------------------------
 ;;
 ;; As for the integer instructions, the input operands have no mode and
@@ -1126,8 +1126,8 @@
 ;; Microscaled FP matrix multiply-accumulate
 ;; ---------------------------------------------------------------------------
 ;;
-;; The microscaled versions of vfwmmacc, vfqwmmacc and vf8wmmacc, and
-;; the integer-input vfwimmacc, vfqwimmacc and vf8wimmacc, at BS=32 and
+;; The microscaled versions of vfwmmacc, vfqmmacc and vf8wmmacc, and
+;; the integer-input vfwimmacc, vfqimmacc and vf8wimmacc, at BS=32 and
 ;; BS=16.  The block scales (vuint16m1_t) must be in v0: the expander
 ;; moves them there and the pattern refers to v0 through a use.  The
 ;; UNSPEC selects the instruction, the accumulator element mode and the

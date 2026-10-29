@@ -1732,7 +1732,7 @@ struct ime_mmacc_def : public build_base
 	   name; the input type suffix is emitted separately by
 	   get_name().
 
-	   Mixed-input variants (e.g. "vfqwmmacc_f8e4m3_f8e5m2") encode
+	   Mixed-input variants (e.g. "vfqmmacc_f8e4m3_f8e5m2") encode
 	   the vs1 / vs2 formats as two consecutive trailing tokens.
 	   Strip them iteratively so the base name keeps its mnemonic
 	   only.  get_name() re-emits each input suffix from
@@ -1865,7 +1865,7 @@ struct ime_mmacc_def : public build_base
 };
 
 /* ime_int_mmacc: the IME integer multiply-accumulates (vmmacc, vwmmacc,
-   vqwmmacc and v8wmmacc).  The function group gives the instruction's
+   vqmmacc and v8wmmacc).  The function group gives the instruction's
    default form (signed inputs at LMUL=1); this registers every variant
    of it: signed, unsigned, _su and _us inputs, each at input LMUL 1, 2,
    4 and 8, with m1..m8 and with m16 accumulators.  */

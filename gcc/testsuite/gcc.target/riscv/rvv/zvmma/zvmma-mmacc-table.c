@@ -120,39 +120,39 @@ vfwmmacc_bf16_f8e5m2 (vbfloat16m1_t vd, vfloat8e5m2m1_t vs1, vfloat8e5m2m1_t vs2
 }
 
 vfloat64m1_t
-vfqwmmacc_f16 (vfloat64m1_t vd, vfloat16m1_t vs1, vfloat16m1_t vs2, size_t vl)
+vfqmmacc_f16 (vfloat64m1_t vd, vfloat16m1_t vs1, vfloat16m1_t vs2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f64m1_f16m1 (vd, vs1, vs2, vl);
+  return __riscv_vfqmmacc_vv_f64m1_f16m1 (vd, vs1, vs2, vl);
 }
 
 vfloat64m1_t
-vfqwmmacc_bf16 (vfloat64m1_t vd, vbfloat16m1_t vs1, vbfloat16m1_t vs2, size_t vl)
+vfqmmacc_bf16 (vfloat64m1_t vd, vbfloat16m1_t vs1, vbfloat16m1_t vs2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f64m1_bf16m1 (vd, vs1, vs2, vl);
+  return __riscv_vfqmmacc_vv_f64m1_bf16m1 (vd, vs1, vs2, vl);
 }
 
 vfloat32m1_t
-vfqwmmacc_f8e4m3 (vfloat32m1_t vd, vfloat8e4m3m1_t vs1, vfloat8e4m3m1_t vs2, size_t vl)
+vfqmmacc_f8e4m3 (vfloat32m1_t vd, vfloat8e4m3m1_t vs1, vfloat8e4m3m1_t vs2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e4m3m1 (vd, vs1, vs2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e4m3m1 (vd, vs1, vs2, vl);
 }
 
 vfloat32m1_t
-vfqwmmacc_f8e5m2 (vfloat32m1_t vd, vfloat8e5m2m1_t vs1, vfloat8e5m2m1_t vs2, size_t vl)
+vfqmmacc_f8e5m2 (vfloat32m1_t vd, vfloat8e5m2m1_t vs1, vfloat8e5m2m1_t vs2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e5m2m1 (vd, vs1, vs2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e5m2m1 (vd, vs1, vs2, vl);
 }
 
 vfloat32m1_t
-vfqwmmacc_f8e4m3_f8e5m2 (vfloat32m1_t vd, vfloat8e4m3m1_t vs1, vfloat8e5m2m1_t vs2, size_t vl)
+vfqmmacc_f8e4m3_f8e5m2 (vfloat32m1_t vd, vfloat8e4m3m1_t vs1, vfloat8e5m2m1_t vs2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e4m3m1_f8e5m2m1 (vd, vs1, vs2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e4m3m1_f8e5m2m1 (vd, vs1, vs2, vl);
 }
 
 vfloat32m1_t
-vfqwmmacc_f8e5m2_f8e4m3 (vfloat32m1_t vd, vfloat8e5m2m1_t vs1, vfloat8e4m3m1_t vs2, size_t vl)
+vfqmmacc_f8e5m2_f8e4m3 (vfloat32m1_t vd, vfloat8e5m2m1_t vs1, vfloat8e4m3m1_t vs2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e5m2m1_f8e4m3m1 (vd, vs1, vs2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e5m2m1_f8e4m3m1 (vd, vs1, vs2, vl);
 }
 
 vfloat64m1_t
@@ -181,5 +181,5 @@ vf8wmmacc_f8e5m2_f8e4m3 (vfloat64m1_t vd, vfloat8e5m2m1_t vs1, vfloat8e4m3m1_t v
 
 /* { dg-final { scan-assembler {\mvf8wmmacc\.vv\M} } } */
 /* { dg-final { scan-assembler {\mvfmmacc\.vv\M} } } */
-/* { dg-final { scan-assembler {\mvfqwmmacc\.vv\M} } } */
+/* { dg-final { scan-assembler {\mvfqmmacc\.vv\M} } } */
 /* { dg-final { scan-assembler {\mvfwmmacc\.vv\M} } } */

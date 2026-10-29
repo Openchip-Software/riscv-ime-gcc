@@ -27,22 +27,22 @@ fwmmacc_scaled_f16_bs16 (vfloat32m2_t vd, vfloat16m1_t a, vfloat16m1_t b,
   return __riscv_vfwmmacc_scaled_vv_f32m2_f16m1_bs16 (vd, a, b, v0, vl);
 }
 
-/* vfqwmmacc_scaled OFP8_E4M3 -> FP32, BS=32.  */
+/* vfqmmacc_scaled OFP8_E4M3 -> FP32, BS=32.  */
 
 vfloat32m2_t
-fqwmmacc_scaled_f8e4m3_bs32 (vfloat32m2_t vd, vfloat8e4m3m1_t a,
+fqmmacc_scaled_f8e4m3_bs32 (vfloat32m2_t vd, vfloat8e4m3m1_t a,
 			      vfloat8e4m3m1_t b, vuint16m1_t v0, size_t vl)
 {
-  return __riscv_vfqwmmacc_scaled_vv_f32m2_f8e4m3m1_bs32 (vd, a, b, v0, vl);
+  return __riscv_vfqmmacc_scaled_vv_f32m2_f8e4m3m1_bs32 (vd, a, b, v0, vl);
 }
 
-/* vfqwmmacc_scaled OFP8_E4M3 -> FP32, BS=16.  */
+/* vfqmmacc_scaled OFP8_E4M3 -> FP32, BS=16.  */
 
 vfloat32m2_t
-fqwmmacc_scaled_f8e4m3_bs16 (vfloat32m2_t vd, vfloat8e4m3m1_t a,
+fqmmacc_scaled_f8e4m3_bs16 (vfloat32m2_t vd, vfloat8e4m3m1_t a,
 			      vfloat8e4m3m1_t b, vuint16m1_t v0, size_t vl)
 {
-  return __riscv_vfqwmmacc_scaled_vv_f32m2_f8e4m3m1_bs16 (vd, a, b, v0, vl);
+  return __riscv_vfqmmacc_scaled_vv_f32m2_f8e4m3m1_bs16 (vd, a, b, v0, vl);
 }
 
 /* Microscaled integer-input variants (new instructions).  */
@@ -66,26 +66,26 @@ fwimmacc_i8_bs16 (vfloat16m1_t vd, vint8m1_t a, vint8m1_t b,
   return __riscv_vfwimmacc_vv_f16m1_i8m1_bs16 (vd, a, b, v0, vl);
 }
 
-/* vfqwimmacc Int8 -> FP32, BS=32.
+/* vfqimmacc Int8 -> FP32, BS=32.
    VLEN=256, SEW(acc)=32, MUL_C=2 -> lambda=2.  */
 
 vfloat32m2_t
-fqwimmacc_i8_bs32 (vfloat32m2_t vd, vint8m1_t a, vint8m1_t b,
+fqimmacc_i8_bs32 (vfloat32m2_t vd, vint8m1_t a, vint8m1_t b,
 		    vuint16m1_t v0, size_t vl)
 {
-  return __riscv_vfqwimmacc_vv_f32m2_i8m1_bs32 (vd, a, b, v0, vl);
+  return __riscv_vfqimmacc_vv_f32m2_i8m1_bs32 (vd, a, b, v0, vl);
 }
 
-/* vfqwimmacc Int8 -> FP32, BS=16.  */
+/* vfqimmacc Int8 -> FP32, BS=16.  */
 
 vfloat32m2_t
-fqwimmacc_i8_bs16 (vfloat32m2_t vd, vint8m1_t a, vint8m1_t b,
+fqimmacc_i8_bs16 (vfloat32m2_t vd, vint8m1_t a, vint8m1_t b,
 		    vuint16m1_t v0, size_t vl)
 {
-  return __riscv_vfqwimmacc_vv_f32m2_i8m1_bs16 (vd, a, b, v0, vl);
+  return __riscv_vfqimmacc_vv_f32m2_i8m1_bs16 (vd, a, b, v0, vl);
 }
 
 /* { dg-final { scan-assembler-times {\tvfwmmacc\.vv\t[^\n]*,v0\.t} 2 } } */
-/* { dg-final { scan-assembler-times {\tvfqwmmacc\.vv\t[^\n]*,v0\.t} 2 } } */
+/* { dg-final { scan-assembler-times {\tvfqmmacc\.vv\t[^\n]*,v0\.t} 2 } } */
 /* { dg-final { scan-assembler-times {\tvfwimmacc\.vv\t[^\n]*,v0\.t} 2 } } */
-/* { dg-final { scan-assembler-times {\tvfqwimmacc\.vv\t[^\n]*,v0\.t} 2 } } */
+/* { dg-final { scan-assembler-times {\tvfqimmacc\.vv\t[^\n]*,v0\.t} 2 } } */

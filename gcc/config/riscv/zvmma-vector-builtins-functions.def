@@ -50,9 +50,9 @@ DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, i_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, u_ime_vunpair_ops)
 /* vwmmacc.vv (W=2): accumulator at SEW, inputs at SEW/2.  */
 DEF_RVV_FUNCTION (vwmmacc, ime_int_mmacc, none_tu_preds, i_ime_wvss_ops)
-/* vqwmmacc.vv (W=4): accumulator SEW, inputs SEW/4.  Only SI and DI
+/* vqmmacc.vv (W=4): accumulator SEW, inputs SEW/4.  Only SI and DI
    accumulators have a valid quad-truncated integer input type.  */
-DEF_RVV_FUNCTION (vqwmmacc, ime_int_mmacc, none_tu_preds, i_ime_qwvss_ops)
+DEF_RVV_FUNCTION (vqmmacc, ime_int_mmacc, none_tu_preds, i_ime_qvss_ops)
 /* v8wmmacc.vv (W=8): accumulator SEW (DI only), inputs SEW/8.  */
 DEF_RVV_FUNCTION (v8wmmacc, ime_int_mmacc, none_tu_preds, i_ime_8wvss_ops)
 
@@ -101,11 +101,11 @@ DEF_RVV_FUNCTION (vfwmmacc_scaled_f16_bs32, ime_mmacc, none_tu_preds,
 		  f32_ime_scaled_wvss_f16_ops)
 DEF_RVV_FUNCTION (vfwmmacc_scaled_f16_bs16, ime_mmacc, none_tu_preds,
 		  f32_ime_scaled_wvss_f16_ops)
-/* vfqwmmacc_scaled (W=4): OFP8_E4M3 -> FP32, with block scales.  */
-DEF_RVV_FUNCTION (vfqwmmacc_scaled_f8e4m3_bs32, ime_mmacc, none_tu_preds,
-		  f32_ime_scaled_qwvss_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfqwmmacc_scaled_f8e4m3_bs16, ime_mmacc, none_tu_preds,
-		  f32_ime_scaled_qwvss_f8e4m3_ops)
+/* vfqmmacc_scaled (W=4): OFP8_E4M3 -> FP32, with block scales.  */
+DEF_RVV_FUNCTION (vfqmmacc_scaled_f8e4m3_bs32, ime_mmacc, none_tu_preds,
+		  f32_ime_scaled_qvss_f8e4m3_ops)
+DEF_RVV_FUNCTION (vfqmmacc_scaled_f8e4m3_bs16, ime_mmacc, none_tu_preds,
+		  f32_ime_scaled_qvss_f8e4m3_ops)
 /* vf8wmmacc_scaled (W=8): OFP8_E4M3 -> FP64, with block scales.  */
 DEF_RVV_FUNCTION (vf8wmmacc_scaled_f8e4m3_bs32, ime_mmacc, none_tu_preds,
 		  f64_ime_scaled_8wvss_f8e4m3_ops)
@@ -117,10 +117,10 @@ DEF_RVV_FUNCTION (vfwimmacc_i8_bs32, ime_mmacc, none_tu_preds,
 		  f16_ime_immacc_i8_ops)
 DEF_RVV_FUNCTION (vfwimmacc_i8_bs16, ime_mmacc, none_tu_preds,
 		  f16_ime_immacc_i8_ops)
-/* vfqwimmacc (W=4): Int8 -> FP32, with block scales.  */
-DEF_RVV_FUNCTION (vfqwimmacc_i8_bs32, ime_mmacc, none_tu_preds,
+/* vfqimmacc (W=4): Int8 -> FP32, with block scales.  */
+DEF_RVV_FUNCTION (vfqimmacc_i8_bs32, ime_mmacc, none_tu_preds,
 		  f32_ime_immacc_i8_ops)
-DEF_RVV_FUNCTION (vfqwimmacc_i8_bs16, ime_mmacc, none_tu_preds,
+DEF_RVV_FUNCTION (vfqimmacc_i8_bs16, ime_mmacc, none_tu_preds,
 		  f32_ime_immacc_i8_ops)
 /* vf8wimmacc (W=8): Int8 -> FP64, with block scales.  */
 DEF_RVV_FUNCTION (vf8wimmacc_i8_bs32, ime_mmacc, none_tu_preds,

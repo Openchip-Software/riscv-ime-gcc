@@ -45,7 +45,7 @@ vfloat16m1_t k_w2_fp16_e5m2 (vfloat16m1_t a, vfloat8e5m2m1_t s1,
 /* W=4 OFP8 -> FP32, all E5M2 inputs -> altfmt = (1, 1, 0).  */
 vfloat32m1_t k_w4_e5m2 (vfloat32m1_t a, vfloat8e5m2m1_t s1,
 			vfloat8e5m2m1_t s2, size_t vl)
-{ return __riscv_vfqwmmacc_vv_f32m1_f8e5m2m1 (a, s1, s2, vl); }
+{ return __riscv_vfqmmacc_vv_f32m1_f8e5m2m1 (a, s1, s2, vl); }
 
 /* W=8 OFP8 -> FP64, all E5M2 inputs -> altfmt = (1, 1, 0).  */
 vfloat64m1_t k_w8_e5m2 (vfloat64m1_t a, vfloat8e5m2m1_t s1,

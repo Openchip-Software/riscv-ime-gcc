@@ -4,7 +4,7 @@
 typedef __SIZE_TYPE__ size_t;
 #pragma riscv intrinsic "vector"
 
-/* W=4 vfqwmmacc OFP8 mixed-input variants: each (altfmt_A, altfmt_B)
+/* W=4 vfqmmacc OFP8 mixed-input variants: each (altfmt_A, altfmt_B)
    pair must produce a distinct vtype constant.  This is what
    distinguishes E4M3 x E5M2 vs E5M2 x E4M3 at the QEMU dispatch table.
 
@@ -20,25 +20,25 @@ typedef __SIZE_TYPE__ size_t;
 vfloat32m1_t e4m3_e4m3 (vfloat32m1_t a, vfloat8e4m3m1_t s1,
 			vfloat8e4m3m1_t s2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e4m3m1 (a, s1, s2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e4m3m1 (a, s1, s2, vl);
 }
 
 vfloat32m1_t e4m3_e5m2 (vfloat32m1_t a, vfloat8e4m3m1_t s1,
 			vfloat8e5m2m1_t s2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e4m3m1_f8e5m2m1 (a, s1, s2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e4m3m1_f8e5m2m1 (a, s1, s2, vl);
 }
 
 vfloat32m1_t e5m2_e4m3 (vfloat32m1_t a, vfloat8e5m2m1_t s1,
 			vfloat8e4m3m1_t s2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e5m2m1_f8e4m3m1 (a, s1, s2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e5m2m1_f8e4m3m1 (a, s1, s2, vl);
 }
 
 vfloat32m1_t e5m2_e5m2 (vfloat32m1_t a, vfloat8e5m2m1_t s1,
 			vfloat8e5m2m1_t s2, size_t vl)
 {
-  return __riscv_vfqwmmacc_vv_f32m1_f8e5m2m1 (a, s1, s2, vl);
+  return __riscv_vfqmmacc_vv_f32m1_f8e5m2m1 (a, s1, s2, vl);
 }
 
 /* { dg-final { scan-assembler-times {\tli\tt0,3458764513820541136\n} 1 } } */

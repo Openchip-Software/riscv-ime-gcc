@@ -68,7 +68,7 @@ w4_f16_m16 (vfloat64m8_t lo, vfloat64m8_t hi,
 	    vfloat16m1_t a, vfloat16m1_t b, size_t vl)
 {
   vfloat64m16_t acc = __riscv_ime_vpair_f64m16 (lo, hi);
-  acc = __riscv_vfqwmmacc_vv_f64m16_f16m1 (acc, a, b, vl);
+  acc = __riscv_vfqmmacc_vv_f64m16_f16m1 (acc, a, b, vl);
   return __riscv_ime_vunpairlo_f64m16 (acc);
 }
 vfloat64m8_t
@@ -76,7 +76,7 @@ w4_bf16_m16_lm4 (vfloat64m8_t lo, vfloat64m8_t hi,
 		 vbfloat16m4_t a, vbfloat16m4_t b, size_t vl)
 {
   vfloat64m16_t acc = __riscv_ime_vpair_f64m16 (lo, hi);
-  acc = __riscv_vfqwmmacc_vv_f64m16_bf16m4_lm4 (acc, a, b, vl);
+  acc = __riscv_vfqmmacc_vv_f64m16_bf16m4_lm4 (acc, a, b, vl);
   return __riscv_ime_vunpairhi_f64m16 (acc);
 }
 
@@ -86,7 +86,7 @@ w4_ofp8_m16_lm4 (vfloat32m8_t lo, vfloat32m8_t hi,
 		 vfloat8e4m3m4_t a, vfloat8e4m3m4_t b, size_t vl)
 {
   vfloat32m16_t acc = __riscv_ime_vpair_f32m16 (lo, hi);
-  acc = __riscv_vfqwmmacc_vv_f32m16_f8e4m3m4_lm4 (acc, a, b, vl);
+  acc = __riscv_vfqmmacc_vv_f32m16_f8e4m3m4_lm4 (acc, a, b, vl);
   return __riscv_ime_vunpairhi_f32m16 (acc);
 }
 
@@ -108,8 +108,8 @@ w8_ofp8_m16_lm8_mixed (vfloat64m8_t lo, vfloat64m8_t hi,
   return __riscv_ime_vunpairhi_f64m16 (acc);
 }
 
-/* 6 vfwmmacc (3 non-OFP8 + 3 OFP8), 3 vfqwmmacc (2 non-OFP8 + 1 OFP8),
+/* 6 vfwmmacc (3 non-OFP8 + 3 OFP8), 3 vfqmmacc (2 non-OFP8 + 1 OFP8),
    2 vf8wmmacc.  */
 /* { dg-final { scan-assembler-times {vfwmmacc\.vv} 6 } } */
-/* { dg-final { scan-assembler-times {vfqwmmacc\.vv} 3 } } */
+/* { dg-final { scan-assembler-times {vfqmmacc\.vv} 3 } } */
 /* { dg-final { scan-assembler-times {vf8wmmacc\.vv} 2 } } */
