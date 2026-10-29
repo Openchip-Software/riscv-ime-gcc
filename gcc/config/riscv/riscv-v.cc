@@ -6477,9 +6477,9 @@ emit_ime_runtime_vtype_setup (int sew_bits, int mul_c,
      probe runs at function entry, vtype carries the IME-specific bits
      (lambda, altfmt_A/B, altfmt, bs).  Inside any loop, a basic
      vsetvli at the loop header that matches (SEW, VLMUL, ta, ma)
-     preserves those bits via WARL (RISC-V vector spec §319-320,
-     §322-336, §369-371), so the IME consumer in the loop body finds
-     vtype already correctly programmed -- no in-loop IME vsetvl needed.
+     preserves those bits via WARL, so the IME consumer in the loop body
+     finds vtype already correctly programmed -- no in-loop IME vsetvl
+     needed.
 
      A function whose IME consumer is reached only on one CFG path
      pays a probe at entry even if the consumer is dynamically never

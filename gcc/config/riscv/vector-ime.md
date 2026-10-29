@@ -17,9 +17,7 @@
 ;; along with GCC; see the file COPYING3.  If not see
 ;; <http://www.gnu.org/licenses/>.
 
-;; UNSPEC placeholders for the IME instructions.  Instruction patterns are
-;; added as each IME instruction family is implemented; see the plan in
-;; transient-marinating-cake.md for the rollout order.
+;; UNSPECs of the IME instructions.
 
 (define_c_enum "unspec" [
   UNSPEC_VMMACC_S    ;; Zvvmm vmmacc.vv,  signed*signed    (altfmt_A=0, altfmt_B=0)
@@ -44,17 +42,6 @@
   UNSPEC_VMTTL       ;; Zvvmttls transposing tile load       (vmttl.v)
   UNSPEC_VMTTS       ;; Zvvmttls transposing tile store      (vmtts.v)
 
-  ;; Storage-width-qualified tile load/store (spec §2983+).  The
-  ;; instruction is the same vmtl.v / vmts.v; the UNSPEC just selects
-  ;; which storage SEW (e8/e16/e32/e64) the surrounding vsetvl
-  ;; produces -- each pattern sets the `sew' attribute directly to
-  ;; override the default mode-derived SEW.
-  ;; Transposing variants -- spec excludes sub-byte logical types
-  ;; (OFP4, Int4) because tile transposition cannot be performed at
-  ;; sub-byte granularity.  The mode iterators below already drop
-  ;; those because they are not part of VI_LMUL1_LE_E{S}.
-;; --- Cross-product UNSPECs: _L{N}_as_e{S} ---
-
   ;; Zvvfmm - FP matrix multiply-accumulate
   UNSPEC_VFMMACC			;; vfmmacc.vv (W=1, same-format FP)
   ;; W=1 vfmmacc OFP8 -> OFP8: 8 UNSPECs covering all (acc,vs1,vs2)
@@ -67,10 +54,8 @@
   UNSPEC_VFMMACC_F8_E5M2_E4M3_E5M2
   UNSPEC_VFMMACC_F8_E5M2_E5M2_E4M3
   UNSPEC_VFMMACC_F8_E5M2_E5M2_E5M2
-  ;; W=2 vfwmmacc OFP8 -> fp16 / bf16: 4 input combinations per acc
-  ;; format = 8 UNSPECs.  Acc altfmt is encoded in the UNSPEC name
-  ;; (FP16 or BF16); the mode iterator on each MD pattern only spans
-  ;; the matching acc element type (HF or BF).
+  ;; W=2 vfwmmacc OFP8 -> fp16 / bf16: the 4 input combinations for
+  ;; each accumulator format.
   UNSPEC_VFWMMACC_OFP8_FP16_E4M3
   UNSPEC_VFWMMACC_OFP8_FP16_E4M3_E5M2
   UNSPEC_VFWMMACC_OFP8_FP16_E5M2_E4M3
@@ -94,8 +79,8 @@
   UNSPEC_VF8WMMACC_F8E5M2_E4M3	;; vf8wmmacc.vv (W=8, vs1=E5M2, vs2=E4M3 -> FP64)
   UNSPEC_VF8WMMACC_F4E2M1		;; vf8wmmacc.vv (W=8, OFP4_E2M1->FP32)
 
-  ;; Microscaled (§8) FP-input scaled variants: same mnemonic as §7 but
-  ;; with block-scale operand in v0 and the bs vtype bit set.
+  ;; Microscaled FP-input variants: the mnemonics of the unscaled ones,
+  ;; with the block scales in v0 and the bs vtype bit set.
   UNSPEC_VFWMMACC_F16_BS32	;; vfwmmacc.vv scaled, FP16->FP32, BS=32
   UNSPEC_VFWMMACC_F16_BS16	;; vfwmmacc.vv scaled, FP16->FP32, BS=16
   UNSPEC_VFQWMMACC_F8E4M3_BS32	;; vfqwmmacc.vv scaled, OFP8_E4M3->FP32, BS=32
@@ -103,7 +88,7 @@
   UNSPEC_VF8WMMACC_F8E4M3_BS32	;; vf8wmmacc.vv scaled, OFP8_E4M3->FP64, BS=32
   UNSPEC_VF8WMMACC_F8E4M3_BS16	;; vf8wmmacc.vv scaled, OFP8_E4M3->FP64, BS=16
 
-  ;; Microscaled (§8) integer-input variants: new instruction mnemonics.
+  ;; Microscaled integer-input variants.
   UNSPEC_VFWIMMACC_I8_BS32	;; vfwimmacc.vv, Int8->FP16, BS=32
   UNSPEC_VFWIMMACC_I8_BS16	;; vfwimmacc.vv, Int8->FP16, BS=16
   UNSPEC_VFQWIMMACC_I8_BS32	;; vfqwimmacc.vv, Int8->FP32, BS=32
@@ -117,12 +102,6 @@
   ;; upper vtype bits; they require a register source containing the full
   ;; vtype value.
   UNSPEC_VSETVL_IME
-
-  ;; (kept for backwards-compatible consumers; the new read pattern
-  ;; below uses UNSPECV_READ_VTYPE so the csrr cannot be hoisted past
-  ;; placeholder vsetvls that DEF VTYPE_REGNUM only after the vsetvl
-  ;; pass runs).
-  UNSPEC_READ_VTYPE
 
   ;; IME `pair' / `unpair' primitives.  These map an m16 accumulator
   ;; value (occupying 16 consecutive vector registers at a 16-aligned
@@ -354,11 +333,9 @@
   [(set_attr "type" "vmov")
    (set_attr "mode" "<VM16:MODE>")])
 
-;; Signedness encoding for the two integer-input operands of IME
-;; multiply-accumulate instructions, as it maps to the vtype altfmt_A /
-;; altfmt_B bits that the vsetvl pass establishes.  Both same-sign
-;; (ss, uu) and mixed-sign (su, us) cases are supported for vmmacc and
-;; the widening variants.
+;; Signedness of the two integer inputs of IME multiply-accumulate
+;; instructions, as the vtype altfmt_A / altfmt_B bits that the vsetvl
+;; pass sets.
 (define_attr "ime_altfmt" "ss,uu,su,us"
   (const_string "ss"))
 
@@ -387,7 +364,7 @@
    e5m2_e5m2_e4m3, e5m2_e5m2_e5m2"
   (const_string "none"))
 
-;; Block scale size for microscaled (§8) variants.
+;; Block scale size for microscaled variants.
 ;; "none" means not a microscaled instruction (bs bit irrelevant).
 ;; "bs16" and "bs32" set the bs vtype bit accordingly.
 (define_attr "ime_bs" "none,bs16,bs32"
@@ -396,16 +373,13 @@
 ;; Operand index of the hidden "vtype source" operand on IME consumer
 ;; patterns.  Default INVALID_ATTRIBUTE (no such operand).  Otherwise
 ;; this is the index of a `(use (match_operand N "vtype_op_operand"))'
-;; clause -- the operand carries no MD-level mode (the special predicate
-;; checks it accepts only a Pmode register or const0_rtx); the rtx the
-;; expander threads through is in Pmode (DImode on RV64, SImode on RV32).
-;; clause in the pattern's parallel; the runtime-VLEN IME path
-;; threads the full_vtype rtx through this operand so the vsetvl
+;; clause.  The operand carries no MD-level mode (the special predicate
+;; accepts only a Pmode register or const0_rtx).  The runtime-VLEN IME
+;; path threads the full vtype rtx through this operand so the vsetvl
 ;; pass can re-anchor IME vtype right before the consumer after
-;; spill-induced clobbers.  Static-VLEN consumers also carry this
-;; operand but with `const0_rtx' as a placeholder (the pass
-;; synthesises its own const vtype via `vsetvl_ime' for the static
-;; path rather than reading this operand).
+;; spill-induced clobbers.  Static-VLEN consumers carry `const0_rtx'
+;; as a placeholder (the pass synthesises its own const vtype via
+;; `vsetvl_ime' for the static path).
 (define_attr "ime_vtype_op_idx" ""
   (const_int INVALID_ATTRIBUTE))
 
@@ -1064,10 +1038,10 @@
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; ---------------------------------------------------------------------------
-;; Microscaled (section 8) FP-input scaled variants
+;; Microscaled FP-input scaled variants
 ;; ---------------------------------------------------------------------------
 ;;
-;; These are microscaled versions of the section 7 FP mmacc instructions.
+;; These are the microscaled versions of the FP multiply-accumulates.
 ;; They use the same assembly mnemonic but with a ",v0.t" suffix to
 ;; indicate the block-scale vector is present in v0.  The vtype bs bit
 ;; encodes the block-scale size (BS=16 or BS=32).
@@ -1239,7 +1213,7 @@
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; ---------------------------------------------------------------------------
-;; Microscaled (section 8) integer-input variants (NEW instructions)
+;; Microscaled integer-input variants
 ;; ---------------------------------------------------------------------------
 
 ;; vfwimmacc.vv Int8 -> FP16, BS=32/BS=16

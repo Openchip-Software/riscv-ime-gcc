@@ -1464,7 +1464,7 @@ struct sf_vcix_def : public build_base
 /* Shape for IME tile load/store intrinsics (vmtl.v, vmts.v, vmttl.v,
    vmtts.v).  Each group registers the instruction with every _L{N}
    lambda immediate and _as_e{S} storage width, recorded in the
-   function_instance::variant.  Names follow (spec §2542):
+   function_instance::variant.  Names follow:
 
      __riscv_{base}_v_{type}[_as_e{S}][_L{N}][_m]  */
 struct ime_tile_def : public build_base
@@ -1594,7 +1594,7 @@ struct ime_mmacc_def : public build_base
     nullptr
   };
 
-  /* Block-scale suffix tokens for microscaled (section 8) variants.  */
+  /* Block-scale suffix tokens for microscaled variants.  */
   static constexpr const char *bs_tokens[] = {
     "_bs32", "_bs16",
     nullptr
@@ -1802,8 +1802,6 @@ struct ime_mmacc_def : public build_base
 	/* Block-scale suffix ("_bs16" / "_bs32") for microscaled variants.  */
 	if (*bs_suffix)
 	  b.append_name (bs_suffix);
-
-	/* TODO (§6): append "_L{N}" for tile load/store immediate lambda.  */
       }
 
     b.append_name (predication_suffixes[instance.pred]);

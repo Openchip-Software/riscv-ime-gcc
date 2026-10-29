@@ -1691,16 +1691,8 @@ lambda_reach_at_block_entry (basic_block bb)
 
 /* Extract the IME vtype requirements for RINSN.  RINSN must have its
    `requires_ime_vtype' attribute set to yes.  The returned record is
-   fully determined by RINSN's operand modes; see §C-Language Intrinsics
-   of the IME specification for the mapping rules.
-
-   The current implementation handles the integer vmmacc.vv family
-   (Zvvmm, W=1).  Integer signedness (altfmt_A / altfmt_B) is currently
-   hardcoded to 0 (signed) because the RTL pattern does not yet
-   distinguish between vint/vuint operands; that split will come with a
-   signed/unsigned UNSPEC separation in a follow-up.  Widening variants,
-   FP mmacc and microscaled variants each extend this function with
-   their own derivation rules.  */
+   determined by RINSN's operand modes and its ime_altfmt, ime_fp_altfmt
+   and ime_bs attributes.  */
 static ime_vtype_req
 riscv_extract_ime_requirements (rtx_insn *rinsn)
 {
@@ -1755,9 +1747,7 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
   r.widen_w = r.sew / in_sew;
 
   /* Integer: altfmt (output) always 0.  Signedness comes from the
-     per-pattern ime_altfmt attribute set by the RTL pattern.  For
-     now we only support same-sign (ss, uu); mixed-sign (su, us)
-     will be added with the widening mmacc variants.  */
+     per-pattern ime_altfmt attribute set by the RTL pattern.  */
   r.altfmt = false;
 
   /* Read the block-scale size from the ime_bs attribute.  */
@@ -1806,9 +1796,8 @@ riscv_extract_ime_requirements (rtx_insn *rinsn)
      sets altfmt_{a,b} only.  Mixed-format intrinsics (e.g. fp16 x bf16)
      would set altfmt_a and altfmt_b differently -- inspect each input
      operand independently so the same code handles them when added.
-     OFP8 (E4M3 vs E5M2) at SEW=8 cannot be told apart from the mode
-     alone -- those go through dedicated UNSPECs and will need
-     attribute-driven dispatch in a follow-up.  */
+     OFP8 (E4M3 vs E5M2) cannot be told apart from the mode; the
+     ime_fp_altfmt attribute below selects their bits.  */
   if (GET_MODE_INNER (acc_mode) == E_BFmode)
     r.altfmt = true;
   if (recog_data.n_operands > 2
@@ -4554,11 +4543,10 @@ pre_vsetvl::compute_vsetvl_def_data ()
       /* WARL-preservation refinement on the reaching-definition kill.
 	 When the footer's basic geometry (SEW, VLMUL, ta, ma) matches an
 	 expression's basic geometry, the footer's vtype write preserves
-	 the IME-specific bits of that expression (RISC-V vector spec
-	 §319-320, §322-336, §369-371: lambda preserved when (VLEN, SEW)
-	 still supports it; altfmt_A/B/bs always preserved across
-	 vsetvli/vsetivli/vsetvl).  Don't kill compatible IME expressions
-	 across such a footer.  */
+	 the IME-specific bits of that expression (lambda is preserved
+	 when (VLEN, SEW) still supports it; altfmt_A/B/bs are always
+	 preserved across vsetvli/vsetivli/vsetvl).  Don't kill compatible
+	 IME expressions across such a footer.  */
       if (footer_info.valid_p ())
 	for (unsigned i = 0; i < m_vsetvl_def_exprs.length (); i++)
 	  {
@@ -4602,8 +4590,7 @@ pre_vsetvl::compute_vsetvl_def_data ()
 	      fprintf (dump_file,
 		       "    BB %u: clear kill bit %u (Expr[%u] IME) -- "
 		       "WARL-compatible: same SEW/VLMUL/ta/ma "
-		       "(lambda preserved per spec §322-336; "
-		       "altfmt_A/B/bs preserved per §319-320)\n",
+		       "(lambda and altfmt_A/B/bs preserved)\n",
 		       bb->index (), i, i);
 	    bitmap_clear_bit (m_kill[bb->index ()], i);
 	  }
@@ -5521,8 +5508,7 @@ pre_vsetvl::emit_vsetvl ()
 		     satisfies curr_info's IME demand AND every other
 		     reaching def is a basic vsetvl at compatible
 		     geometry (so its write preserves the IME bits via
-		     WARL -- RISC-V vector spec §319-320, §322-336,
-		     §369-371), no fresh IME vsetvl needs to be emitted.  */
+		     WARL), no fresh IME vsetvl needs to be emitted.  */
 		  bool reach_satisfies = false;
 		  /* The def_in bitmap only reflects state at BB ENTRY.
 		     If a vsetvl-emitting local_info precedes curr_info

@@ -3186,7 +3186,7 @@ public:
 
 static CONSTEXPR const vf8wmmacc_f4e2m1_ime_op vf8wmmacc_f4e2m1_obj;
 
-/* Microscaled (section 8) function base class.
+/* Microscaled function base class.
 
    The microscaled intrinsics have an extra vuint16m1_t scales operand
    (the second-to-last argument, before vl) that must be placed in v0.
@@ -3984,31 +3984,20 @@ BASE (ime_vpair)
 BASE (vwmmacc)
 BASE (vqwmmacc)
 BASE (v8wmmacc)
-/* Zvvmm widening m16 accumulator (#489).  */
 /* Zvvfmm */
 BASE (vfmmacc)
 #define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
 #include "zvvm-mmacc.def"
-/* W=1 OFP8 `_lm{N}' source-LMUL siblings (B.2).  */
-/* IME m16 acc (W=1 FP / OFP8).  */
-/* W=1 OFP8 m16 acc `_lm{N}' source-LMUL siblings (B.2 + C.5).  */
 BASE (vf8wmmacc_f4e2m1)
-/* Zvvfmm widening m16 accumulator (#489).  */
-/* W=2 non-OFP8.  */
-/* W=2 OFP8 -> FP16.  */
-/* W=2 OFP8 -> BF16.  */
-/* W=4 non-OFP8.  */
-/* W=4 OFP8 -> FP32.  */
-/* W=8 OFP8 -> FP64.  */
-/* Microscaled (section 8) FP-input scaled variants */
+/* Microscaled FP-input scaled variants */
 BASE (vfwmmacc_scaled_f16_bs32)
 BASE (vfwmmacc_scaled_f16_bs16)
 BASE (vfqwmmacc_scaled_f8e4m3_bs32)
 BASE (vfqwmmacc_scaled_f8e4m3_bs16)
 BASE (vf8wmmacc_scaled_f8e4m3_bs32)
 BASE (vf8wmmacc_scaled_f8e4m3_bs16)
-/* Microscaled (section 8) integer-input variants */
+/* Microscaled integer-input variants */
 BASE (vfwimmacc_i8_bs32)
 BASE (vfwimmacc_i8_bs16)
 BASE (vfqwimmacc_i8_bs32)

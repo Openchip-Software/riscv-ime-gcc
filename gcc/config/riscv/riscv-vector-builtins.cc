@@ -788,7 +788,7 @@ static CONSTEXPR const rvv_arg_type_info ime_fwvss_f4e2m1_args[]
      rvv_arg_type_info (RVV_BASE_ime_f4e2m1_lmul1_vector),
      rvv_arg_type_info_end};
 
-/* Args for microscaled FP-input scaled variants (section 8): same as
+/* Args for microscaled FP-input scaled variants: same as
    the non-scaled variant but with an extra vuint16m1_t scales operand.  */
 static CONSTEXPR const rvv_arg_type_info ime_scaled_fwvss_f16_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
@@ -804,7 +804,7 @@ static CONSTEXPR const rvv_arg_type_info ime_scaled_fwvss_f8e4m3_args[]
      rvv_arg_type_info (RVV_BASE_ime_scales_vector),
      rvv_arg_type_info_end};
 
-/* Args for microscaled integer-input variants (section 8): FP accumulator,
+/* Args for microscaled integer-input variants: FP accumulator,
    two int8 inputs, plus vuint16m1_t scales.  */
 static CONSTEXPR const rvv_arg_type_info ime_immacc_i8_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
@@ -3684,8 +3684,7 @@ static const rvv_type_info f64_lmul_ge1_ops[]
 #include "riscv-vector-builtins-types.def"
      {NUM_VECTOR_TYPES, 0}};
 
-/* OFP8 accumulator type sets for W=1 vfmmacc OFP8 -> OFP8.  Stage 3a
-   has only m1; m2/m4/m8 acc registration is a follow-up.  */
+/* OFP8 accumulator type sets for W=1 vfmmacc OFP8 -> OFP8.  */
 static const rvv_type_info f8e4m3_lmul1_ops[]
   = {
 #define DEF_RVV_F8E4M3_LMUL1_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
@@ -3800,7 +3799,7 @@ static CONSTEXPR const rvv_op_info iu_lmul_ge1_v_scalar_ptr_ptrdiff_ops
      rvv_arg_type_info (RVV_BASE_void),
      scalar_ptr_ptrdiff_args};
 
-/* Arg lists for IME `_as_e{S}' tile load/store intrinsics (spec §2983+):
+/* Arg lists for IME `_as_e{S}' tile load/store intrinsics:
    the base pointer is `const void *' / `void *' because the logical
    type and storage element width are independent.  */
 static CONSTEXPR const rvv_arg_type_info untyped_const_ptr_ptrdiff_args[]
@@ -3858,7 +3857,7 @@ static CONSTEXPR const rvv_op_info f32_ime_8wvss_f4e2m1_ops
   = {f32_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_fwvss_f4e2m1_args};
 
-/* Microscaled (section 8) FP-input scaled op_info structs.  */
+/* Microscaled FP-input scaled op_info structs.  */
 
 /* vfwmmacc_scaled_f16: FP16 -> FP32 accumulator, with scales.  */
 static CONSTEXPR const rvv_op_info f32_ime_scaled_wvss_f16_ops
@@ -3875,7 +3874,7 @@ static CONSTEXPR const rvv_op_info f64_ime_scaled_8wvss_f8e4m3_ops
   = {f64_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f8e4m3_args};
 
-/* Microscaled (section 8) integer-input op_info structs.  */
+/* Microscaled integer-input op_info structs.  */
 
 /* vfwimmacc_i8: Int8 -> FP16 accumulator, with scales.  */
 static CONSTEXPR const rvv_op_info f16_ime_immacc_i8_ops
@@ -5711,7 +5710,7 @@ function_expander::use_exact_insn (insn_code icode)
   return generate_insn (icode);
 }
 
-/* Implement the call using instruction ICODE for a microscaled (section 8)
+/* Implement the call using instruction ICODE for a microscaled
    IME intrinsic.  SCALES_ARGNO is the index of the block-scale argument
    (vuint16m1_t v0) in the call expression.  This argument is moved into
    the v0 register before the instruction is emitted, and is skipped when

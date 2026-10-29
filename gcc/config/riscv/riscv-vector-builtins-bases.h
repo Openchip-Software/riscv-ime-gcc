@@ -360,7 +360,6 @@ extern const function_base *const ime_vpair;
 extern const function_base *const vwmmacc;
 extern const function_base *const vqwmmacc;
 extern const function_base *const v8wmmacc;
-/* Zvvmm widening m16 accumulator (#489).  */
 /* Zvvfmm */
 extern const function_base *const vfmmacc;
 #define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
@@ -368,19 +367,15 @@ extern const function_base *const vfmmacc;
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   extern const function_base *const NAME;
 #include "zvvm-mmacc.def"
-/* W=1 OFP8 `_lm{N}' source-LMUL siblings (B.2).  */
-/* IME m16 acc (W=1 FP / OFP8).  */
-/* W=1 OFP8 m16 `_lm{N}' source-LMUL siblings.  */
 extern const function_base *const vf8wmmacc_f4e2m1;
-/* Zvvfmm widening m16 accumulator (#489).  */
-/* Microscaled (section 8) FP-input scaled variants */
+/* Microscaled FP-input scaled variants */
 extern const function_base *const vfwmmacc_scaled_f16_bs32;
 extern const function_base *const vfwmmacc_scaled_f16_bs16;
 extern const function_base *const vfqwmmacc_scaled_f8e4m3_bs32;
 extern const function_base *const vfqwmmacc_scaled_f8e4m3_bs16;
 extern const function_base *const vf8wmmacc_scaled_f8e4m3_bs32;
 extern const function_base *const vf8wmmacc_scaled_f8e4m3_bs16;
-/* Microscaled (section 8) integer-input variants */
+/* Microscaled integer-input variants */
 extern const function_base *const vfwimmacc_i8_bs32;
 extern const function_base *const vfwimmacc_i8_bs16;
 extern const function_base *const vfqwimmacc_i8_bs32;
