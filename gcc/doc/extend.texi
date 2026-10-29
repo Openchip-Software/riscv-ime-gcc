@@ -27509,9 +27509,9 @@ non-normative compiler-modelling note in the IME specification for
 details.
 @enddefbuiltin
 
-Two target flags govern the lambda-aware optimisations enabled by
-these intrinsics: @option{-melide-ime-lambda} and
-@option{-mtrack-user-lambda}.  See @ref{RISC-V Options} for details.
+The target flag @option{-mtrack-user-lambda} governs the lambda-aware
+optimisations enabled by these intrinsics.  See @ref{RISC-V Options}
+for details.
 
 @node CORE-V Built-in Functions
 @subsection CORE-V Built-in Functions

@@ -1234,11 +1234,8 @@ classify_lambda_effect (rtx_insn *rinsn)
 
   /* The static-VLEN IME auto-emission `@vsetvl_ime<mode>' encodes the
      full vtype (including the 3-bit lambda field) as a const_int in
-     operand 2.  Decode it so that back-to-back mmaccs sharing a
-     geometry can elide each other's auto-vsetvls: when the walk in
-     `lambda_already_established_p' visits a previously-emitted
-     `vsetvl_ime', it now recovers DEFINED(N) instead of treating
-     the insn as opaque KILLED.
+     operand 2.  Decode it so that a later instruction that uses lambda
+     sees DEFINED(N) rather than KILLED.
 
      The runtime-VLEN `@vsetvl_ime_reg<mode>' takes vtype in a register
      instead of a const_int, so we cannot statically extract lambda;
@@ -1302,20 +1299,6 @@ static lambda_state lambda_reach_at_block_entry (basic_block);
    the most recent DEF and itself.  */
 static bool insn_uses_lambda_p (rtx_insn *rinsn);
 
-/* Return true if the static lambda DEMAND_LAMBDA_LOG2 of CONSUMER is
-   already established when it executes, so that the IME vsetvl before
-   it can be omitted.  */
-
-static bool
-lambda_already_established_p (rtx_insn *consumer, int demand_lambda_log2)
-{
-  if (!riscv_ime_elide_redundant_vsetvl_lambda || demand_lambda_log2 < 0)
-    return false;
-  lambda_state s = lambda_reach_before (consumer);
-  return (s.kind == lambda_state_kind::DEFINED
-	  && s.known_log2 == demand_lambda_log2);
-}
-
 static lambda_state
 lambda_reach_before (rtx_insn *consumer)
 {
@@ -1357,14 +1340,15 @@ insn_uses_lambda_p (rtx_insn *rinsn)
 /* Forward CFG dataflow for the lambda lattice.
 
    Computes a per-block entry `lambda_state' via a worklist iteration
-   to fixpoint, merged at CFG joins by `lambda_state::merge'.  The transfer function within a block is
-   `classify_lambda_effect' applied to each insn in order.
+   to fixpoint, merged at CFG joins by `lambda_state::merge'.  The
+   transfer function within a block is `classify_lambda_effect' applied
+   to each insn in order.
 
    Two consumers:
 
-     (a) Cross-block elision in `lambda_already_established_p': when
-	 the intra-block walk reaches block start without resolving the
-	 query, the analysis's entry state for that block decides.
+     (a) `lambda_reach_before': when the walk back from an instruction
+	 reaches the start of its block, the entry state of the block
+	 decides.
 
      (b) Vsetlambda DCE: while computing each block's exit state, an
 	 install whose target encoding matches the running state is
@@ -2500,8 +2484,7 @@ ime_avl_operand (rtx avl, rtx_insn *before)
 /* Return the vsetvl that establishes the IME vtype of INFO for CONSUMER,
    or NULL_RTX if none is needed or it cannot be emitted.  With a static
    lambda this is `@vsetvl_ime<mode>', whose vtype is a constant that its
-   template loads into the destination register; it is not needed when
-   the lambda is already established.  With a runtime lambda it is
+   template loads into the destination register.  With a runtime lambda it is
    `@vsetvl_ime_reg<mode>' with the vtype that the expander computed and
    passed to CONSUMER in its vtype operand, and the destination is x0 so
    as not to clobber a register.  */
@@ -2523,15 +2506,6 @@ gen_ime_vsetvl (const vsetvl_info &info, rtx_insn *consumer)
       return gen_vsetvl_ime_reg (Pmode, dest, avl, vtype, ime_pack);
     }
 
-  if (r.lambda_log2 >= 0
-      && lambda_already_established_p (consumer, r.lambda_log2))
-    {
-      if (dump_file)
-	fprintf (dump_file, "  Omit IME vsetvl before insn %d: lambda=%d is "
-		 "already established\n", INSN_UID (consumer),
-		 1 << r.lambda_log2);
-      return NULL_RTX;
-    }
   rtx vtype = emit_ime_vtype_build (info);
   if (!vtype)
     return NULL_RTX;
@@ -2539,6 +2513,45 @@ gen_ime_vsetvl (const vsetvl_info &info, rtx_insn *consumer)
 	      : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM));
   rtx avl = ime_avl_operand (info.get_avl (), consumer);
   return gen_vsetvl_ime (Pmode, dest, avl, vtype, ime_pack);
+}
+
+/* Return true if RINSN is a tile load or store that takes its lambda
+   from vtype, i.e. has no `_L{N}' immediate.  */
+
+static bool
+tile_takes_vtype_lambda_p (rtx_insn *rinsn)
+{
+  if (get_attr_ime_tile (rinsn) != IME_TILE_YES)
+    return false;
+  extract_insn_cached (rinsn);
+  /* The lambda immediate is operand 9 of a tile load and operand 6 of a
+     tile store.  */
+  int idx = get_attr_type (rinsn) == TYPE_VLDS ? 9 : 6;
+  return recog_data.operand[idx] == const0_rtx;
+}
+
+/* Return the log2 of the static lambda of the first IME
+   multiply-accumulate after RINSN in its block, or -1 if there is none
+   or an instruction before it sets or may change lambda.  */
+
+static int
+lambda_demanded_after (rtx_insn *rinsn)
+{
+  basic_block bb = BLOCK_FOR_INSN (rinsn);
+  for (rtx_insn *p = NEXT_INSN (rinsn); p && BLOCK_FOR_INSN (p) == bb;
+       p = NEXT_INSN (p))
+    {
+      if (!NONDEBUG_INSN_P (p))
+	continue;
+      if (recog_memoized (p) >= 0
+	  && get_attr_requires_ime_vtype (p) == REQUIRES_IME_VTYPE_YES)
+	return MAX (riscv_extract_ime_requirements (p).lambda_log2, -1);
+      lambda_state s = classify_lambda_effect (p);
+      if (s.kind != lambda_state_kind::NOT_TOUCHED
+	  && s.kind != lambda_state_kind::USE_ONLY)
+	return -1;
+    }
+  return -1;
 }
 
 /* Return a vsetvl that writes VL for AVL to DEST and sets the vtype
@@ -2572,6 +2585,42 @@ gen_lambda_preserving_vsetvl (rtx dest, rtx avl, HOST_WIDE_INT static_vtype,
   return gen_riscv_vsetvl_preserve_lambda
     (Pmode, dest, avl, gen_int_mode (static_vtype, Pmode),
      gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP2_REGNUM));
+}
+
+/* Return the vsetvl for INFO before RINSN, which is not an IME
+   multiply-accumulate.  Before an instruction that uses vtype.lambda,
+   while a lambda reaches it, a plain vsetvli could change the lambda, so
+   the vsetvl keeps it.  A tile load or store that takes its lambda from
+   vtype before any lambda is established uses the lambda of the
+   multiply-accumulate that follows it, so that the tile has the shape
+   that multiply-accumulate expects.  */
+
+static rtx
+gen_vsetvl_before (const vsetvl_info &info, rtx_insn *rinsn)
+{
+  lambda_state reach;
+  if (insn_uses_lambda_p (rinsn))
+    {
+      if (riscv_track_user_lambda)
+	reach = lambda_reach_before (rinsn);
+      if (reach.kind != lambda_state_kind::DEFINED
+	  && reach.kind != lambda_state_kind::DEFINED_RUNTIME
+	  && tile_takes_vtype_lambda_p (rinsn))
+	{
+	  int lambda_log2 = lambda_demanded_after (rinsn);
+	  if (lambda_log2 >= 0)
+	    reach = lambda_state::make_defined (lambda_log2);
+	}
+    }
+  if (reach.kind != lambda_state_kind::DEFINED
+      && reach.kind != lambda_state_kind::DEFINED_RUNTIME)
+    return info.get_vsetvl_pat ();
+  return gen_lambda_preserving_vsetvl
+    (info.has_vl () ? info.get_vl ()
+     : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM),
+     info.get_avl (),
+     compute_static_vtype_without_lambda (info, GET_MODE_BITSIZE (Pmode)),
+     reach, rinsn);
 }
 
 /* Return true if A and B have the same SEW, LMUL and policy.  */
@@ -3630,19 +3679,11 @@ private:
   }
 
   /* Insert the vsetvl for INFO at EMIT_TYPE relative to its insn.  An
-     IME instruction needs an IME vsetvl.  Before an instruction that
-     uses vtype.lambda, while a lambda reaches it, a plain vsetvli could
-     change the lambda, so the vsetvl keeps it.  */
+     IME instruction needs an IME vsetvl; see `gen_vsetvl_before' for an
+     instruction that uses vtype.lambda.  */
   void insert_vsetvl_insn (enum emit_type emit_type, const vsetvl_info &info)
   {
     rtx_insn *rinsn = info.get_insn ()->rtl ();
-    lambda_state reach;
-    if (!info.ime_required_p ()
-	&& emit_type == EMIT_BEFORE
-	&& riscv_track_user_lambda
-	&& insn_uses_lambda_p (rinsn))
-      reach = lambda_reach_before (rinsn);
-
     rtx pat;
     if (info.ime_required_p ())
       {
@@ -3650,14 +3691,8 @@ private:
 	if (!pat)
 	  return;
       }
-    else if (reach.kind == lambda_state_kind::DEFINED
-	     || reach.kind == lambda_state_kind::DEFINED_RUNTIME)
-      pat = gen_lambda_preserving_vsetvl
-	(info.has_vl () ? info.get_vl ()
-	 : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM),
-	 info.get_avl (),
-	 compute_static_vtype_without_lambda (info, GET_MODE_BITSIZE (Pmode)),
-	 reach, rinsn);
+    else if (emit_type == EMIT_BEFORE)
+      pat = gen_vsetvl_before (info, rinsn);
     else
       pat = info.get_vsetvl_pat ();
 
@@ -5179,7 +5214,7 @@ pass_vsetvl::simple_vsetvl ()
 		    }
 		  continue;
 		}
-	      rtx pat = info.get_vsetvl_pat ();
+	      rtx pat = gen_vsetvl_before (info, rinsn);
 	      emit_insn_before (pat, rinsn);
 	      if (dump_file)
 		{
@@ -5484,9 +5519,8 @@ pass_vsetvl::execute (function *)
     return 0;
 
   /* Run the lambda dataflow before either emission strategy.  Its
-     per-block entry states feed cross-block elision in
-     `lambda_already_established_p'; its dead-install list drives the
-     vsetlambda DCE pass run immediately afterwards.  Both consumers
+     per-block entry states feed `lambda_reach_before'; its dead-install
+     list drives the vsetlambda DCE pass run immediately afterwards.  Both consumers
      are gated by `-mtrack-user-lambda' (default on).  */
   lambda_dataflow df;
   if (riscv_track_user_lambda)
