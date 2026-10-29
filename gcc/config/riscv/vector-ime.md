@@ -960,7 +960,8 @@
 
 ;; Operand 3 is a memory_operand representing the base "(rs1)" so the
 ;; RTL aliasing framework knows this is a memory read.  Operand 4 is
-;; the element-count stride delivered to rs2.
+;; the leading dimension in elements for rs2; a zero, which selects the
+;; natural dimension, is emitted as x0.
 (define_insn "@pred_ime_<ime_tile><mode>"
   [(set (match_operand:VI_LMUL1 0 "register_operand"           "=vr")
 	(if_then_else:VI_LMUL1
@@ -975,7 +976,7 @@
 	  (unspec:VI_LMUL1
 	    [(match_operand:VI_LMUL1 3 "memory_operand"      "    m")
 	     (mem:BLK (scratch))
-	     (match_operand 4 "register_operand"             "    r")
+	     (match_operand 4 "pmode_reg_or_0_operand"       "   rJ")
 	     (match_operand 9 "const_int_operand"            "    i")
 	     (match_operand 10 "const_int_operand"           "    i")]
 	    IME_TILE_LOAD)
@@ -985,7 +986,7 @@
 					      ? INTVAL (operands[10]) : 64)"
   {
     return (INTVAL (operands[9])
-	    ? "<ime_tile>.v\t%0,%3,%4,L%9%p1" : "<ime_tile>.v\t%0,%3,%4%p1");
+	    ? "<ime_tile>.v\t%0,%3,%z4,L%9%p1" : "<ime_tile>.v\t%0,%3,%z4%p1");
   }
   [(set_attr "type" "vlds")
    (set_attr "ime_tile" "yes")
@@ -995,8 +996,8 @@
 		     : GET_MODE_UNIT_BITSIZE (<MODE>mode)"))])
 
 ;; Operand layout follows @pred_strided_store: 0 is the memory
-;; operand, 1 is the mask, 2 is the stride register (rs2), 3 is the
-;; vector data source (vs3).
+;; operand, 1 is the mask, 2 is the leading dimension (rs2, x0 for
+;; zero), 3 is the vector data source (vs3).
 (define_insn "@pred_ime_<ime_tile><mode>"
   [(set (mem:BLK (scratch))
 	(unspec:BLK
@@ -1007,7 +1008,7 @@
 	      (match_operand 5 "const_int_operand"       "    i")
 	      (reg:SI VL_REGNUM)
 	      (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	   (match_operand 2 "register_operand"            "    r")
+	   (match_operand 2 "pmode_reg_or_0_operand"      "   rJ")
 	   (match_operand:VI_LMUL1 3 "register_operand"   "   vr")
 	   (match_operand 6 "const_int_operand"           "    i")
 	   (match_operand 7 "const_int_operand"           "    i")]
@@ -1017,7 +1018,7 @@
 					      ? INTVAL (operands[7]) : 64)"
   {
     return (INTVAL (operands[6])
-	    ? "<ime_tile>.v\t%3,%0,%2,L%6%p1" : "<ime_tile>.v\t%3,%0,%2%p1");
+	    ? "<ime_tile>.v\t%3,%0,%z2,L%6%p1" : "<ime_tile>.v\t%3,%0,%z2%p1");
   }
   [(set_attr "type" "vsts")
    (set_attr "ime_tile" "yes")
