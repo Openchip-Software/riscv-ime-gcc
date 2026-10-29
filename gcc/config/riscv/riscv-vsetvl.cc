@@ -2021,6 +2021,100 @@ public:
 		     : ime_demand_type::ignore_ime;
   }
 
+  /* Parse RINSN if it is one of the IME vtype helpers, which do not have
+     the operands of an ordinary vsetvl, and return true; return false
+     for any other instruction.  RINSN may have been emitted by this pass
+     and not be recognized yet.
+
+     - `riscv_vsetlambda_install' changes only vtype.lambda and is
+       transparent to the SEW/LMUL/policy/AVL demand analysis, so the
+       state stays uninitialized; marking it unknown would make the pass
+       insert a vsetvli after it that clobbers the lambda.
+     - `@read_vtype<mode>' only reads vtype; the state stays
+       uninitialized.
+     - `@riscv_vsetvl_preserve_lambda<mode>' and the IME vsetvls
+       (`@vsetvl_ime<mode>', `@vsetvl_ime_reg<mode>') are valid vsetvl
+       sources whose SEW, LMUL and policy come from the static vtype in
+       operand 2, or for `vsetvl_ime_reg' from the IME demand.  The IME
+       vsetvls carry their packed IME demand in operand 3; zero means
+       none (a lambda-preserving vsetvl for a non-IME instruction).  The
+       `is_preserve_lambda_p' checks keep the pass from changing a
+       preserve_lambda or inserting a vsetvl before it.  */
+  bool parse_ime_helper_insn (rtx_insn *rinsn)
+  {
+    int code = recog_memoized (rinsn);
+    if (code == CODE_FOR_riscv_vsetlambda_installdi
+	|| code == CODE_FOR_riscv_vsetlambda_installsi)
+      {
+	m_lambda = classify_lambda_effect (rinsn);
+	return true;
+      }
+    if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
+      {
+	m_lambda = lambda_state::make_use_only ();
+	return true;
+      }
+
+    bool preserve_p = (code == CODE_FOR_riscv_vsetvl_preserve_lambdadi
+		       || code == CODE_FOR_riscv_vsetvl_preserve_lambdasi);
+    bool reg_p = (code == CODE_FOR_vsetvl_ime_regdi
+		  || code == CODE_FOR_vsetvl_ime_regsi);
+    if (!preserve_p && !reg_p
+	&& code != CODE_FOR_vsetvl_imedi && code != CODE_FOR_vsetvl_imesi)
+      return false;
+
+    extract_insn_cached (rinsn);
+    ime_vtype_req req;
+    if (!preserve_p)
+      req = unpack_ime_req (INTVAL (recog_data.operand[3]));
+    bool ime_p = req.sew != 0;
+    uint8_t sew = req.sew;
+    vlmul_type vlmul = (vlmul_type) req.lmul;
+    bool ta = true, ma = true;
+    if ((reg_p && !ime_p)
+	|| (!reg_p
+	    && !decode_static_vtype_const (INTVAL (recog_data.operand[2]),
+					   &sew, &vlmul, &ta, &ma)))
+      {
+	set_unknown ();
+	m_lambda = (preserve_p ? lambda_state::make_defined_runtime ()
+		    : lambda_state::make_killed ());
+	return true;
+      }
+
+    set_valid ();
+    m_avl = recog_data.operand[1];
+    m_vl = recog_data.operand[0];
+    m_sew = sew;
+    m_vlmul = ime_p ? (vlmul_type) req.lmul : vlmul;
+    m_ratio = calculate_ratio (m_sew, m_vlmul);
+    m_ta = ta;
+    m_ma = ma;
+    m_max_sew = get_max_int_sew ();
+    if (ime_p)
+      {
+	m_ime_required = true;
+	m_ime_req = req;
+	normalize_demand (DEMAND_AVL_P | DEMAND_SEW_P | DEMAND_LMUL_P
+			  | DEMAND_IME_P);
+      }
+    else
+      normalize_demand (DEMAND_AVL_P | DEMAND_RATIO_P);
+    m_lambda = classify_lambda_effect (rinsn);
+    return true;
+  }
+
+  /* Record the IME requirements of RINSN, which has requires_ime_vtype.
+     The vtype LMUL that an IME multiply-accumulate needs is that of its
+     inputs, not that of its accumulator mode.  */
+  void parse_ime_requirements (rtx_insn *rinsn)
+  {
+    m_ime_required = true;
+    m_ime_req = riscv_extract_ime_requirements (rinsn);
+    m_vlmul = (vlmul_type) m_ime_req.lmul;
+    m_ratio = calculate_ratio (m_sew, m_vlmul);
+  }
+
   void parse_insn (rtx_insn *rinsn)
   {
     if (!NONDEBUG_INSN_P (rinsn))
@@ -2029,165 +2123,8 @@ public:
       return;
     gcc_assert (!vsetvl_discard_result_insn_p (rinsn));
 
-    /* `riscv_vsetlambda_install' is transparent for the SEW/LMUL/
-       policy/AVL demand analysis: it only modifies vtype.lambda.
-       Leave m_state UNINITIALIZED (no demand opinion) and just record
-       the lambda effect; see the corresponding branch in
-       `parse_insn(insn_info *)' for the full rationale.
-
-       Use `recog_memoized' (not raw INSN_CODE) so freshly emitted
-       insns -- e.g. the helper patterns inserted by
-       `fixup_lambda_clobbering_placeholders' -- get recognised here
-       rather than silently falling through.  */
-    int code = recog_memoized (rinsn);
-    if (code == CODE_FOR_riscv_vsetlambda_installdi
-	|| code == CODE_FOR_riscv_vsetlambda_installsi)
-      {
-	m_lambda = classify_lambda_effect (rinsn);
-	return;
-      }
-
-    /* `@riscv_vsetvl_preserve_lambda<mode>' is a transparent SEW/LMUL
-       writer: decode its const_int vtype operand (operand 2) and
-       populate the demand fields with the same `ratio_only' profile a
-       regular `@vsetvl<mode>' source would have.  This lets the LCM
-       see the insn as an available vtype source for downstream
-       lambda-USE consumers with matching geometry -- the redundant
-       second lambda-preserving emission then naturally disappears.
-
-       Note that `get_avl' returns NULL_RTX for preserve_lambda
-       (no vl_op_idx attr), so we extract operand 1 directly.  The
-       `is_preserve_lambda_p' guards in `emit_vsetvl' /
-       `pre_global_vsetvl_info' ensure the pass never tries to
-       *modify* or *insert before* a preserve_lambda based on this
-       VALID classification.  */
-    if (code == CODE_FOR_riscv_vsetvl_preserve_lambdadi
-	|| code == CODE_FOR_riscv_vsetvl_preserve_lambdasi)
-      {
-	extract_insn_cached (rinsn);
-	HOST_WIDE_INT vtype_const = INTVAL (recog_data.operand[2]);
-	uint8_t sew;
-	vlmul_type vlmul;
-	bool ta_bit, ma_bit;
-	if (decode_static_vtype_const (vtype_const, &sew, &vlmul, &ta_bit, &ma_bit))
-	  {
-	    set_valid ();
-	    m_avl = recog_data.operand[1];
-	    m_vl = recog_data.operand[0];
-	    m_sew = sew;
-	    m_vlmul = vlmul;
-	    m_ta = ta_bit;
-	    m_ma = ma_bit;
-	    m_ratio = calculate_ratio (m_sew, m_vlmul);
-	    m_max_sew = get_max_int_sew ();
-	    normalize_demand (demand_flags::DEMAND_AVL_P
-			      | demand_flags::DEMAND_RATIO_P);
-	  }
-	else
-	  set_unknown ();
-	m_lambda = lambda_state::make_defined_runtime ();
-	return;
-      }
-
-    /* `@read_vtype<mode>': pure vtype READ.  It does NOT write vtype, so
-       leave the demand state uninitialised (the BB's reaching IME vsetvl
-       remains the effective vtype source).  Only record the lambda
-       use-only effect.  Marking this UNKNOWN here used to break the BB
-       footer chain right after the runtime probe, hiding the IME vsetvl
-       from downstream demand matching.  */
-    if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
-      {
-	m_lambda = lambda_state::make_use_only ();
-	return;
-      }
-
-    /* IME vsetvl helpers (`@vsetvl_ime<mode>', `@vsetvl_ime_reg<mode>')
-       carry a packed IME-demand operand (operand 3).  Decode it and the
-       static vtype const (operand 2, for the static-path variant) to
-       expose the insn as a VALID, demand-carrying vsetvl source; a
-       downstream consumer with matching demand will then see the IME
-       vtype as available and the pass will not insert a redundant
-       second IME vsetvl right before it.
-
-       A sentinel of operand 3 == 0 (sew == 0 in the unpacked tuple)
-       means "no IME demand" -- this is how the lambda-preserving
-       emissions for non-IME consumers ride the same pattern; treat
-       those as basic SEW/LMUL writers with no IME bookkeeping.  */
-    if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
-	|| code == CODE_FOR_vsetvl_ime_regdi
-	|| code == CODE_FOR_vsetvl_ime_regsi)
-      {
-	extract_insn_cached (rinsn);
-	bool is_static_path = (code == CODE_FOR_vsetvl_imedi
-			       || code == CODE_FOR_vsetvl_imesi);
-	HOST_WIDE_INT ime_pack = INTVAL (recog_data.operand[3]);
-	ime_vtype_req req = unpack_ime_req (ime_pack);
-	bool have_ime_demand = (req.sew != 0);
-
-	uint8_t sew = 0;
-	vlmul_type vlmul = LMUL_RESERVED;
-	bool ta_bit = true, ma_bit = true;
-
-	if (is_static_path)
-	  {
-	    HOST_WIDE_INT vtype_const = INTVAL (recog_data.operand[2]);
-	    if (!decode_static_vtype_const (vtype_const, &sew, &vlmul,
-					    &ta_bit, &ma_bit))
-	      {
-		set_unknown ();
-		m_lambda = lambda_state::make_killed ();
-		return;
-	      }
-	  }
-	else if (have_ime_demand)
-	  {
-	    /* Runtime path: the basic vtype fields are determined by the
-	       IME demand the caller asked for (sew/lmul/ta/ma).  */
-	    sew = req.sew;
-	    vlmul = (vlmul_type) req.lmul;
-	    /* IME emissions are always tail/mask agnostic by construction
-	       (see emit_ime_runtime_vtype_setup: ta = true, ma = true).  */
-	    ta_bit = ma_bit = true;
-	  }
-	else
-	  {
-	    /* Runtime path with no IME demand: should not occur (the
-	       runtime variant is only emitted from IME consumer expand).  */
-	    set_unknown ();
-	    m_lambda = lambda_state::make_killed ();
-	    return;
-	  }
-
-	set_valid ();
-	m_avl = recog_data.operand[1];
-	m_vl = recog_data.operand[0];
-	m_sew = sew;
-	m_vlmul = vlmul;
-	m_ta = ta_bit;
-	m_ma = ma_bit;
-	m_ratio = calculate_ratio (m_sew, m_vlmul);
-	m_max_sew = get_max_int_sew ();
-	unsigned dflags = demand_flags::DEMAND_AVL_P;
-	if (have_ime_demand)
-	  {
-	    m_ime_required = true;
-	    m_ime_req = req;
-	    /* For an IME mmacc, the physically encoded vtype.LMUL is the
-	       *input* LMUL (m_ime_req.lmul).  Mirror the logic in the
-	       generic-recog path below so downstream sew_lmul checks
-	       observe the same effective LMUL.  */
-	    m_vlmul = (vlmul_type) m_ime_req.lmul;
-	    m_ratio = calculate_ratio (m_sew, m_vlmul);
-	    dflags |= demand_flags::DEMAND_SEW_P
-		      | demand_flags::DEMAND_LMUL_P
-		      | demand_flags::DEMAND_IME_P;
-	  }
-	else
-	  dflags |= demand_flags::DEMAND_RATIO_P;
-	normalize_demand (dflags);
-	m_lambda = classify_lambda_effect (rinsn);
-	return;
-      }
+    if (parse_ime_helper_insn (rinsn))
+      return;
 
     set_valid ();
     extract_insn_cached (rinsn);
@@ -2200,21 +2137,8 @@ public:
     m_ma = mask_agnostic_p (rinsn);
     if (get_attr_requires_ime_vtype (rinsn) == REQUIRES_IME_VTYPE_YES)
       {
-	m_ime_required = true;
-	m_ime_req = riscv_extract_ime_requirements (rinsn);
+	parse_ime_requirements (rinsn);
 	m_ime_demand = ime_demand_type::ime_vtype;
-	/* For an IME mmacc, the physically encoded vtype.LMUL is the
-	   *input* LMUL (m_ime_req.lmul), not the data-mode LMUL that
-	   ::get_vlmul returned above (which is the accumulator's MUL_C
-	   for widening variants).  Sync m_vlmul/m_ratio with what the
-	   vsetvl_ime emission actually writes, so sew_lmul compatibility
-	   checks against a subsequent non-IME consumer (e.g. vmts.v
-	   demanding VLMUL=m4 after a widening vfwmmacc that left
-	   vtype.LMUL=m1) correctly observe the mismatch and emit a
-	   vtype change.  Non-widening mmacc has input LMUL == acc LMUL
-	   so the override is a no-op there.  */
-	m_vlmul = (vlmul_type) m_ime_req.lmul;
-	m_ratio = calculate_ratio (m_sew, m_vlmul);
       }
     m_lambda = classify_lambda_effect (rinsn);
   }
@@ -2239,160 +2163,8 @@ public:
 	return;
       }
 
-    /* The IME vsetvl helpers (`@vsetvl_ime<mode>',
-       `@vsetvl_ime_reg<mode>') and `@read_vtype<mode>' write the full
-       vtype as a single Pmode value rather than the
-       sew/lmul/ta/ma operand tuple of `@vsetvl<mode>'.  Treat them as
-       opaque vtype writes: do not try to extract sew/vlmul (the
-       computation below would call `calculate_ratio (255, 255)' and
-       ICE).  Mark the state as unknown so any consumer that follows
-       gets a fresh vsetvl insertion as needed.  */
-    /* Force recog if the insn hasn't been recognised yet (freshly emitted
-       insns -- e.g. by `fixup_lambda_clobbering_placeholders' -- have
-       INSN_CODE == -1 until something runs recog on them).  Without this,
-       the early-return cases below would silently fall through and the
-       sew/vlmul extraction would ICE on the helper patterns.  */
-    int code = recog_memoized (insn->rtl ());
-
-    /* `@riscv_vsetvl_preserve_lambda<mode>': decode operand 2 into the
-       SEW/LMUL/ta/ma fields the rest of the pass uses, mark VALID
-       with a `ratio_only' demand profile, and let the LCM treat this
-       insn as a regular vsetvl source for downstream consumers.  The
-       `is_preserve_lambda_p' guards elsewhere ensure the pass does
-       not try to modify or insert before this insn.  See the matching
-       branch in `parse_insn(rtx_insn *)' for full rationale.  */
-    if (code == CODE_FOR_riscv_vsetvl_preserve_lambdadi
-	|| code == CODE_FOR_riscv_vsetvl_preserve_lambdasi)
-      {
-	extract_insn_cached (insn->rtl ());
-	HOST_WIDE_INT vtype_const = INTVAL (recog_data.operand[2]);
-	uint8_t sew;
-	vlmul_type vlmul;
-	bool ta_bit, ma_bit;
-	if (decode_static_vtype_const (vtype_const, &sew, &vlmul, &ta_bit, &ma_bit))
-	  {
-	    set_valid ();
-	    m_avl = recog_data.operand[1];
-	    m_vl = recog_data.operand[0];
-	    dest_vl = m_vl;
-	    m_sew = sew;
-	    m_vlmul = vlmul;
-	    m_ta = ta_bit;
-	    m_ma = ma_bit;
-	    m_ratio = calculate_ratio (m_sew, m_vlmul);
-	    m_max_sew = get_max_int_sew ();
-	    normalize_demand (demand_flags::DEMAND_AVL_P
-			      | demand_flags::DEMAND_RATIO_P);
-	  }
-	else
-	  set_unknown ();
-	m_lambda = lambda_state::make_defined_runtime ();
-	return;
-      }
-
-    /* `@read_vtype<mode>': pure vtype READ.  See the matching branch in
-       `parse_insn(rtx_insn *)' for why we leave the demand state
-       uninitialised instead of marking UNKNOWN.  */
-    if (code == CODE_FOR_read_vtypedi || code == CODE_FOR_read_vtypesi)
-      {
-	m_lambda = lambda_state::make_use_only ();
-	return;
-      }
-
-    /* IME vsetvl helpers carry a packed IME-demand operand (operand 3).
-       Mirror the rtx_insn* variant: expose them as VALID vsetvl sources
-       so downstream IME consumers see their demand already satisfied
-       and no redundant second IME vsetvl is inserted.  See the
-       corresponding branch in `parse_insn(rtx_insn *)' for the layout
-       rationale.  */
-    if (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
-	|| code == CODE_FOR_vsetvl_ime_regdi
-	|| code == CODE_FOR_vsetvl_ime_regsi)
-      {
-	extract_insn_cached (insn->rtl ());
-	bool is_static_path = (code == CODE_FOR_vsetvl_imedi
-			       || code == CODE_FOR_vsetvl_imesi);
-	HOST_WIDE_INT ime_pack = INTVAL (recog_data.operand[3]);
-	ime_vtype_req req = unpack_ime_req (ime_pack);
-	bool have_ime_demand = (req.sew != 0);
-
-	uint8_t sew = 0;
-	vlmul_type vlmul = LMUL_RESERVED;
-	bool ta_bit = true, ma_bit = true;
-
-	if (is_static_path)
-	  {
-	    HOST_WIDE_INT vtype_const = INTVAL (recog_data.operand[2]);
-	    if (!decode_static_vtype_const (vtype_const, &sew, &vlmul,
-					    &ta_bit, &ma_bit))
-	      {
-		set_unknown ();
-		m_lambda = lambda_state::make_killed ();
-		return;
-	      }
-	  }
-	else if (have_ime_demand)
-	  {
-	    sew = req.sew;
-	    vlmul = (vlmul_type) req.lmul;
-	    ta_bit = ma_bit = true;
-	  }
-	else
-	  {
-	    set_unknown ();
-	    m_lambda = lambda_state::make_killed ();
-	    return;
-	  }
-
-	set_valid ();
-	m_avl = recog_data.operand[1];
-	m_vl = recog_data.operand[0];
-	dest_vl = m_vl;
-	m_sew = sew;
-	m_vlmul = vlmul;
-	m_ta = ta_bit;
-	m_ma = ma_bit;
-	m_ratio = calculate_ratio (m_sew, m_vlmul);
-	m_max_sew = get_max_int_sew ();
-	unsigned dflags = demand_flags::DEMAND_AVL_P;
-	if (have_ime_demand)
-	  {
-	    m_ime_required = true;
-	    m_ime_req = req;
-	    m_vlmul = (vlmul_type) m_ime_req.lmul;
-	    m_ratio = calculate_ratio (m_sew, m_vlmul);
-	    dflags |= demand_flags::DEMAND_SEW_P
-		      | demand_flags::DEMAND_LMUL_P
-		      | demand_flags::DEMAND_IME_P;
-	  }
-	else
-	  dflags |= demand_flags::DEMAND_RATIO_P;
-	normalize_demand (dflags);
-	m_lambda = classify_lambda_effect (insn->rtl ());
-	return;
-      }
-
-    /* `riscv_vsetlambda_install' is special: it issues a register-form
-       `vsetvl x0, x0, t' where t is constructed from the current vtype
-       with ONLY the lambda field modified.  All other vtype bits
-       (SEW, LMUL, ratio, ta, ma) are preserved by construction; in
-       SEW/LMUL/policy/AVL demand analysis the install is transparent.
-
-       If we called `set_unknown()' here (as the bug originally did),
-       the demand chain from the upstream vsetvli would break and the
-       pass would re-insert a vsetvli before the next consumer -- and
-       that re-inserted vsetvli would WARL-clobber the lambda we just
-       established.
-
-       Leave m_state UNINITIALIZED so the demand analysis treats this
-       insn as a no-op for (SEW, LMUL, ratio, ta, ma); the lambda
-       lattice in `m_lambda' tracks the actual DEF of vtype.lambda.  */
-    if (code == CODE_FOR_riscv_vsetlambda_installdi
-	|| code == CODE_FOR_riscv_vsetlambda_installsi)
-      {
-	m_lambda = classify_lambda_effect (insn->rtl ());
-	return;
-      }
+    if (parse_ime_helper_insn (insn->rtl ()))
+      return;
 
     /* If this is something that updates VL/VTYPE that we don't know about, set
        the state to unknown.  */
@@ -2451,22 +2223,7 @@ public:
     m_ma = mask_agnostic_p (insn->rtl ());
 
     if (ime_required_p)
-      {
-	m_ime_required = true;
-	m_ime_req = riscv_extract_ime_requirements (insn->rtl ());
-	/* For an IME mmacc, the physically encoded vtype.LMUL is the
-	   *input* LMUL (m_ime_req.lmul), not the data-mode LMUL that
-	   ::get_vlmul returned above (which is the accumulator's MUL_C
-	   for widening variants).  Sync m_vlmul/m_ratio with what the
-	   vsetvl_ime emission actually writes, so sew_lmul compatibility
-	   checks against a subsequent non-IME consumer (e.g. vmts.v
-	   demanding VLMUL=m4 after a widening vfwmmacc that left
-	   vtype.LMUL=m1) correctly observe the mismatch and emit a
-	   vtype change.  Non-widening mmacc has input LMUL == acc LMUL
-	   so the override is a no-op there.  */
-	m_vlmul = (vlmul_type) m_ime_req.lmul;
-	m_ratio = calculate_ratio (m_sew, m_vlmul);
-      }
+      parse_ime_requirements (insn->rtl ());
 
     m_lambda = classify_lambda_effect (insn->rtl ());
 
