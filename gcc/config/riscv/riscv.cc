@@ -14711,12 +14711,29 @@ extract_base_offset_in_addr (rtx mem, rtx *base, rtx *offset)
   return false;
 }
 
-/* Implements target hook vector_mode_supported_any_target_p.  */
+/* Implements target hook vector_mode_supported_any_target_p.  The IME
+   m16 modes are only for the IME intrinsics, which build their types
+   from the mode; while disabled they have a single element and would
+   otherwise be chosen for a one-element generic vector instead of its
+   fixed-length mode.  */
 
 static bool
-riscv_vector_mode_supported_any_target_p (machine_mode)
+riscv_vector_mode_supported_any_target_p (machine_mode mode)
 {
-  return true;
+  switch (mode)
+    {
+    case E_RVVM16QImode:
+    case E_RVVM16HImode:
+    case E_RVVM16BFmode:
+    case E_RVVM16HFmode:
+    case E_RVVM16SImode:
+    case E_RVVM16SFmode:
+    case E_RVVM16DImode:
+    case E_RVVM16DFmode:
+      return false;
+    default:
+      return true;
+    }
 }
 
 /* Implements hook TARGET_FUNCTION_VALUE_REGNO_P.  */
