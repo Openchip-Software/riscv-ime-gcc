@@ -5592,8 +5592,6 @@ function_expander::use_microscaled_insn (insn_code icode, int scales_argno)
   rtx v0 = gen_rtx_REG (GET_MODE (scales_rtx), V_REG_FIRST);
   emit_move_insn (v0, scales_rtx);
 
-  machine_mode mode = TYPE_MODE (TREE_TYPE (exp));
-
   /* No mask/merge for IME microscaled.  */
 
   /* Add all call args except the scales argument.  */
