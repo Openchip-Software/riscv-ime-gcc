@@ -862,11 +862,6 @@ DEF_RVV_BASE_TYPE (ime_fixed_input, get_ime_input_type (type_idx, *this))
 DEF_RVV_BASE_TYPE (ime_scales_vector,
 		   builtin_types[VECTOR_TYPE_vuint16m1_t].vector)
 
-/* IME integer-input base types: always LMUL=1 signed/unsigned int8,
-   used for the integer-input microscaled variants (vfwimmacc etc.).  */
-DEF_RVV_BASE_TYPE (ime_i8_lmul1_vector,
-		   builtin_types[VECTOR_TYPE_vint8m1_t].vector)
-
 /* `void *' / `const void *' for IME `_as_e{S}' tile load/store
    intrinsics: the base pointer is untyped because the
    logical type and storage element width are independent.  These

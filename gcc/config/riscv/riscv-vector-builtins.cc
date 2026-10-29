@@ -781,24 +781,6 @@ static CONSTEXPR const rvv_arg_type_info ime_8wvss_args[]
      ime_input (3, 0), ime_input (3, 0),
      rvv_arg_type_info_end};
 
-/* Args for microscaled FP-input scaled variants: same as
-   the non-scaled variant but with an extra vuint16m1_t scales operand.  */
-static CONSTEXPR const rvv_arg_type_info ime_scaled_fwvss_f8e4m3_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     ime_fixed_input (IME_FORMAT_E4M3, 0),
-     ime_fixed_input (IME_FORMAT_E4M3, 0),
-     rvv_arg_type_info (RVV_BASE_ime_scales_vector),
-     rvv_arg_type_info_end};
-
-/* Args for microscaled integer-input variants: FP accumulator,
-   two int8 inputs, plus vuint16m1_t scales.  */
-static CONSTEXPR const rvv_arg_type_info ime_immacc_i8_args[]
-  = {rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_ime_i8_lmul1_vector),
-     rvv_arg_type_info (RVV_BASE_ime_i8_lmul1_vector),
-     rvv_arg_type_info (RVV_BASE_ime_scales_vector),
-     rvv_arg_type_info_end};
-
 /* A list of args for vector_type func (vector_type, vector_type, vector_type)
  * function.  */
 static CONSTEXPR const rvv_arg_type_info vqq_args[]
@@ -3710,6 +3692,8 @@ static const rvv_type_info f8e5m2_lmul1_ops[]
 #define IME_INPUT_TYPE_E4M3 ime_fixed_input (IME_FORMAT_E4M3, 0)
 #define IME_INPUT_TYPE_E5M2 ime_fixed_input (IME_FORMAT_E5M2, 0)
 #define IME_INPUT_TYPE_E2M1 ime_fixed_input (IME_FORMAT_E2M1, 0)
+#define IME_INPUT_TYPE_I8 ime_fixed_input (IME_FORMAT_I8, 0)
+#define IME_INPUT_TYPE_I4 ime_fixed_input (IME_FORMAT_I4, 0)
 #define IME_MMACC_OPS(NAME, C, A, B)					\
   static CONSTEXPR const rvv_arg_type_info NAME##_ime_args[]		\
     = {rvv_arg_type_info (RVV_BASE_vector),				\
@@ -3720,6 +3704,8 @@ static const rvv_type_info f8e5m2_lmul1_ops[]
 #define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   IME_MMACC_OPS (NAME, C, A, B)
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
+  IME_MMACC_OPS (NAME, C, A, B)
+#define IME_INT_MX_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   IME_MMACC_OPS (NAME, C, A, B)
 #include "zvvm-mmacc.def"
 #undef IME_MMACC_OPS
@@ -3741,22 +3727,24 @@ static const struct
 
 /* Return the operand information for a variant of the IME FP
    multiply-accumulate whose default form (LMUL=1 inputs, m1..m8
-   accumulator) has operands DEF: inputs at LMUL 1 << LM_LOG2 and, if M16
-   is nonzero, the M16th m16 accumulator type list.  Return null if there
-   is no such list.  */
+   accumulator) has operands DEF: inputs at LMUL 1 << LM_LOG2, if M16
+   is nonzero, the M16th m16 accumulator type list, and if MX, the block
+   scales after the inputs.  Return null if there is no such list.  */
 const rvv_op_info *
-ime_fp_mmacc_op_info (const rvv_op_info &def, unsigned lm_log2, unsigned m16)
+ime_fp_mmacc_op_info (const rvv_op_info &def, unsigned lm_log2, unsigned m16,
+		      bool mx)
 {
   struct variant
   {
     const rvv_op_info *def;
     unsigned lm_log2, m16;
+    bool mx;
     rvv_op_info info;
-    rvv_arg_type_info args[4];
+    rvv_arg_type_info args[5];
   };
   static auto_vec<variant *> variants;
 
-  if (lm_log2 == 0 && m16 == 0)
+  if (lm_log2 == 0 && m16 == 0 && !mx)
     return &def;
   const rvv_type_info *acc = def.types;
   if (m16)
@@ -3769,13 +3757,15 @@ ime_fp_mmacc_op_info (const rvv_op_info &def, unsigned lm_log2, unsigned m16)
 	return nullptr;
     }
   for (variant *v : variants)
-    if (v->def == &def && v->lm_log2 == lm_log2 && v->m16 == m16)
+    if (v->def == &def && v->lm_log2 == lm_log2 && v->m16 == m16
+	&& v->mx == mx)
       return &v->info;
-  variant *v = new variant {&def, lm_log2, m16,
+  variant *v = new variant {&def, lm_log2, m16, mx,
 			    {acc, def.op, def.ret, nullptr},
 			    {def.args[0],
 			     ime_input_with_lmul (def.args[1], lm_log2),
 			     ime_input_with_lmul (def.args[2], lm_log2),
+			     mx ? RVV_BASE_ime_scales_vector : NUM_BASE_TYPES,
 			     NUM_BASE_TYPES}};
   v->info.args = v->args;
   variants.safe_push (v);
@@ -3877,35 +3867,6 @@ static CONSTEXPR const rvv_op_info i_ime_8wvss_ops
 static CONSTEXPR const rvv_op_info f_ime_vss_ops
   = {fp_lmul_ge1_ops, OP_TYPE_vv,
      rvv_arg_type_info (RVV_BASE_vector), ime_vss_args};
-
-/* Microscaled FP-input scaled op_info structs.  */
-
-/* vfqmmacc_scaled_f8e4m3: OFP8_E4M3 -> FP32 accumulator, with scales.  */
-static CONSTEXPR const rvv_op_info f32_ime_scaled_qvss_f8e4m3_ops
-  = {f32_lmul_ge1_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f8e4m3_args};
-
-/* vf8wmmacc_scaled_f8e4m3: OFP8_E4M3 -> FP64 accumulator, with scales.  */
-static CONSTEXPR const rvv_op_info f64_ime_scaled_8wvss_f8e4m3_ops
-  = {f64_lmul_ge1_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_scaled_fwvss_f8e4m3_args};
-
-/* Microscaled integer-input op_info structs.  */
-
-/* vfwimmacc_i8: Int8 -> FP16 accumulator, with scales.  */
-static CONSTEXPR const rvv_op_info f16_ime_immacc_i8_ops
-  = {f16_lmul_ge1_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_immacc_i8_args};
-
-/* vfqimmacc_i8: Int8 -> FP32 accumulator, with scales.  */
-static CONSTEXPR const rvv_op_info f32_ime_immacc_i8_ops
-  = {f32_lmul_ge1_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_immacc_i8_args};
-
-/* vf8wimmacc_i8: Int8 -> FP64 accumulator, with scales.  */
-static CONSTEXPR const rvv_op_info f64_ime_immacc_i8_ops
-  = {f64_lmul_ge1_ops, OP_TYPE_vv,
-     rvv_arg_type_info (RVV_BASE_vector), ime_immacc_i8_args};
 
 static CONSTEXPR const rvv_op_info sf_vc_x_ops
   = {full_v_u_ops,					     /* Types */
@@ -4898,7 +4859,8 @@ ime_input_idx (vector_type_index type_idx, const rvv_arg_type_info &arg)
   static const vector_type_index fixed[] = {
     VECTOR_TYPE_vfloat16m1_t, VECTOR_TYPE_vbfloat16m1_t,
     VECTOR_TYPE_vfloat32m1_t, VECTOR_TYPE_vfloat8e4m3m1_t,
-    VECTOR_TYPE_vfloat8e5m2m1_t, VECTOR_TYPE_vfloat4e2m1m1_t
+    VECTOR_TYPE_vfloat8e5m2m1_t, VECTOR_TYPE_vfloat4e2m1m1_t,
+    VECTOR_TYPE_vint8m1_t, VECTOR_TYPE_vint4m1_t
   };
   static const rvv_base_type trunc[] = {
     NUM_BASE_TYPES, RVV_BASE_double_trunc_vector, RVV_BASE_quad_trunc_vector,
@@ -5616,13 +5578,14 @@ function_expander::use_exact_insn (insn_code icode)
 }
 
 /* Implement the call using instruction ICODE for a microscaled
-   IME intrinsic.  SCALES_ARGNO is the index of the block-scale argument
-   (vuint16m1_t v0) in the call expression.  This argument is moved into
-   the v0 register before the instruction is emitted, and is skipped when
-   building the pattern operands (the RTL pattern uses an implicit
-   (use (reg:RVVM1HI V0_REGNUM)) instead of a match_operand).  */
+   IME intrinsic with block size BS.  SCALES_ARGNO is the index of the
+   block-scale argument (vuint16m1_t v0) in the call expression.  This
+   argument is moved into the v0 register before the instruction is
+   emitted, and is skipped when building the pattern operands (the RTL
+   pattern reads (reg:RVVM1HI V0_REGNUM) instead of a match_operand).  */
 rtx
-function_expander::use_microscaled_insn (insn_code icode, int scales_argno)
+function_expander::use_microscaled_insn (insn_code icode, int scales_argno,
+					 int bs)
 {
   /* Move the scales vector into v0.  */
   rtx scales_rtx = expand_normal (CALL_EXPR_ARG (exp, scales_argno));
@@ -5644,13 +5607,15 @@ function_expander::use_microscaled_insn (insn_code icode, int scales_argno)
   add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
 
   /* IME microscaled consumer patterns carry the hidden vtype-source
-     operand at the same trailing position as the non-scaled variants.  */
+     operand at the same trailing position as the non-scaled variants,
+     followed by the block size.  */
   if (base->apply_ime_vtype_op_p ())
     {
       rtx fvX = riscv_ime_get_last_full_vtype ();
       add_input_operand (Pmode, fvX ? fvX : const0_rtx);
       riscv_ime_set_last_full_vtype (NULL_RTX);
     }
+  add_input_operand (Pmode, GEN_INT (bs));
 
   return generate_insn (icode);
 }

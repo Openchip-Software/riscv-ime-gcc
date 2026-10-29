@@ -2355,6 +2355,34 @@ riscv_zvvm_fp_mm_p (int a, machine_mode mode, int bs)
   return riscv_zvvm_mm_p (a < 0 ? c : (riscv_zvvm_format) a, c, bs);
 }
 
+/* Return true if the microscaled Zvvm FP multiply-accumulate with inputs
+   of format A, which are OFP4 or OFP8, an accumulator of mode MODE and
+   block size BS is enabled.  */
+
+bool
+riscv_zvvm_mx_mm_p (int a, machine_mode mode, int bs)
+{
+  if (a == ZVVM_FMT_OFP4)
+    return riscv_zvvm_fp_mm_p (ZVVM_FMT_MXFP4, mode, bs);
+  if (a == ZVVM_FMT_OFP8)
+    return riscv_zvvm_fp_mm_p (ZVVM_FMT_MXFP8, mode, bs);
+  return false;
+}
+
+/* Return true if the microscaled Zvvm integer-input multiply-accumulate
+   with an accumulator of mode MODE, widening factor W and block size BS
+   is enabled.  */
+
+bool
+riscv_zvvm_int_mx_p (machine_mode mode, int w, int bs)
+{
+  int in = GET_MODE_UNIT_BITSIZE (mode) / w;
+  if (in != 4 && in != 8)
+    return false;
+  return riscv_zvvm_fp_mm_p (in == 4 ? ZVVM_FMT_MXINT4 : ZVVM_FMT_MXINT8,
+			     mode, bs);
+}
+
 /* Return true if the Zvvm FP multiply-accumulate with mixed FP16 and
    BF16 inputs and an accumulator of mode MODE is enabled: the
    extensions of both input formats, which have their own accumulator

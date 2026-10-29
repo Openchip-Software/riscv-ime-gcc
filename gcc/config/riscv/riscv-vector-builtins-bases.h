@@ -366,19 +366,9 @@ extern const function_base *const vfmmacc;
   extern const function_base *const NAME;
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   extern const function_base *const NAME;
+#define IME_INT_MX_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
+  extern const function_base *const NAME;
 #include "zvvm-mmacc.def"
-/* Microscaled FP-input scaled variants */
-extern const function_base *const vfqmmacc_scaled_f8e4m3_bs32;
-extern const function_base *const vfqmmacc_scaled_f8e4m3_bs16;
-extern const function_base *const vf8wmmacc_scaled_f8e4m3_bs32;
-extern const function_base *const vf8wmmacc_scaled_f8e4m3_bs16;
-/* Microscaled integer-input variants */
-extern const function_base *const vfwimmacc_i8_bs32;
-extern const function_base *const vfwimmacc_i8_bs16;
-extern const function_base *const vfqimmacc_i8_bs32;
-extern const function_base *const vfqimmacc_i8_bs16;
-extern const function_base *const vf8wimmacc_i8_bs32;
-extern const function_base *const vf8wimmacc_i8_bs16;
 extern const function_base *const vmtl;
 extern const function_base *const vmts;
 extern const function_base *const vmttl;

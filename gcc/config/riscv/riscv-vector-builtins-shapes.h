@@ -66,9 +66,9 @@ extern const function_shape *const sf_vfnrclip;
 extern const function_shape *const sf_vcix_se;
 extern const function_shape *const sf_vcix;
 /* IME (Zvmma) shapes.  */
-extern const function_shape *const ime_mmacc;
 extern const function_shape *const ime_int_mmacc;
 extern const function_shape *const ime_fp_mmacc;
+extern const function_shape *const ime_int_mx_mmacc;
 extern const function_shape *const ime_tile;
 extern const function_shape *const vsetlambda;
 }

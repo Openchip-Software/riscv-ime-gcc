@@ -109,7 +109,6 @@ supports_vectype_p (const function_group_info &group, unsigned int vec_type_idx)
       || *group.shape == shapes::seg_loadstore
       || *group.shape == shapes::seg_indexed_loadstore
       || *group.shape == shapes::seg_fault_load
-      || *group.shape == shapes::ime_mmacc
       || *group.shape == shapes::ime_tile)
     return true;
   return false;
@@ -1535,9 +1534,15 @@ static vector_type_index
 ime_input_type (const function_instance &instance,
 		const rvv_arg_type_info &arg)
 {
-  if (arg.base_type == RVV_BASE_ime_i8_lmul1_vector)
-    return VECTOR_TYPE_vint8m1_t;
   return arg.get_function_type_index (instance.type.index);
+}
+
+/* Return the width of the elements of TYPE.  */
+static int
+ime_bits (vector_type_index type)
+{
+  const char *s = type_suffixes[type].scalar + 1;
+  return atoi (s + (*s == 'b' ? 2 : 1));
 }
 
 /* Return the format of the elements of TYPE, for microscaled inputs if
@@ -1546,7 +1551,7 @@ static riscv_zvvm_format
 ime_format (vector_type_index type, bool mx)
 {
   const char *s = type_suffixes[type].scalar + 1;
-  int bits = atoi (s + (*s == 'b' ? 2 : 1));
+  int bits = ime_bits (type);
   int fmt;
   if (*s == 'i' || *s == 'u')
     fmt = (mx ? ZVVM_FMT_MXINT4 : ZVVM_FMT_Int4) + exact_log2 (bits / 4);
@@ -1559,37 +1564,51 @@ ime_format (vector_type_index type, bool mx)
   return (riscv_zvvm_format) fmt;
 }
 
-/* Return the Zvvm extension of the multiply-accumulate with inputs of
-   types A and B and an accumulator of type C, microscaled with block
-   size BS if BS is nonzero.  */
-static required_ext
+/* Set *EXT to the Zvvm extension of the multiply-accumulate with inputs
+   of types A and B and an accumulator of type C, microscaled with block
+   size BS if BS is nonzero, and return true, or return false if there
+   is none.  */
+static bool
 ime_mm_required_ext (vector_type_index a, vector_type_index b,
-		     vector_type_index c, int bs)
+		     vector_type_index c, int bs, required_ext *ext)
 {
   riscv_zvvm_format fa = ime_format (a, bs), fc = ime_format (c, false);
   /* Mixed FP16 and BF16 inputs require the extensions of both.  */
   if (ime_format (b, bs) != fa)
-    switch (fc)
-      {
-      case ZVVM_FMT_FP16:
-      case ZVVM_FMT_BF16:
-	return ZVVFP16_BF16MM_EXT;
-      case ZVVM_FMT_FP32:
-	return ZVVFP16_BF16FP32MM_EXT;
-      case ZVVM_FMT_FP64:
-	return ZVVFP16_BF16FP64MM_EXT;
-      default:
-	gcc_unreachable ();
-      }
+    {
+      if (bs)
+	return false;
+      switch (fc)
+	{
+	case ZVVM_FMT_FP16:
+	case ZVVM_FMT_BF16:
+	  *ext = ZVVFP16_BF16MM_EXT;
+	  return true;
+	case ZVVM_FMT_FP32:
+	  *ext = ZVVFP16_BF16FP32MM_EXT;
+	  return true;
+	case ZVVM_FMT_FP64:
+	  *ext = ZVVFP16_BF16FP64MM_EXT;
+	  return true;
+	default:
+	  gcc_unreachable ();
+	}
+    }
 #define ZVV_IMM(NAME, UPPER, A, C, ZVE)					\
   if (!bs && fa == ZVVM_FMT_##A && fc == ZVVM_FMT_##C)			\
-    return UPPER##_EXT;
+    {									\
+      *ext = UPPER##_EXT;						\
+      return true;							\
+    }
 #define ZVV_FMM ZVV_IMM
 #define ZVV_XMM(NAME, UPPER, A, C, BS, DEP)				\
   if (bs == BS && fa == ZVVM_FMT_##A && fc == ZVVM_FMT_##C)		\
-    return UPPER##_EXT;
+    {									\
+      *ext = UPPER##_EXT;						\
+      return true;							\
+    }
 #include "riscv-ext-zvv.def"
-  gcc_unreachable ();
+  return false;
 }
 
 struct ime_mmacc_def : public build_base
@@ -1607,9 +1626,10 @@ struct ime_mmacc_def : public build_base
     build_ops (b, group, group.ops_infos);
   }
 
-  /* Register the functions of GROUP with the operands in OPS.  */
+  /* Register the functions of GROUP with the operands in OPS,
+     microscaled with block size BS if BS is nonzero.  */
   static void build_ops (function_builder &b, const function_group_info &group,
-			 const rvv_op_info &ops)
+			 const rvv_op_info &ops, unsigned bs = 0)
   {
     for (unsigned int pred_idx = 0; group.preds[pred_idx] != NUM_PRED_TYPES;
 	 ++pred_idx)
@@ -1621,7 +1641,7 @@ struct ime_mmacc_def : public build_base
 	  function_instance function_instance (group.base_name, *group.base,
 					       *group.shape,
 					       ops.types[vec_type_idx],
-					       group.preds[pred_idx], &ops);
+					       group.preds[pred_idx], &ops, bs);
 	  tree return_type
 	    = ops.ret.get_tree_type (ops.types[vec_type_idx].index);
 	  b.allocate_argument_types (function_instance, argument_types);
@@ -1633,14 +1653,24 @@ struct ime_mmacc_def : public build_base
 	  enum vlmul_type lmul = get_vlmul (TYPE_MODE (return_type));
 	  if (lmul == LMUL_F8 || lmul == LMUL_F4 || lmul == LMUL_F2)
 	    continue;
-	  const char *bs = strstr (group.base_name, "_bs");
-	  required_ext required
-	    = ime_mm_required_ext (ime_input_type (function_instance,
-						   ops.args[1]),
-				   ime_input_type (function_instance,
-						   ops.args[2]),
-				   ops.types[vec_type_idx].index,
-				   bs ? atoi (bs + 3) : 0);
+	  vector_type_index acc = ops.types[vec_type_idx].index;
+	  vector_type_index a = ime_input_type (function_instance,
+						ops.args[1]);
+	  required_ext required;
+	  if (!ime_mm_required_ext (a, ime_input_type (function_instance,
+						       ops.args[2]),
+				    acc, bs, &required))
+	    {
+	      /* Only the microscaled forms can be undefined.  */
+	      gcc_assert (bs);
+	      continue;
+	    }
+	  /* Block size 16 requires W * LMUL <= SEW.  */
+	  if (bs == 16
+	      && (ime_bits (acc) / ime_bits (a)
+		  << get_vlmul (TYPE_MODE (builtin_types[a].vector)))
+		 > ime_bits (acc))
+	    continue;
 	  b.add_overloaded_function (function_instance, *group.shape,
 				     required);
 	  b.add_unique_function (function_instance, (*group.shape), return_type,
@@ -1662,14 +1692,8 @@ struct ime_mmacc_def : public build_base
      prefix.  */
   static constexpr const char *fp_format_tokens[] = {
     "_f8e4m3", "_f8e5m2", "_f4e2m1",
-    "_bf16", "_f16", "_fp16", "_f32",
-    "_i8",
-    nullptr
-  };
-
-  /* Block-scale suffix tokens for microscaled variants.  */
-  static constexpr const char *bs_tokens[] = {
-    "_bs32", "_bs16",
+    "_bf16", "_f16", "_fp16", "_f32", "_f64",
+    "_i8", "_i4",
     nullptr
   };
 
@@ -1684,29 +1708,13 @@ struct ime_mmacc_def : public build_base
 
   static void
   decode_base_name (const char *internal, char *base_buf,
-		    size_t base_buf_sz, const char *&bs_suffix,
-		    const char *&lm_suffix)
+		    size_t base_buf_sz, const char *&lm_suffix)
   {
     size_t ilen = strlen (internal);
     size_t base_len = ilen;
-    bs_suffix = "";
     lm_suffix = "";
 
-    /* First strip any trailing "_bs32" / "_bs16" block-scale suffix.  */
-    for (const char *const *bp = bs_tokens; *bp; ++bp)
-      {
-	size_t tlen = strlen (*bp);
-	if (ilen > tlen
-	    && memcmp (internal + ilen - tlen, *bp, tlen) == 0)
-	  {
-	    bs_suffix = *bp;
-	    ilen -= tlen;
-	    base_len = ilen;
-	    break;
-	  }
-      }
-
-    /* Then strip any trailing "_lm2" / "_lm4" / "_lm8" source-LMUL
+    /* Strip any trailing "_lm2" / "_lm4" / "_lm8" source-LMUL
        suffix.  The token is recorded for re-emission in the canonical
        user-visible name.  */
     for (const char *const *lp = lm_tokens; *lp; ++lp)
@@ -1796,10 +1804,9 @@ struct ime_mmacc_def : public build_base
       return nullptr;
 
     char base_buf[32];
-    const char *bs_suffix;
     const char *lm_suffix;
     decode_base_name (instance.base_name, base_buf, sizeof (base_buf),
-		      bs_suffix, lm_suffix);
+		      lm_suffix);
     (void) lm_suffix;  /* Consumed via the args base type in
 			  ime_input_lmul ().  */
 
@@ -1810,8 +1817,11 @@ struct ime_mmacc_def : public build_base
       sign_suffix = (in.sign == IME_SIGN_SU ? "_su"
 		     : in.sign == IME_SIGN_US ? "_us" : "");
 
-    /* "__riscv_" + <base>.  */
+    /* "__riscv_" + <base>, with the qualifier of the microscaled
+       forms.  */
     b.append_base_name (base_buf);
+    if (instance.variant)
+      b.append_name (mx_qualifier ());
 
     /* Operand suffix ("_vv").  */
     b.append_name (operand_suffixes[instance.op_info->op]);
@@ -1874,14 +1884,23 @@ struct ime_mmacc_def : public build_base
 	    b.append_name (buf);
 	  }
 
-	/* Block-scale suffix ("_bs16" / "_bs32") for microscaled variants.  */
-	if (*bs_suffix)
-	  b.append_name (bs_suffix);
+      }
+
+    /* Block-size suffix ("_bs16" / "_bs32") of the microscaled forms,
+       which their arguments do not determine.  */
+    if (instance.variant)
+      {
+	char buf[8];
+	snprintf (buf, sizeof (buf), "_bs%u", instance.variant);
+	b.append_name (buf);
       }
 
     b.append_name (predication_suffixes[instance.pred]);
     return b.finish_name ();
   }
+
+  /* The qualifier of the microscaled forms after the mnemonic.  */
+  virtual const char *mx_qualifier () const { return ""; }
 };
 
 /* ime_int_mmacc: the IME integer multiply-accumulates (vmmacc, vwmmacc,
@@ -1917,16 +1936,35 @@ struct ime_fp_mmacc_def : public ime_mmacc_def
   void build (function_builder &b,
 	      const function_group_info &group) const override
   {
-    for (unsigned m16 = 0;; m16++)
-      for (unsigned lm_log2 = 0; lm_log2 < 4; lm_log2++)
-	{
-	  const rvv_op_info *ops
-	    = ime_fp_mmacc_op_info (group.ops_infos, lm_log2, m16);
-	  if (!ops)
-	    return;
-	  build_ops (b, group, *ops);
-	}
+    static const unsigned block_sizes[] = {0, 32, 16};
+    for (unsigned bs : block_sizes)
+      if (bs || !mx_only ())
+	for (unsigned m16 = 0;; m16++)
+	  {
+	    if (!ime_fp_mmacc_op_info (group.ops_infos, 0, m16, bs))
+	      break;
+	    for (unsigned lm_log2 = 0; lm_log2 < 4; lm_log2++)
+	      build_ops (b, group,
+			 *ime_fp_mmacc_op_info (group.ops_infos, lm_log2, m16,
+						bs),
+			 bs);
+	  }
   }
+
+  const char *mx_qualifier () const override { return "_scaled"; }
+
+  /* Whether the instructions exist only in microscaled form.  */
+  virtual bool mx_only () const { return false; }
+};
+
+/* ime_int_mx_mmacc: an IME integer-input microscaled multiply-accumulate
+   (vfwimmacc, vfqimmacc or vf8wimmacc) with given accumulator and input
+   formats, which has only the microscaled forms of ime_fp_mmacc and no
+   _scaled qualifier.  */
+struct ime_int_mx_mmacc_def : public ime_fp_mmacc_def
+{
+  const char *mx_qualifier () const override { return ""; }
+  bool mx_only () const override { return true; }
 };
 
 
@@ -1969,9 +2007,9 @@ SHAPE (sf_vqmacc, sf_vqmacc)
 SHAPE (sf_vfnrclip, sf_vfnrclip)
 SHAPE(sf_vcix_se, sf_vcix_se)
 SHAPE(sf_vcix, sf_vcix)
-SHAPE (ime_mmacc, ime_mmacc)
 SHAPE (ime_int_mmacc, ime_int_mmacc)
 SHAPE (ime_fp_mmacc, ime_fp_mmacc)
+SHAPE (ime_int_mx_mmacc, ime_int_mx_mmacc)
 SHAPE (ime_tile, ime_tile)
 SHAPE (vsetlambda, vsetlambda)
 } // end namespace riscv_vector

@@ -25,6 +25,7 @@ along with GCC; see the file COPYING3. If not see
 
      IME_FP_MMACC (NAME, INSN, C, A, B, UNSPEC)
      IME_OFP8_MMACC (NAME, INSN, C, A, B, UNSPEC)
+     IME_INT_MX_MMACC (NAME, INSN, C, A, B, UNSPEC)
 
    NAME is the internal name of the function group and INSN the
    instruction.  C, A and B are the formats of the accumulator and the
@@ -37,6 +38,12 @@ along with GCC; see the file COPYING3. If not see
    single function group, vfmmacc, outside this table.  The rows with
    mixed FP16 and BF16 inputs require the extensions of both.
 
+   The ime_fp_mmacc shape also registers the microscaled forms of the
+   rows that have them (the _scaled intrinsics), at block sizes 32 and
+   16.  IME_INT_MX_MMACC gives the rows of the integer MX encoding map
+   (tbl-intmx-encoding-map), whose instructions exist only in microscaled
+   form; A and B are I8 or I4, which are signed.
+
    gen-zvvm-intrinsics.py reads this file to generate the tests and to
    compare it with the encoding map of the specification.  */
 
@@ -46,6 +53,10 @@ along with GCC; see the file COPYING3. If not see
 
 #ifndef IME_OFP8_MMACC
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)
+#endif
+
+#ifndef IME_INT_MX_MMACC
+#define IME_INT_MX_MMACC(NAME, INSN, C, A, B, UNSPEC)
 #endif
 
 /* vfmmacc.vv (W=1).  */
@@ -136,5 +147,26 @@ IME_OFP8_MMACC (vf8wmmacc_f8e4m3_f8e5m2, vf8wmmacc, FP64, E4M3, E5M2,
 IME_OFP8_MMACC (vf8wmmacc_f8e5m2_f8e4m3, vf8wmmacc, FP64, E5M2, E4M3,
 		UNSPEC_VF8WMMACC_F8E5M2_E4M3)
 
+/* vfwimmacc.vv (W=2).  */
+IME_INT_MX_MMACC (vfwimmacc_fp16_i8, vfwimmacc, FP16, I8, I8,
+		  UNSPEC_VFWIMMACC)
+IME_INT_MX_MMACC (vfwimmacc_bf16_i8, vfwimmacc, BF16, I8, I8,
+		  UNSPEC_VFWIMMACC)
+
+/* vfqimmacc.vv (W=4).  */
+IME_INT_MX_MMACC (vfqimmacc_fp16_i4, vfqimmacc, FP16, I4, I4,
+		  UNSPEC_VFQIMMACC)
+IME_INT_MX_MMACC (vfqimmacc_bf16_i4, vfqimmacc, BF16, I4, I4,
+		  UNSPEC_VFQIMMACC)
+IME_INT_MX_MMACC (vfqimmacc_f32_i8, vfqimmacc, FP32, I8, I8,
+		  UNSPEC_VFQIMMACC)
+
+/* vf8wimmacc.vv (W=8).  */
+IME_INT_MX_MMACC (vf8wimmacc_f32_i4, vf8wimmacc, FP32, I4, I4,
+		  UNSPEC_VF8WIMMACC)
+IME_INT_MX_MMACC (vf8wimmacc_f64_i8, vf8wimmacc, FP64, I8, I8,
+		  UNSPEC_VF8WIMMACC)
+
 #undef IME_FP_MMACC
 #undef IME_OFP8_MMACC
+#undef IME_INT_MX_MMACC

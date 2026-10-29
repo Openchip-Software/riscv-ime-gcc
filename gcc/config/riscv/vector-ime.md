@@ -92,20 +92,11 @@
   UNSPEC_VF8WMMACC_F8E5M2_E4M3	;; vf8wmmacc.vv (W=8, vs1=E5M2, vs2=E4M3 -> FP64)
   UNSPEC_VF8WMMACC_F4E2M1		;; vf8wmmacc.vv (W=8, OFP4_E2M1->FP32)
 
-  ;; Microscaled FP-input variants: the mnemonics of the unscaled ones,
-  ;; with the block scales in v0 and the bs vtype bit set.
-  UNSPEC_VFQMMACC_F8E4M3_BS32	;; vfqmmacc.vv scaled, OFP8_E4M3->FP32, BS=32
-  UNSPEC_VFQMMACC_F8E4M3_BS16	;; vfqmmacc.vv scaled, OFP8_E4M3->FP32, BS=16
-  UNSPEC_VF8WMMACC_F8E4M3_BS32	;; vf8wmmacc.vv scaled, OFP8_E4M3->FP64, BS=32
-  UNSPEC_VF8WMMACC_F8E4M3_BS16	;; vf8wmmacc.vv scaled, OFP8_E4M3->FP64, BS=16
-
-  ;; Microscaled integer-input variants.
-  UNSPEC_VFWIMMACC_I8_BS32	;; vfwimmacc.vv, Int8->FP16, BS=32
-  UNSPEC_VFWIMMACC_I8_BS16	;; vfwimmacc.vv, Int8->FP16, BS=16
-  UNSPEC_VFQIMMACC_I8_BS32	;; vfqimmacc.vv, Int8->FP32, BS=32
-  UNSPEC_VFQIMMACC_I8_BS16	;; vfqimmacc.vv, Int8->FP32, BS=16
-  UNSPEC_VF8WIMMACC_I8_BS32	;; vf8wimmacc.vv, Int8->FP64, BS=32
-  UNSPEC_VF8WIMMACC_I8_BS16	;; vf8wimmacc.vv, Int8->FP64, BS=16
+  ;; Microscaled integer-input multiply-accumulates (MXINT4, MXINT8).
+  ;; The microscaled FP-input ones use the UNSPECs of the unscaled ones.
+  UNSPEC_VFWIMMACC		;; vfwimmacc.vv (W=2)
+  UNSPEC_VFQIMMACC		;; vfqimmacc.vv (W=4)
+  UNSPEC_VF8WIMMACC		;; vf8wimmacc.vv (W=8)
 
   ;; Register-form vsetvl used to establish the full vtype value for IME
   ;; instructions (lambda, altfmt_A, altfmt_B, altfmt, bs in addition to the
@@ -438,21 +429,13 @@
    UNSPEC_VFWMMACC_F16_BF16 UNSPEC_VFWMMACC_BF16_F16
    UNSPEC_VFQMMACC_F16_BF16 UNSPEC_VFQMMACC_BF16_F16])
 
-;; The microscaled FP multiply-accumulates: one UNSPEC for each
-;; instruction, input format and block size.
-(define_int_iterator IME_SCALED_MMACC
-  [UNSPEC_VFQMMACC_F8E4M3_BS32 UNSPEC_VFQMMACC_F8E4M3_BS16
-   UNSPEC_VF8WMMACC_F8E4M3_BS32 UNSPEC_VF8WMMACC_F8E4M3_BS16
-   UNSPEC_VFWIMMACC_I8_BS32 UNSPEC_VFWIMMACC_I8_BS16
-   UNSPEC_VFQIMMACC_I8_BS32 UNSPEC_VFQIMMACC_I8_BS16
-   UNSPEC_VF8WIMMACC_I8_BS32 UNSPEC_VF8WIMMACC_I8_BS16])
+;; The microscaled integer-input multiply-accumulates, and their
+;; widening factor W.
+(define_int_iterator IME_INT_MX
+  [UNSPEC_VFWIMMACC UNSPEC_VFQIMMACC UNSPEC_VF8WIMMACC])
 
-(define_int_attr ime_scaled_bs
-  [(UNSPEC_VFQMMACC_F8E4M3_BS32 "32") (UNSPEC_VFQMMACC_F8E4M3_BS16 "16")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS32 "32") (UNSPEC_VF8WMMACC_F8E4M3_BS16 "16")
-   (UNSPEC_VFWIMMACC_I8_BS32 "32") (UNSPEC_VFWIMMACC_I8_BS16 "16")
-   (UNSPEC_VFQIMMACC_I8_BS32 "32") (UNSPEC_VFQIMMACC_I8_BS16 "16")
-   (UNSPEC_VF8WIMMACC_I8_BS32 "32") (UNSPEC_VF8WIMMACC_I8_BS16 "16")])
+(define_int_attr ime_int_mx_w
+  [(UNSPEC_VFWIMMACC "2") (UNSPEC_VFQIMMACC "4") (UNSPEC_VF8WIMMACC "8")])
 
 ;; The input format of each FP multiply-accumulate, as riscv_zvvm_format
 ;; names it.
@@ -474,12 +457,7 @@
    (UNSPEC_VFQMMACC_F8E4M3_E5M2 "OFP8") (UNSPEC_VFQMMACC_F8E5M2_E4M3 "OFP8")
    (UNSPEC_VF8WMMACC_F8E4M3 "OFP8") (UNSPEC_VF8WMMACC_F8E5M2 "OFP8")
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "OFP8") (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "OFP8")
-   (UNSPEC_VF8WMMACC_F4E2M1 "OFP4")
-   (UNSPEC_VFQMMACC_F8E4M3_BS32 "MXFP8") (UNSPEC_VFQMMACC_F8E4M3_BS16 "MXFP8")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS32 "MXFP8") (UNSPEC_VF8WMMACC_F8E4M3_BS16 "MXFP8")
-   (UNSPEC_VFWIMMACC_I8_BS32 "MXINT8") (UNSPEC_VFWIMMACC_I8_BS16 "MXINT8")
-   (UNSPEC_VFQIMMACC_I8_BS32 "MXINT8") (UNSPEC_VFQIMMACC_I8_BS16 "MXINT8")
-   (UNSPEC_VF8WIMMACC_I8_BS32 "MXINT8") (UNSPEC_VF8WIMMACC_I8_BS16 "MXINT8")])
+   (UNSPEC_VF8WMMACC_F4E2M1 "OFP4")])
 
 ;; The pattern name and the instruction of each multiply-accumulate.
 (define_int_attr ime_mmacc
@@ -533,16 +511,8 @@
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "vf8wmmacc_f8e4m3_e5m2")
    (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "vf8wmmacc_f8e5m2_e4m3")
    (UNSPEC_VF8WMMACC_F4E2M1 "vf8wmmacc_f4e2m1")
-   (UNSPEC_VFQMMACC_F8E4M3_BS32 "vfqmmacc_scaled_f8e4m3_bs32")
-   (UNSPEC_VFQMMACC_F8E4M3_BS16 "vfqmmacc_scaled_f8e4m3_bs16")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS32 "vf8wmmacc_scaled_f8e4m3_bs32")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS16 "vf8wmmacc_scaled_f8e4m3_bs16")
-   (UNSPEC_VFWIMMACC_I8_BS32 "vfwimmacc_i8_bs32")
-   (UNSPEC_VFWIMMACC_I8_BS16 "vfwimmacc_i8_bs16")
-   (UNSPEC_VFQIMMACC_I8_BS32 "vfqimmacc_i8_bs32")
-   (UNSPEC_VFQIMMACC_I8_BS16 "vfqimmacc_i8_bs16")
-   (UNSPEC_VF8WIMMACC_I8_BS32 "vf8wimmacc_i8_bs32")
-   (UNSPEC_VF8WIMMACC_I8_BS16 "vf8wimmacc_i8_bs16")])
+   (UNSPEC_VFWIMMACC "vfwimmacc") (UNSPEC_VFQIMMACC "vfqimmacc")
+   (UNSPEC_VF8WIMMACC "vf8wimmacc")])
 
 (define_int_attr ime_mmacc_insn
   [(UNSPEC_VMMACC_S "vmmacc") (UNSPEC_VMMACC_U "vmmacc")
@@ -585,16 +555,8 @@
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "vf8wmmacc")
    (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "vf8wmmacc")
    (UNSPEC_VF8WMMACC_F4E2M1 "vf8wmmacc")
-   (UNSPEC_VFQMMACC_F8E4M3_BS32 "vfqmmacc")
-   (UNSPEC_VFQMMACC_F8E4M3_BS16 "vfqmmacc")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS32 "vf8wmmacc")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS16 "vf8wmmacc")
-   (UNSPEC_VFWIMMACC_I8_BS32 "vfwimmacc")
-   (UNSPEC_VFWIMMACC_I8_BS16 "vfwimmacc")
-   (UNSPEC_VFQIMMACC_I8_BS32 "vfqimmacc")
-   (UNSPEC_VFQIMMACC_I8_BS16 "vfqimmacc")
-   (UNSPEC_VF8WIMMACC_I8_BS32 "vf8wimmacc")
-   (UNSPEC_VF8WIMMACC_I8_BS16 "vf8wimmacc")])
+   (UNSPEC_VFWIMMACC "vfwimmacc") (UNSPEC_VFQIMMACC "vfqimmacc")
+   (UNSPEC_VF8WIMMACC "vf8wimmacc")])
 
 ;; The widening factor W of each integer multiply-accumulate and the
 ;; signedness of its inputs, as the ime_altfmt value.
@@ -643,17 +605,7 @@
    (UNSPEC_VFQMMACC_F8E4M3_E5M2 "SF") (UNSPEC_VFQMMACC_F8E5M2_E4M3 "SF")
    (UNSPEC_VF8WMMACC_F8E4M3 "DF") (UNSPEC_VF8WMMACC_F8E5M2 "DF")
    (UNSPEC_VF8WMMACC_F8E4M3_E5M2 "DF") (UNSPEC_VF8WMMACC_F8E5M2_E4M3 "DF")
-   (UNSPEC_VF8WMMACC_F4E2M1 "SF")
-   (UNSPEC_VFQMMACC_F8E4M3_BS32 "SF")
-   (UNSPEC_VFQMMACC_F8E4M3_BS16 "SF")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS32 "DF")
-   (UNSPEC_VF8WMMACC_F8E4M3_BS16 "DF")
-   (UNSPEC_VFWIMMACC_I8_BS32 "HF")
-   (UNSPEC_VFWIMMACC_I8_BS16 "HF")
-   (UNSPEC_VFQIMMACC_I8_BS32 "SF")
-   (UNSPEC_VFQIMMACC_I8_BS16 "SF")
-   (UNSPEC_VF8WIMMACC_I8_BS32 "DF")
-   (UNSPEC_VF8WIMMACC_I8_BS16 "DF")])
+   (UNSPEC_VF8WMMACC_F4E2M1 "SF")])
 
 (define_int_attr ime_fp_mmacc_altfmt
   [(UNSPEC_VFMMACC_F8_E4M3_E4M3_E4M3 "e4m3_e4m3_e4m3")
@@ -1167,17 +1119,17 @@
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
 
 ;; ---------------------------------------------------------------------------
-;; Microscaled FP matrix multiply-accumulate
+;; Microscaled matrix multiply-accumulate
 ;; ---------------------------------------------------------------------------
 ;;
-;; The microscaled versions of vfqmmacc and vf8wmmacc (OFP8 inputs), and
-;; the integer-input vfwimmacc, vfqimmacc and vf8wimmacc, at BS=32 and
-;; BS=16.  The block scales (vuint16m1_t) must be in v0: the expander
-;; moves them there and the pattern refers to v0 through a use.  The
-;; UNSPEC selects the instruction, the accumulator element mode and the
-;; bs vtype bit.
-(define_insn "@pred_ime_mmacc_<ime_mmacc><mode>"
-  [(set (match_operand:IME_FP_ACC 0 "register_operand" "=&vr")
+;; The microscaled versions of vfwmmacc, vfqmmacc and vf8wmmacc, whose
+;; UNSPECs are those of the unscaled ones, and the integer-input
+;; vfwimmacc, vfqimmacc and vf8wimmacc.  The block scales (vuint16m1_t)
+;; must be in v0: the expander moves them there.  Operand 8 is the block
+;; size, 32 or 16, which the bs vtype bit selects.  vd, vs1 and vs2 may
+;; not overlap v0.
+(define_insn "@pred_ime_mmacc_scaled_<ime_mmacc><mode>"
+  [(set (match_operand:IME_FP_ACC 0 "register_operand" "=&vd")
 	(if_then_else:IME_FP_ACC
 	  (unspec:<VM>
 	    [(match_operand 4 "vector_length_operand" " rK")
@@ -1188,18 +1140,53 @@
 	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:IME_FP_ACC
 	    [(match_operand:IME_FP_ACC 1 "register_operand" "  0")
-	     (match_operand 2 "ime_mmacc_input_operand" " vr")
-	     (match_operand 3 "ime_mmacc_input_operand" " vr")]
-	    IME_SCALED_MMACC)
+	     (match_operand 2 "ime_mmacc_input_operand" " vd")
+	     (match_operand 3 "ime_mmacc_input_operand" " vd")
+	     (reg:RVVM1HI V0_REGNUM)
+	     (match_operand 8 "const_int_operand" "  i")]
+	    IME_FP_MMACC)
 	  (match_dup 1)))
-   (use (reg:RVVM1HI V0_REGNUM))
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
   "GET_MODE_INNER (<MODE>mode) == <ime_fp_acc>mode
-   && riscv_zvvm_fp_mm_p (ZVVM_FMT_<ime_fp_in>, <MODE>mode, <ime_scaled_bs>)"
+   && riscv_zvvm_mx_mm_p (ZVVM_FMT_<ime_fp_in>, <MODE>mode,
+			  INTVAL (operands[8]))"
   "<ime_mmacc_insn>.vv\t%0,%2,%3,v0.scale"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
-   (set_attr "ime_bs" "bs<ime_scaled_bs>")
+   (set_attr "ime_fp_altfmt" "<ime_fp_mmacc_altfmt>")
+   (set (attr "ime_bs")
+	(symbol_ref "INTVAL (operands[8]) == 16 ? IME_BS_BS16 : IME_BS_BS32"))
+   (set_attr "ime_vtype_op_idx" "7")
+   (set_attr "mode" "<MODE>")
+   (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])
+
+;; The integer-input ones have signed inputs and an FP16, BF16, FP32 or
+;; FP64 accumulator.
+(define_insn "@pred_ime_mmacc_scaled_<ime_mmacc><mode>"
+  [(set (match_operand:VFMMACC_ACC 0 "register_operand" "=&vd")
+	(if_then_else:VFMMACC_ACC
+	  (unspec:<VM>
+	    [(match_operand 4 "vector_length_operand" " rK")
+	     (match_operand 5 "const_int_operand"     "  i")
+	     (match_operand 6 "const_int_operand"     "  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI FRM_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:VFMMACC_ACC
+	    [(match_operand:VFMMACC_ACC 1 "register_operand" "  0")
+	     (match_operand 2 "ime_mmacc_input_operand" " vd")
+	     (match_operand 3 "ime_mmacc_input_operand" " vd")
+	     (reg:RVVM1HI V0_REGNUM)
+	     (match_operand 8 "const_int_operand" "  i")]
+	    IME_INT_MX)
+	  (match_dup 1)))
+   (use (match_operand 7 "vtype_op_operand" "rJ"))]
+  "riscv_zvvm_int_mx_p (<MODE>mode, <ime_int_mx_w>, INTVAL (operands[8]))"
+  "<ime_mmacc_insn>.vv\t%0,%2,%3,v0.scale"
+  [(set_attr "type" "vmmacc")
+   (set_attr "requires_ime_vtype" "yes")
+   (set (attr "ime_bs")
+	(symbol_ref "INTVAL (operands[8]) == 16 ? IME_BS_BS16 : IME_BS_BS32"))
    (set_attr "ime_vtype_op_idx" "7")
    (set_attr "mode" "<MODE>")
    (set (attr "frm_mode") (symbol_ref "riscv_vector::FRM_DYN"))])

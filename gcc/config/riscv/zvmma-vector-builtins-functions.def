@@ -59,13 +59,17 @@ DEF_RVV_FUNCTION (v8wmmacc, ime_int_mmacc, none_tu_preds, i_ime_8wvss_ops)
 /* FP multiply-accumulates.  Each ime_fp_mmacc entry is one combination
    of accumulator and input formats, given in its default form (LMUL=1
    inputs, m1..m8 accumulator); the shape registers its _lm{2,4,8} and
-   m16-accumulator forms.  Except for the same-format FP16, BF16, FP32
-   and FP64 vfmmacc, they come from zvvm-mmacc.def.  */
+   m16-accumulator forms and its microscaled forms, if any.  Except for
+   the same-format FP16, BF16, FP32 and FP64 vfmmacc, they come from
+   zvvm-mmacc.def, as do the integer-input microscaled ones, which the
+   ime_int_mx_mmacc shape registers in microscaled form only.  */
 DEF_RVV_FUNCTION (vfmmacc,     ime_fp_mmacc, none_tu_preds, f_ime_vss_ops)
 #define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   DEF_RVV_FUNCTION (NAME, ime_fp_mmacc, none_tu_preds, NAME##_ime_ops)
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   DEF_RVV_FUNCTION (NAME, ime_fp_mmacc, none_tu_preds, NAME##_ime_ops)
+#define IME_INT_MX_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
+  DEF_RVV_FUNCTION (NAME, ime_int_mx_mmacc, none_tu_preds, NAME##_ime_ops)
 #include "zvvm-mmacc.def"
 /* IME FP / OFP8 `pair' / `unpair' primitives at m16.  Mirror the
    integer i_/u_ entries above for each FP / OFP8 element type.
@@ -92,34 +96,6 @@ DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f64_ime_vunpair_op
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e4m3_ime_vunpair_ops)
 DEF_RVV_FUNCTION (ime_vunpairhi, ime_pair_unpair, none_preds, f8e5m2_ime_vunpair_ops)
 
-/* Microscaled multiply-accumulates, gated on the Zvvx* (BS=32) or
-   Zvvxn* (BS=16) extension.  */
-/* vfqmmacc_scaled (W=4): OFP8_E4M3 -> FP32, with block scales.  */
-DEF_RVV_FUNCTION (vfqmmacc_scaled_f8e4m3_bs32, ime_mmacc, none_tu_preds,
-		  f32_ime_scaled_qvss_f8e4m3_ops)
-DEF_RVV_FUNCTION (vfqmmacc_scaled_f8e4m3_bs16, ime_mmacc, none_tu_preds,
-		  f32_ime_scaled_qvss_f8e4m3_ops)
-/* vf8wmmacc_scaled (W=8): OFP8_E4M3 -> FP64, with block scales.  */
-DEF_RVV_FUNCTION (vf8wmmacc_scaled_f8e4m3_bs32, ime_mmacc, none_tu_preds,
-		  f64_ime_scaled_8wvss_f8e4m3_ops)
-DEF_RVV_FUNCTION (vf8wmmacc_scaled_f8e4m3_bs16, ime_mmacc, none_tu_preds,
-		  f64_ime_scaled_8wvss_f8e4m3_ops)
-/* Integer-input microscaled variants (NEW instructions).  */
-/* vfwimmacc (W=2): Int8 -> FP16, with block scales.  */
-DEF_RVV_FUNCTION (vfwimmacc_i8_bs32, ime_mmacc, none_tu_preds,
-		  f16_ime_immacc_i8_ops)
-DEF_RVV_FUNCTION (vfwimmacc_i8_bs16, ime_mmacc, none_tu_preds,
-		  f16_ime_immacc_i8_ops)
-/* vfqimmacc (W=4): Int8 -> FP32, with block scales.  */
-DEF_RVV_FUNCTION (vfqimmacc_i8_bs32, ime_mmacc, none_tu_preds,
-		  f32_ime_immacc_i8_ops)
-DEF_RVV_FUNCTION (vfqimmacc_i8_bs16, ime_mmacc, none_tu_preds,
-		  f32_ime_immacc_i8_ops)
-/* vf8wimmacc (W=8): Int8 -> FP64, with block scales.  */
-DEF_RVV_FUNCTION (vf8wimmacc_i8_bs32, ime_mmacc, none_tu_preds,
-		  f64_ime_immacc_i8_ops)
-DEF_RVV_FUNCTION (vf8wimmacc_i8_bs16, ime_mmacc, none_tu_preds,
-		  f64_ime_immacc_i8_ops)
 #undef REQUIRED_EXTENSIONS
 
 /* Zvvmtls -- Order-preserving tile load (vmtl.v) and store (vmts.v).

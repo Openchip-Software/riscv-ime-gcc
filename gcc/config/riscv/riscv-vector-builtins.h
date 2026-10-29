@@ -436,7 +436,9 @@ enum ime_input_format
   IME_FORMAT_FP32,
   IME_FORMAT_E4M3,
   IME_FORMAT_E5M2,
-  IME_FORMAT_E2M1
+  IME_FORMAT_E2M1,
+  IME_FORMAT_I8,
+  IME_FORMAT_I4
 };
 
 /* An input of an IME multiply-accumulate derived from the accumulator
@@ -599,7 +601,7 @@ bool ime_int_mmacc_input (const function_instance &, ime_int_input *);
 const rvv_op_info *ime_int_mmacc_op_info (unsigned, ime_int_sign, unsigned,
 					  bool);
 const rvv_op_info *ime_fp_mmacc_op_info (const rvv_op_info &, unsigned,
-					 unsigned);
+					 unsigned, bool);
 
 /* The function_instance::variant of an IME tile load or store encodes
    its _L{N} suffix as 1 + log2 (N), or 0 without one, and its _as_e{S}
@@ -717,7 +719,7 @@ public:
   machine_mode ret_mode (void) const;
 
   rtx use_exact_insn (insn_code);
-  rtx use_microscaled_insn (insn_code, int scales_argno);
+  rtx use_microscaled_insn (insn_code, int scales_argno, int bs);
   void add_microscaled_tail_and_avl ();
   int prepare_contiguous_load_insn ();
   rtx use_contiguous_load_insn (insn_code, rtx = NULL_RTX, rtx = NULL_RTX);

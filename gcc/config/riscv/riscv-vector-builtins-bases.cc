@@ -3116,12 +3116,36 @@ static CONSTEXPR const ime_vunpairhi ime_vunpairhi_obj;
 static CONSTEXPR const ime_vpair     ime_vpair_obj;
 
 
+/* Report an error if the microscaled IME multiply-accumulate E, at a
+   known VLEN, has SEW * lambda < 16, which the specification reserves
+   for vm=0.  */
+
+static void
+check_ime_mx_lambda (function_expander &e)
+{
+  if (!BYTES_PER_RISCV_VECTOR.is_constant ())
+    return;
+  machine_mode mode = e.vector_mode ();
+  HOST_WIDE_INT sew = GET_MODE_UNIT_BITSIZE (mode);
+  HOST_WIDE_INT vlen = BYTES_PER_RISCV_VECTOR.to_constant () * 8;
+  HOST_WIDE_INT mul_c
+    = exact_div (GET_MODE_SIZE (mode), BYTES_PER_RISCV_VECTOR).to_constant ();
+  /* SEW * lambda >= 16 if SEW^2 * lambda^2 >= 256.  */
+  if (sew * vlen / mul_c < 256)
+    error_at (EXPR_LOCATION (e.exp),
+	      "%qD requires %<SEW * lambda%> of at least 16, which this "
+	      "accumulator type does not have at %<VLEN%>=%wd",
+	      e.fndecl, vlen);
+}
+
 /* IME FP matrix multiply-accumulate (vfmmacc.vv, vfwmmacc.vv,
    vfqmmacc.vv and vf8wmmacc.vv) for one combination of accumulator
-   and input formats, selected by UNSPEC.  One object covers the forms
-   with input LMUL 1, 2, 4 and 8 and with m1..m8 and m16 accumulators.
-   The OFP8 formats share QImode, so their altfmt bits come from the
-   UNSPEC and they have no overloaded forms.  */
+   and input formats, selected by UNSPEC, and the integer-input
+   microscaled ones (vfwimmacc.vv, vfqimmacc.vv and vf8wimmacc.vv).  One
+   object covers the forms with input LMUL 1, 2, 4 and 8, with m1..m8
+   and m16 accumulators, and microscaled with the block size given by
+   the function_instance::variant, or not if that is zero.  The OFP8
+   formats share QImode, so their altfmt bits come from the UNSPEC.  */
 class ime_fp_mmacc_op : public function_base
 {
 public:
@@ -3133,23 +3157,27 @@ public:
   bool use_mask_predication_p () const override { return false; }
   bool has_merge_operand_p () const override { return false; }
   bool apply_ime_vtype_op_p () const override { return true; }
-  bool can_be_overloaded_p (enum predication_type_index) const override
-  {
-    return !m_ofp8;
-  }
 
   rtx expand (function_expander &e) const override
   {
     ime_ofp8_altfmt af = {false, false, false};
     if (m_ofp8)
       af = ime_unspec_ofp8_altfmt (m_unspec);
+    int bs = e.variant;
+    if (bs)
+      check_ime_mx_lambda (e);
     maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
 				  /* is_tile_op = */ false,
-				  af.a, af.b, af.val,
-				  /* bs = */ false);
-    rtx result
-      = e.use_exact_insn (code_for_pred_ime_mmacc (m_unspec,
-						    e.vector_mode ()));
+				  af.a, af.b, af.val, bs == 16);
+    rtx result;
+    if (bs)
+      /* The block scales are the argument before vl.  */
+      result = e.use_microscaled_insn
+	(code_for_pred_ime_mmacc_scaled (m_unspec, e.vector_mode ()),
+	 call_expr_nargs (e.exp) - 2, bs);
+    else
+      result = e.use_exact_insn (code_for_pred_ime_mmacc (m_unspec,
+							   e.vector_mode ()));
     emit_ime_post_consumer_blockage ();
     return result;
   }
@@ -3165,96 +3193,9 @@ static CONSTEXPR const ime_fp_mmacc_op vfmmacc_obj (UNSPEC_VFMMACC, false);
   static CONSTEXPR const ime_fp_mmacc_op NAME##_obj (UNSPEC, false);
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
   static CONSTEXPR const ime_fp_mmacc_op NAME##_obj (UNSPEC, true);
+#define IME_INT_MX_MMACC(NAME, INSN, C, A, B, UNSPEC)			\
+  static CONSTEXPR const ime_fp_mmacc_op NAME##_obj (UNSPEC, false);
 #include "zvvm-mmacc.def"
-
-/* Microscaled function base class.
-
-   The microscaled intrinsics have an extra vuint16m1_t scales operand
-   (the second-to-last argument, before vl) that must be placed in v0.
-   The RTL pattern does not have a match_operand for the scales; instead
-   it has a (use (reg:RVVM1HI V0_REGNUM)) side-effect.
-
-   This base class provides a custom expand() that delegates to the
-   function_expander::use_microscaled_insn() helper, which moves the
-   scales into v0 and builds the pattern operands skipping the scales
-   argument.  */
-/* Return true if the microscaled UNSPEC uses block size 16, which the
-   vtype bs bit selects when set; block size 32 has bs = 0.  */
-
-static bool
-ime_unspec_bs16_p (int unspec)
-{
-  switch (unspec)
-    {
-    case UNSPEC_VFQMMACC_F8E4M3_BS16:
-    case UNSPEC_VF8WMMACC_F8E4M3_BS16:
-    case UNSPEC_VFWIMMACC_I8_BS16:
-    case UNSPEC_VFQIMMACC_I8_BS16:
-    case UNSPEC_VF8WIMMACC_I8_BS16:
-      return true;
-    default:
-      return false;
-    }
-}
-
-class microscaled_ime_op : public function_base
-{
-public:
-  CONSTEXPR microscaled_ime_op (int unspec) : m_unspec (unspec) {}
-
-  bool apply_mask_policy_p () const override { return false; }
-  bool use_mask_predication_p () const override { return false; }
-  bool has_merge_operand_p () const override { return false; }
-  bool apply_ime_vtype_op_p () const override { return true; }
-  bool can_be_overloaded_p (enum predication_type_index) const override
-  { return false; }
-
-  rtx expand (function_expander &e) const override
-  {
-    maybe_emit_ime_runtime_vtype (e, e.vector_mode (),
-				  /* is_tile_op = */ false,
-				  /* altfmt_a = */ false,
-				  /* altfmt_b = */ false,
-				  /* altfmt = */ false,
-				  /* bs = */ ime_unspec_bs16_p (m_unspec));
-    /* The scales argument is the second-to-last (before vl).  */
-    int scales_idx = call_expr_nargs (e.exp) - 2;
-    insn_code icode = code_for_pred_ime_mmacc (m_unspec, e.vector_mode ());
-    rtx result = e.use_microscaled_insn (icode, scales_idx);
-    emit_ime_post_consumer_blockage ();
-    return result;
-  }
-
-private:
-  int m_unspec;
-};
-
-/* FP-input scaled variant instances.  */
-static CONSTEXPR const microscaled_ime_op vfqmmacc_scaled_f8e4m3_bs32_obj
-  (UNSPEC_VFQMMACC_F8E4M3_BS32);
-static CONSTEXPR const microscaled_ime_op vfqmmacc_scaled_f8e4m3_bs16_obj
-  (UNSPEC_VFQMMACC_F8E4M3_BS16);
-
-static CONSTEXPR const microscaled_ime_op vf8wmmacc_scaled_f8e4m3_bs32_obj
-  (UNSPEC_VF8WMMACC_F8E4M3_BS32);
-static CONSTEXPR const microscaled_ime_op vf8wmmacc_scaled_f8e4m3_bs16_obj
-  (UNSPEC_VF8WMMACC_F8E4M3_BS16);
-
-/* Integer-input microscaled variant instances.  */
-static CONSTEXPR const microscaled_ime_op vfwimmacc_i8_bs32_obj
-  (UNSPEC_VFWIMMACC_I8_BS32);
-static CONSTEXPR const microscaled_ime_op vfwimmacc_i8_bs16_obj
-  (UNSPEC_VFWIMMACC_I8_BS16);
-
-static CONSTEXPR const microscaled_ime_op vfqimmacc_i8_bs32_obj
-  (UNSPEC_VFQIMMACC_I8_BS32);
-static CONSTEXPR const microscaled_ime_op vfqimmacc_i8_bs16_obj
-  (UNSPEC_VFQIMMACC_I8_BS16);
-
-static CONSTEXPR const microscaled_ime_op vf8wimmacc_i8_bs32_obj
-  (UNSPEC_VF8WIMMACC_I8_BS32);
-static CONSTEXPR const microscaled_ime_op vf8wimmacc_i8_bs16_obj
-  (UNSPEC_VF8WIMMACC_I8_BS16);
 
 /* Implements __riscv_ime_vlen(): returns VLEN in bits.
    Compile-time constant when VLEN is known, otherwise csrr vlenb << 3.  */
@@ -3894,19 +3835,8 @@ BASE (v8wmmacc)
 BASE (vfmmacc)
 #define IME_FP_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
 #define IME_OFP8_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
+#define IME_INT_MX_MMACC(NAME, INSN, C, A, B, UNSPEC) BASE (NAME)
 #include "zvvm-mmacc.def"
-/* Microscaled FP-input scaled variants */
-BASE (vfqmmacc_scaled_f8e4m3_bs32)
-BASE (vfqmmacc_scaled_f8e4m3_bs16)
-BASE (vf8wmmacc_scaled_f8e4m3_bs32)
-BASE (vf8wmmacc_scaled_f8e4m3_bs16)
-/* Microscaled integer-input variants */
-BASE (vfwimmacc_i8_bs32)
-BASE (vfwimmacc_i8_bs16)
-BASE (vfqimmacc_i8_bs32)
-BASE (vfqimmacc_i8_bs16)
-BASE (vf8wimmacc_i8_bs32)
-BASE (vf8wimmacc_i8_bs16)
 BASE (ime_vlen)
 BASE (ime_lambda)
 BASE (vsetlambda)
