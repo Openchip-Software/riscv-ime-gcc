@@ -5,7 +5,7 @@ typedef __SIZE_TYPE__ size_t;
 #pragma riscv intrinsic "vector"
 
 /* Microscaled FP-input scaled variants (section 8).
-   These emit the same mnemonic as the section 7 FP mmacc but with ,v0.t
+   These emit the same mnemonic as the section 7 FP mmacc but with ,v0.scale
    suffix to indicate the block-scale vector is present in v0.  */
 
 /* vfwmmacc_scaled FP16 -> FP32, BS=32.
@@ -85,7 +85,7 @@ fqimmacc_i8_bs16 (vfloat32m2_t vd, vint8m1_t a, vint8m1_t b,
   return __riscv_vfqimmacc_vv_f32m2_i8m1_bs16 (vd, a, b, v0, vl);
 }
 
-/* { dg-final { scan-assembler-times {\tvfwmmacc\.vv\t[^\n]*,v0\.t} 2 } } */
-/* { dg-final { scan-assembler-times {\tvfqmmacc\.vv\t[^\n]*,v0\.t} 2 } } */
-/* { dg-final { scan-assembler-times {\tvfwimmacc\.vv\t[^\n]*,v0\.t} 2 } } */
-/* { dg-final { scan-assembler-times {\tvfqimmacc\.vv\t[^\n]*,v0\.t} 2 } } */
+/* { dg-final { scan-assembler-times {\tvfwmmacc\.vv\t[^\n]*,v0\.scale} 2 } } */
+/* { dg-final { scan-assembler-times {\tvfqmmacc\.vv\t[^\n]*,v0\.scale} 2 } } */
+/* { dg-final { scan-assembler-times {\tvfwimmacc\.vv\t[^\n]*,v0\.scale} 2 } } */
+/* { dg-final { scan-assembler-times {\tvfqimmacc\.vv\t[^\n]*,v0\.scale} 2 } } */

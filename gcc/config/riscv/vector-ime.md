@@ -1152,7 +1152,7 @@
    (use (match_operand 7 "vtype_op_operand" "rJ"))]
   "GET_MODE_INNER (<MODE>mode) == <ime_fp_acc>mode
    && riscv_zvvm_fp_mm_p (ZVVM_FMT_<ime_fp_in>, <MODE>mode, <ime_scaled_bs>)"
-  "<ime_mmacc_insn>.vv\t%0,%2,%3,v0.t"
+  "<ime_mmacc_insn>.vv\t%0,%2,%3,v0.scale"
   [(set_attr "type" "vmmacc")
    (set_attr "requires_ime_vtype" "yes")
    (set_attr "ime_bs" "bs<ime_scaled_bs>")

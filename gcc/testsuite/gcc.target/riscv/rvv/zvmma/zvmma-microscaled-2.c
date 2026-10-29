@@ -27,5 +27,5 @@ f8wimmacc_i8_bs32 (vfloat64m4_t vd, vint8m1_t a, vint8m1_t b,
   return __riscv_vf8wimmacc_vv_f64m4_i8m1_bs32 (vd, a, b, v0, vl);
 }
 
-/* { dg-final { scan-assembler-times {\tvf8wmmacc\.vv\t[^\n]*,v0\.t} 1 } } */
-/* { dg-final { scan-assembler-times {\tvf8wimmacc\.vv\t[^\n]*,v0\.t} 1 } } */
+/* { dg-final { scan-assembler-times {\tvf8wmmacc\.vv\t[^\n]*,v0\.scale} 1 } } */
+/* { dg-final { scan-assembler-times {\tvf8wimmacc\.vv\t[^\n]*,v0\.scale} 1 } } */
