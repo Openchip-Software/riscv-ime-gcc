@@ -4441,7 +4441,7 @@ pre_vsetvl::compute_vsetvl_def_data ()
 	for (unsigned i = 0; i < m_vsetvl_def_exprs.length (); i++)
 	  {
 	    const auto &info = *m_vsetvl_def_exprs[i];
-	    if (!info.valid_p ())
+	    if (!info.valid_p () || !info.ime_required_p ())
 	      continue;
 	    if (footer_info.get_sew () != info.get_sew ()
 		|| footer_info.get_vlmul () != info.get_vlmul ()
