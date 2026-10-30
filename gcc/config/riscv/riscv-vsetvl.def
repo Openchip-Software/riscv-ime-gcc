@@ -198,13 +198,14 @@ DEF_AVL_RULE (ignore_avl, ignore_avl, ignore_avl, always_true, always_true, nop)
 
 DEF_IME_RULE (ime_vtype, ime_vtype, ime_vtype, ime_eq_p, ime_eq_p, nop)
 DEF_IME_RULE (ime_vtype, ignore_ime, ime_vtype, always_true, always_true, nop)
-/* A plain vsetvli (ignore_ime) cannot be rewritten in place into an IME
-   setup (which is a multi-insn sequence: constant load + register-form
-   vsetvl).  Mark the pair as incompatible so the two infos stay
-   separate; the IME insn then gets a fresh IME vsetvl inserted right
-   before it, leaving the plain vsetvli intact for the surrounding
-   non-IME operations.  */
-DEF_IME_RULE (ignore_ime, ime_vtype, ime_vtype, always_false, always_false,
+/* An existing plain vsetvli (ignore_ime) cannot be rewritten in place
+   into an IME setup (which is a multi-insn sequence: constant load +
+   register-form vsetvl), so the two infos stay separate and the IME insn
+   gets a fresh IME vsetvl inserted right before it.  A plain demand that
+   is still to be emitted becomes the IME setup instead, so that one IME
+   vsetvl serves both, and can be hoisted out of a loop.  The plain demand
+   never makes the IME bits available.  */
+DEF_IME_RULE (ignore_ime, ime_vtype, ime_vtype, ime_emittable_p, always_false,
 	      use_next_ime)
 DEF_IME_RULE (ignore_ime, ignore_ime, ignore_ime, always_true, always_true, nop)
 

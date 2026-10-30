@@ -1007,6 +1007,49 @@ struct ime_vtype_req
   bool operator!= (const ime_vtype_req &o) const { return !(*this == o); }
 };
 
+/* The IME vtype bits that hold at a point on every path to it: UNSEEN
+   before the dataflow has reached the point, NONE if they are unknown,
+   and REQ if the last IME vsetvl on every path established REQ and only
+   vsetvls with REQ's SEW followed it.  Lambda support depends on SEW, so
+   a vsetvli with another SEW may change lambda; LMUL does not affect it,
+   and a vsetvli keeps altfmt, altfmt_A, altfmt_B and bs.  */
+struct ime_state
+{
+  enum kind_type : uint8_t { UNSEEN, NONE, REQ } kind;
+  ime_vtype_req req;
+
+  ime_state () : kind (UNSEEN) {}
+  static ime_state none ()
+  {
+    ime_state s;
+    s.kind = NONE;
+    return s;
+  }
+  static ime_state with (const ime_vtype_req &r)
+  {
+    ime_state s;
+    s.kind = REQ;
+    s.req = r;
+    return s;
+  }
+
+  bool operator== (const ime_state &o) const
+  {
+    return kind == o.kind && (kind != REQ || req == o.req);
+  }
+  bool operator!= (const ime_state &o) const { return !(*this == o); }
+
+  /* The state at a CFG join of A and B.  */
+  static ime_state meet (const ime_state &a, const ime_state &b)
+  {
+    if (a.kind == UNSEEN)
+      return b;
+    if (b.kind == UNSEEN)
+      return a;
+    return a == b ? a : none ();
+  }
+};
+
 /* Pack R for the IME demand operand of the `@vsetvl_ime*' patterns.  */
 static HOST_WIDE_INT
 pack_ime_req (const ime_vtype_req &r)
@@ -1692,6 +1735,11 @@ private:
   ime_vtype_req m_ime_req;
   ime_demand_type m_ime_demand;
 
+  /* For a runtime lambda, the register that holds the full IME vtype
+     computed by the probe, or NULL_RTX.  It stays with the IME demand when
+     that is fused into another instruction's info.  */
+  rtx m_ime_vtype;
+
   /* The effect of the instruction on vtype.lambda, set by `parse_insn'.  */
   lambda_state m_lambda;
 
@@ -1705,7 +1753,7 @@ public:
       m_avl_demand (avl_demand_type::avl), m_state (state_type::UNINITIALIZED),
       m_delete (false), m_change_vtype_only (false), m_read_vl_insn (nullptr),
       m_vl_used_by_non_rvv_insn (false), m_ime_required (false), m_ime_req (),
-      m_ime_demand (ime_demand_type::ignore_ime)
+      m_ime_demand (ime_demand_type::ignore_ime), m_ime_vtype (NULL_RTX)
   {}
 
   vsetvl_info (insn_info *insn) : vsetvl_info () { parse_insn (insn); }
@@ -1743,6 +1791,8 @@ public:
 
   bool ime_required_p () const { return m_ime_required; }
   const ime_vtype_req &get_ime_req () const { return m_ime_req; }
+  rtx get_ime_vtype () const { return m_ime_vtype; }
+  void set_ime_vtype (rtx vtype) { m_ime_vtype = vtype; }
   void set_ime_required (bool r) { m_ime_required = r; }
   void set_ime_req (const ime_vtype_req &r) { m_ime_req = r; }
   ime_demand_type get_ime_demand () const { return m_ime_demand; }
@@ -1956,6 +2006,8 @@ public:
       {
 	m_ime_required = true;
 	m_ime_req = req;
+	if (reg_p && REG_P (recog_data.operand[2]))
+	  m_ime_vtype = recog_data.operand[2];
 	normalize_demand (DEMAND_AVL_P | DEMAND_SEW_P | DEMAND_LMUL_P
 			  | DEMAND_IME_P);
       }
@@ -1974,6 +2026,13 @@ public:
     m_ime_req = riscv_extract_ime_requirements (rinsn);
     m_vlmul = (vlmul_type) m_ime_req.lmul;
     m_ratio = calculate_ratio (m_sew, m_vlmul);
+    int idx = get_attr_ime_vtype_op_idx (rinsn);
+    if (idx != INVALID_ATTRIBUTE)
+      {
+	extract_insn_cached (rinsn);
+	if (REG_P (recog_data.operand[idx]))
+	  m_ime_vtype = recog_data.operand[idx];
+      }
   }
 
   void parse_insn (rtx_insn *rinsn)
@@ -2464,8 +2523,9 @@ emit_ime_vtype_build (const vsetvl_info &info)
 
 /* Return AVL as an operand of the IME and lambda-preserving vsetvl
    patterns, which take a register or zero: a null AVL is zero, and any
-   other constant is loaded into the prologue temporary before BEFORE
-   (the pass runs after register allocation).  */
+   other constant is loaded into the prologue temporary before BEFORE,
+   or into the current sequence if BEFORE is null (the pass runs after
+   register allocation).  */
 
 static rtx
 ime_avl_operand (rtx avl, rtx_insn *before)
@@ -2475,7 +2535,10 @@ ime_avl_operand (rtx avl, rtx_insn *before)
   if (avl != const0_rtx && CONST_INT_P (avl))
     {
       rtx temp = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
-      emit_insn_before (gen_rtx_SET (temp, avl), before);
+      if (before)
+	emit_insn_before (gen_rtx_SET (temp, avl), before);
+      else
+	emit_insn (gen_rtx_SET (temp, avl));
       return temp;
     }
   return avl;
@@ -2487,22 +2550,28 @@ ime_avl_operand (rtx avl, rtx_insn *before)
    template loads into the destination register.  With a runtime lambda it is
    `@vsetvl_ime_reg<mode>' with the vtype that the expander computed and
    passed to CONSUMER in its vtype operand, and the destination is x0 so
-   as not to clobber a register.  */
+   as not to clobber a register.  Any setup is emitted before BEFORE, or
+   into the current sequence if BEFORE is null.  */
 
 static rtx
-gen_ime_vsetvl (const vsetvl_info &info, rtx_insn *consumer)
+gen_ime_vsetvl (const vsetvl_info &info, rtx_insn *consumer,
+		rtx_insn *before)
 {
   const ime_vtype_req &r = info.get_ime_req ();
   rtx ime_pack = gen_int_mode (pack_ime_req (r), Pmode);
   if (r.lambda_log2 == -1)
     {
-      extract_insn_cached (consumer);
-      int idx = get_attr_ime_vtype_op_idx (consumer);
-      if (idx == INVALID_ATTRIBUTE || !REG_P (recog_data.operand[idx]))
-	return NULL_RTX;
-      rtx vtype = recog_data.operand[idx];
+      rtx vtype = info.get_ime_vtype ();
+      if (!vtype)
+	{
+	  extract_insn_cached (consumer);
+	  int idx = get_attr_ime_vtype_op_idx (consumer);
+	  if (idx == INVALID_ATTRIBUTE || !REG_P (recog_data.operand[idx]))
+	    return NULL_RTX;
+	  vtype = recog_data.operand[idx];
+	}
       rtx dest = info.has_vl () ? info.get_vl () : gen_rtx_REG (Pmode, 0);
-      rtx avl = ime_avl_operand (info.get_avl (), consumer);
+      rtx avl = ime_avl_operand (info.get_avl (), before);
       return gen_vsetvl_ime_reg (Pmode, dest, avl, vtype, ime_pack);
     }
 
@@ -2511,7 +2580,7 @@ gen_ime_vsetvl (const vsetvl_info &info, rtx_insn *consumer)
     return NULL_RTX;
   rtx dest = (info.has_vl () ? info.get_vl ()
 	      : gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM));
-  rtx avl = ime_avl_operand (info.get_avl (), consumer);
+  rtx avl = ime_avl_operand (info.get_avl (), before);
   return gen_vsetvl_ime (Pmode, dest, avl, vtype, ime_pack);
 }
 
@@ -3164,10 +3233,21 @@ private:
 
   /* modifier for IME vtype dimension: copy next's IME state into prev.  */
 
+  /* True if PREV, which does not demand the IME vtype bits, can become an
+     IME setup for NEXT: an existing vsetvl cannot be rewritten in place
+     into the multi-insn IME setup, but a vsetvl that is still to be
+     emitted can.  */
+  inline bool ime_emittable_p (const vsetvl_info &prev,
+			       const vsetvl_info &next ATTRIBUTE_UNUSED)
+  {
+    return !prev.get_insn () || !vsetvl_insn_p (prev.get_insn ()->rtl ());
+  }
+
   inline void use_next_ime (vsetvl_info &prev, const vsetvl_info &next)
   {
     prev.set_ime_required (next.ime_required_p ());
     prev.set_ime_req (next.get_ime_req ());
+    prev.set_ime_vtype (next.get_ime_vtype ());
   }
 
 public:
@@ -3583,6 +3663,11 @@ private:
 
   auto_vec<vsetvl_info> m_delete_list;
 
+  /* The IME state at the start of each block, and the vsetvls that
+     `emit_vsetvl' removes, for `ime_state_satisfies_p'.  */
+  auto_vec<ime_state> m_ime_state_in;
+  hash_set<rtx_insn *> m_ime_removed;
+
   vsetvl_block_info &get_block_info (const bb_info *bb)
   {
     return m_vector_block_infos[bb->index ()];
@@ -3687,7 +3772,8 @@ private:
     rtx pat;
     if (info.ime_required_p ())
       {
-	pat = gen_ime_vsetvl (info, rinsn);
+	pat = gen_ime_vsetvl (info, rinsn,
+			      emit_type == EMIT_DIRECT ? nullptr : rinsn);
 	if (!pat)
 	  return;
       }
@@ -3728,10 +3814,158 @@ private:
       }
   }
 
+  /* Return the IME state after the vsetvl that `emit_vsetvl' emits for
+     INFO, or keeps for it, given the state S before it.  */
+  static ime_state ime_state_after_info (const ime_state &s,
+					 const vsetvl_info &info)
+  {
+    if (!info.valid_p ())
+      return ime_state::none ();
+    if (info.ime_required_p ())
+      return ime_state::with (info.get_ime_req ());
+    if (s.kind == ime_state::UNSEEN
+	|| (s.kind == ime_state::REQ && info.get_sew () == s.req.sew))
+      return s;
+    return ime_state::none ();
+  }
+
+  /* Return the IME state at STOP in BB, or at the end of BB if STOP is
+     null, given the state IN at the start of BB and the vsetvls that
+     `emit_vsetvl' will emit, keep or remove in BB.  */
+  ime_state ime_state_in_block (const bb_info *bb, ime_state in,
+				rtx_insn *stop)
+  {
+    const vsetvl_block_info &block_info = get_block_info (bb);
+    hash_map<rtx_insn *, unsigned> info_of;
+    for (unsigned i = block_info.local_infos.length (); i-- > 0;)
+      info_of.put (block_info.local_infos[i].get_insn ()->rtl (), i);
+
+    ime_state s = in;
+    rtx_insn *rinsn;
+    FOR_BB_INSNS (bb->cfg_bb (), rinsn)
+      {
+	if (rinsn == stop)
+	  break;
+	if (!NONDEBUG_INSN_P (rinsn) || m_ime_removed.contains (rinsn))
+	  continue;
+	if (is_preserve_lambda_p (rinsn))
+	  {
+	    s = ime_state::none ();
+	    continue;
+	  }
+	if (unsigned *idx = info_of.get (rinsn))
+	  {
+	    for (unsigned i = *idx; i < block_info.local_infos.length ()
+		 && block_info.local_infos[i].get_insn ()->rtl () == rinsn;
+		 i++)
+	      if (!block_info.local_infos[i].delete_p ())
+		s = ime_state_after_info (s, block_info.local_infos[i]);
+	    continue;
+	  }
+	lambda_state l = classify_lambda_effect (rinsn);
+	if (l.kind != lambda_state_kind::NOT_TOUCHED
+	    && l.kind != lambda_state_kind::USE_ONLY)
+	  s = ime_state::none ();
+      }
+    return s;
+  }
+
+  /* Compute M_IME_STATE_IN, the IME state at the start of each block,
+     from the vsetvls that `emit_vsetvl' will emit in blocks and on
+     edges.  */
+  void compute_ime_state ()
+  {
+    m_ime_removed.empty ();
+    for (const vsetvl_info &item : m_delete_list)
+      m_ime_removed.add (item.get_insn ()->rtl ());
+    for (const bb_info *bb : crtl->ssa->bbs ())
+      for (const auto &info : get_block_info (bb).local_infos)
+	if (info.delete_p () && vsetvl_insn_p (info.get_insn ()->rtl ()))
+	  m_ime_removed.add (info.get_insn ()->rtl ());
+
+    hash_map<edge, int> edge_index;
+    if (m_edges)
+      for (int ed = 0; ed < NUM_EDGES (m_edges); ed++)
+	edge_index.put (INDEX_EDGE (m_edges, ed), ed);
+
+    unsigned n = last_basic_block_for_fn (cfun);
+    m_ime_state_in.truncate (0);
+    auto_vec<ime_state> out;
+    for (unsigned i = 0; i < n; i++)
+      {
+	m_ime_state_in.safe_push (ime_state ());
+	out.safe_push (ime_state ());
+      }
+    m_ime_state_in[ENTRY_BLOCK] = ime_state::none ();
+    out[ENTRY_BLOCK] = ime_state::none ();
+
+    bool changed = true;
+    while (changed)
+      {
+	changed = false;
+	for (const bb_info *bb : crtl->ssa->bbs ())
+	  {
+	    basic_block cfg_bb = bb->cfg_bb ();
+	    if (cfg_bb == ENTRY_BLOCK_PTR_FOR_FN (cfun))
+	      continue;
+	    ime_state in;
+	    edge e;
+	    edge_iterator ei;
+	    FOR_EACH_EDGE (e, ei, cfg_bb->preds)
+	      in = ime_state::meet (in, ime_state_on_edge (e, out[e->src->index],
+							  edge_index));
+	    if (in != m_ime_state_in[cfg_bb->index])
+	      {
+		m_ime_state_in[cfg_bb->index] = in;
+		out[cfg_bb->index] = ime_state_in_block (bb, in, nullptr);
+		changed = true;
+	      }
+	  }
+      }
+  }
+
+  /* Return the IME state at the end of edge E, given the state OUT at the
+     end of its source block.  */
+  ime_state ime_state_on_edge (edge e, ime_state out,
+			       hash_map<edge, int> &edge_index)
+  {
+    basic_block src = e->src;
+    if (src == ENTRY_BLOCK_PTR_FOR_FN (cfun)
+	|| (e->flags & (EDGE_ABNORMAL | EDGE_EH)))
+      return ime_state::none ();
+    if (out.kind == ime_state::UNSEEN)
+      return out;
+
+    /* The vsetvls that `emit_vsetvl' inserts on E.  */
+    ime_state s = out;
+    const vsetvl_block_info &block_info = get_block_info (src);
+    if (block_info.has_info () && !block_info.get_exit_info ().delete_p ())
+      s = ime_state_after_info (s, block_info.get_exit_info ());
+    if (int *ed = edge_index.get (e))
+      if (bitmap_count_bits (m_insert[*ed]) == 1)
+	s = ime_state_after_info
+	  (s, *m_exprs[bitmap_first_set_bit (m_insert[*ed])]);
+    return s;
+  }
+
+  /* Return true if the IME vtype bits that hold before CURR's insn on
+     every path are CURR's IME demand.  */
+  bool ime_state_satisfies_p (const vsetvl_info &curr)
+  {
+    const bb_info *bb = curr.get_bb ();
+    ime_state in = m_ime_state_in[bb->index ()];
+    if (in.kind == ime_state::UNSEEN)
+      return false;
+    ime_state s = ime_state_in_block (bb, in, curr.get_insn ()->rtl ());
+    return s == ime_state::with (curr.get_ime_req ());
+  }
+
   /* Return true if every vsetvl reaching block BB has the SEW, LMUL,
      policy and AVL of CURR and, if it is an IME vsetvl, CURR's IME
-     demand, and at least one of them is an IME vsetvl.  A plain vsetvli
-     with the same fields keeps the IME bits of vtype.  */
+     demand, and at least one of them is an IME vsetvl.  This does not
+     establish that the IME bits of vtype are CURR's: a plain vsetvli
+     reaching BB keeps whatever IME bits precede it, which
+     `ime_state_satisfies_p' checks.  */
   bool ime_vtype_reaches_p (const vsetvl_info &curr, unsigned int bb)
   {
     if (!m_vsetvl_def_in || bitmap_empty_p (m_vsetvl_def_in[bb]))
@@ -4891,6 +5125,7 @@ pre_vsetvl::emit_vsetvl ()
      We should commit vsetvl edge after fake edges removes, otherwise,
      it will cause ICE.  */
   remove_fake_exit_edges ();
+  compute_ime_state ();
   for (const bb_info *bb : crtl->ssa->bbs ())
     {
       /* Track whether any prior local_info in this BB has actually
@@ -4943,7 +5178,8 @@ pre_vsetvl::emit_vsetvl ()
 		     entry.  */
 		  if (curr_info.ime_required_p ()
 		      && !prior_emission_in_bb
-		      && ime_vtype_reaches_p (curr_info, bb->index ()))
+		      && ime_vtype_reaches_p (curr_info, bb->index ())
+		      && ime_state_satisfies_p (curr_info))
 		    {
 		      if (dump_file)
 			fprintf (dump_file,
@@ -5203,7 +5439,7 @@ pass_vsetvl::simple_vsetvl ()
 	      const auto &info = vsetvl_info (rinsn);
 	      if (info.ime_required_p ())
 		{
-		  rtx pat = gen_ime_vsetvl (info, rinsn);
+		  rtx pat = gen_ime_vsetvl (info, rinsn, rinsn);
 		  if (pat)
 		    {
 		      emit_insn_before (pat, rinsn);
