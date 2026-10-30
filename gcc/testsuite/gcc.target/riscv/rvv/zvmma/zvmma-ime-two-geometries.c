@@ -29,6 +29,8 @@ f (const int *A, int *C, int *D, int n)
   __riscv_vse32_v_i32m1 (D, d, vl);
 }
 
-/* Two probes, and a register-form (IME) vsetvl in the loop preheader.  */
+/* Two probes, each with its own IME vsetvl, an IME vsetvl in the loop
+   preheader and one for the m1 multiply-accumulate.  */
 /* { dg-final { scan-assembler-times {csrr\t[a-z0-9]+,vtype} 2 } } */
+/* { dg-final { scan-assembler-times {\tvsetvl\t} 4 } } */
 /* { dg-final { scan-assembler {\tble\t[^\n]*\n(?:\t[^\n]*\n)*?\tvsetvl\t[a-z0-9]+,[a-z0-9]+,[a-z0-9]+\n(?:\t[^\n]*\n)*?\.L[0-9]+:\n\tvle32\.v} } } */

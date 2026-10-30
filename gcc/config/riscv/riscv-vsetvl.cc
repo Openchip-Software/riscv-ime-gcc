@@ -425,6 +425,32 @@ is_preserve_lambda_p (rtx_insn *rinsn)
 	  || code == CODE_FOR_riscv_vsetvl_preserve_lambdasi);
 }
 
+/* Return true if RINSN is an IME vsetvl, `@vsetvl_ime<mode>' or
+   `@vsetvl_ime_reg<mode>'.  */
+static bool
+ime_vsetvl_insn_p (rtx_insn *rinsn)
+{
+  int code = recog_memoized (rinsn);
+  return (code == CODE_FOR_vsetvl_imedi || code == CODE_FOR_vsetvl_imesi
+	  || code == CODE_FOR_vsetvl_ime_regdi
+	  || code == CODE_FOR_vsetvl_ime_regsi);
+}
+
+/* Return true if INSN is an IME vsetvl whose VL result is unused, so that
+   it can be deleted when another vsetvl provides its vtype.  */
+static bool
+removable_ime_vsetvl_p (insn_info *insn)
+{
+  if (!ime_vsetvl_insn_p (insn->rtl ()))
+    return false;
+  for (def_info *def : insn->defs ())
+    if (def->is_reg () && GP_REG_P (def->regno ()))
+      if (auto *set = dyn_cast<set_info *> (def))
+	if (set->has_any_uses ())
+	  return false;
+  return true;
+}
+
 /* Return true if it is the bogus vsetvl_pre instruction:
 
    (define_insn "@vlmax_avl<mode>"
@@ -3233,14 +3259,43 @@ private:
 
   /* modifier for IME vtype dimension: copy next's IME state into prev.  */
 
+  /* True if the register that holds NEXT's IME vtype, if any, has the
+     same value where PREV's vsetvl is emitted as at NEXT.  */
+  bool ime_vtype_unmodified_between_p (const vsetvl_info &prev,
+				       const vsetvl_info &next)
+  {
+    rtx vtype = next.get_ime_vtype ();
+    if (!vtype || !REG_P (vtype))
+      return true;
+    if (!prev.get_insn () || !next.get_insn ())
+      return false;
+
+    insn_info *prev_insn = prev.get_insn ();
+    if (prev.get_bb () != prev_insn->bb ())
+      prev_insn = prev.get_bb ()->end_insn ();
+
+    insn_info *next_insn = next.get_insn ();
+    if (next.get_bb () != next_insn->bb ())
+      next_insn = next.get_bb ()->end_insn ();
+
+    /* The vsetvl goes before PREV_INSN, so look up the definitions that
+       reach PREV_INSN and NEXT_INSN.  */
+    resource_info resource = full_register (REGNO (vtype));
+    def_info *def1 = crtl->ssa->find_def (resource, prev_insn).prev_def (prev_insn);
+    def_info *def2 = crtl->ssa->find_def (resource, next_insn).prev_def (next_insn);
+    return def1 && def1 == def2;
+  }
+
   /* True if PREV, which does not demand the IME vtype bits, can become an
      IME setup for NEXT: an existing vsetvl cannot be rewritten in place
      into the multi-insn IME setup, but a vsetvl that is still to be
-     emitted can.  */
+     emitted can, if NEXT's vtype register is available where PREV is.  */
   inline bool ime_emittable_p (const vsetvl_info &prev,
-			       const vsetvl_info &next ATTRIBUTE_UNUSED)
+			       const vsetvl_info &next)
   {
-    return !prev.get_insn () || !vsetvl_insn_p (prev.get_insn ()->rtl ());
+    if (prev.get_insn () && vsetvl_insn_p (prev.get_insn ()->rtl ()))
+      return false;
+    return ime_vtype_unmodified_between_p (prev, next);
   }
 
   inline void use_next_ime (vsetvl_info &prev, const vsetvl_info &next)
@@ -3868,6 +3923,22 @@ private:
 	  s = ime_state::none ();
       }
     return s;
+  }
+
+  /* True if INSN is an IME vsetvl that establishes INFO by itself: it
+     sets the vtype that INFO demands, from INFO's AVL and into INFO's
+     VL.  */
+  bool ime_vsetvl_provides_p (insn_info *insn, const vsetvl_info &info)
+  {
+    if (!ime_vsetvl_insn_p (insn->rtl ()))
+      return false;
+    const vsetvl_info own (insn);
+    return (own.valid_p ()
+	    && m_dem.sew_lmul_available_p (own, info)
+	    && m_dem.policy_available_p (own, info)
+	    && m_dem.ime_available_p (own, info)
+	    && rtx_equal_p (own.get_avl (), info.get_avl ())
+	    && rtx_equal_p (own.get_vl (), info.get_vl ()));
   }
 
   /* Compute M_IME_STATE_IN, the IME state at the start of each block,
@@ -4597,9 +4668,10 @@ pre_vsetvl::fuse_local_vsetvl_info ()
 		    ? curr_info.get_vl ()
 		    : NULL_RTX;
 
-		  if (vsetvl_insn_p (curr_info.get_insn ()->rtl ())
-		      && !reg_single_use_in_avl (curr_info.get_insn (),
-						 cur_dest))
+		  if ((vsetvl_insn_p (curr_info.get_insn ()->rtl ())
+		       && !reg_single_use_in_avl (curr_info.get_insn (),
+						  cur_dest))
+		      || removable_ime_vsetvl_p (curr_info.get_insn ()))
 		    m_delete_list.safe_push (curr_info);
 
 		  if (curr_info.get_read_vl_insn ())
@@ -4617,8 +4689,11 @@ pre_vsetvl::fuse_local_vsetvl_info ()
 		      curr_info.dump (dump_file, "        ");
 		    }
 		  m_dem.merge (prev_info, curr_info);
-		  if (!curr_info.vl_used_by_non_rvv_insn_p ()
-		      && vsetvl_insn_p (curr_info.get_insn ()->rtl ()))
+		  /* An IME vsetvl whose demand was fused into a vsetvl that
+		     is still to be emitted is redundant with it.  */
+		  if ((!curr_info.vl_used_by_non_rvv_insn_p ()
+		       && vsetvl_insn_p (curr_info.get_insn ()->rtl ()))
+		      || removable_ime_vsetvl_p (curr_info.get_insn ()))
 		    m_delete_list.safe_push (curr_info);
 		  if (curr_info.get_read_vl_insn ())
 		    prev_info.set_read_vl_insn (curr_info.get_read_vl_insn ());
@@ -5170,6 +5245,11 @@ pre_vsetvl::emit_vsetvl ()
 		     it would clobber the live vtype.lambda before its
 		     csrr-and-merge reads it.  */
 		}
+	      else if (ime_vsetvl_provides_p (insn, curr_info))
+		{
+		  /* The IME vsetvl is its own vtype source.  */
+		  prior_emission_in_bb = true;
+		}
 	      else
 		{
 		  /* An IME instruction at the start of its block needs no
@@ -5206,7 +5286,8 @@ pre_vsetvl::emit_vsetvl ()
 
   for (const vsetvl_info &item : m_delete_list)
     {
-      gcc_assert (vsetvl_insn_p (item.get_insn ()->rtl ()));
+      gcc_assert (vsetvl_insn_p (item.get_insn ()->rtl ())
+		  || removable_ime_vsetvl_p (item.get_insn ()));
       remove_vsetvl_insn (item.get_insn ()->rtl ());
     }
 
