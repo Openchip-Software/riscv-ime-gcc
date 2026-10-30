@@ -1295,9 +1295,9 @@
      half's destination:
 
        * loregno == dregno + 8   -- the lo source occupies the
-	 upper-half slot of dst.  Do the hi-half move FIRST so that
-	 the subsequent lo-half move can still read the lo source
-	 out of dregno + 8 before it is overwritten.
+	 upper-half slot of dst.  Do the lo-half move FIRST so that
+	 the lo source is read out of dregno + 8 before the hi-half
+	 move overwrites it.
 
        * hiregno == dregno       -- the hi source occupies the
 	 lower-half slot of dst.  Do the hi-half move FIRST so the
@@ -1335,9 +1335,7 @@
       DONE;
     }
 
-  bool order_hi_first
-    = need_hi && (hiregno == dregno
-		  || (need_lo && loregno == dregno + 8));
+  bool order_hi_first = need_hi && hiregno == dregno;
 
   if (order_hi_first)
     {
